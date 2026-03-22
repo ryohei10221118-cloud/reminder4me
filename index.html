@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>回覆提醒工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', sans-serif;
+      background: #0d0f18;
+      color: #d0d4e8;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #13162b;
+      border-bottom: 1px solid #1e2340;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+    .header-badge {
+      background: #e05252;
+      color: #fff;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      min-width: 22px;
+      text-align: center;
+      display: none;
+    }
+    .header-badge.show { display: inline-block; }
+    .notification-btn {
+      margin-left: auto;
+      padding: 6px 12px;
+      background: #1e2340;
+      border: 1px solid #2a2d50;
+      border-radius: 6px;
+      color: #8b8fa8;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .notification-btn.granted { color: #4caf50; border-color: #2e5a2e; }
+
+    /* ── Layout ── */
+    .container { max-width: 860px; margin: 0 auto; padding: 24px 20px; }
+
+    /* ── Form card ── */
+    .form-card {
+      background: #13162b;
+      border: 1px solid #1e2340;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+    .form-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #5a6080;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 16px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-full { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 12px; color: #6b7090; }
+    .form-group input {
+      background: #0d0f18;
+      border: 1px solid #1e2340;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #d0d4e8;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.18s;
+    }
+    .form-group input:focus { border-color: #4f6ef7; }
+    .form-group input::placeholder { color: #3a3d5a; }
+    .btn-add {
+      width: 100%;
+      padding: 11px;
+      background: #4f6ef7;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+    }
+    .btn-add:hover { background: #3d5de6; }
+    .btn-add:active { transform: scale(0.98); }
+
+    /* ── Section title ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #5a6080;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #e05252;
+      color: #fff;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      min-width: 22px;
+    }
+    .count-badge.gray { background: #2a2d50; color: #8b8fa8; }
+
+    /* ── Record card ── */
+    .record-card {
+      background: #13162b;
+      border: 1px solid #1e2340;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.3s;
+    }
+    .record-card.warn  { border-color: #c07a20; }
+    .record-card.alert { border-color: #c03030; background: #1a1020; }
+
+    /* ── Timer box ── */
+    .timer-box {
+      width: 68px;
+      min-width: 68px;
+      height: 58px;
+      border-radius: 10px;
+      border: 2px solid #1e2340;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .timer-box .t-time {
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .timer-box .t-stage {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .timer-box.normal { border-color: #3a6fc0; }
+    .timer-box.normal .t-time { color: #5590e0; }
+    .timer-box.normal .t-stage { color: #3a6fc0; }
+    .timer-box.warn   { border-color: #c07a20; }
+    .timer-box.warn   .t-time { color: #e09030; }
+    .timer-box.warn   .t-stage { color: #c07a20; }
+    .timer-box.alert  { border-color: #c03030; background: rgba(192,48,48,0.1); }
+    .timer-box.alert  .t-time { color: #e05050; }
+    .timer-box.alert  .t-stage { color: #c03030; }
+    .timer-box.expired { border-color: #e03030; background: rgba(224,48,48,0.15); animation: blink 1s infinite; }
+    .timer-box.expired .t-time { color: #ff5050; font-size: 14px; }
+    .timer-box.expired .t-stage { color: #e03030; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+    /* ── Record info ── */
+    .record-info { flex: 1; min-width: 0; }
+    .record-type-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+    .record-type-tag {
+      font-size: 11px;
+      font-weight: 700;
+      color: #4f6ef7;
+      background: rgba(79,110,247,0.12);
+      border-radius: 4px;
+      padding: 1px 7px;
+      text-transform: uppercase;
+    }
+    .record-order { font-size: 11px; color: #6b7090; }
+    .record-req {
+      font-size: 14px;
+      color: #e0e4f0;
+      font-weight: 600;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .record-group { font-size: 12px; color: #6b7090; }
+    .record-group b { color: #9095b8; font-weight: 600; }
+
+    /* ── Record actions ── */
+    .record-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+    .btn-done {
+      padding: 6px 13px;
+      background: rgba(76,175,80,0.12);
+      color: #4caf50;
+      border: 1px solid rgba(76,175,80,0.3);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-done:hover { background: rgba(76,175,80,0.22); }
+    .btn-del {
+      padding: 5px 10px;
+      background: transparent;
+      color: #4a4d6a;
+      border: 1px solid #1e2340;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-del:hover { color: #e05252; border-color: #c03030; }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 36px; color: #3a3d5a; font-size: 14px; }
+
+    /* ── Completed section ── */
+    .completed-section { margin-top: 28px; }
+    .toggle-row {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+    .toggle-row:hover .section-title { color: #8b8fa8; }
+    .chevron { color: #5a6080; font-size: 11px; transition: transform 0.2s; }
+    .chevron.open { transform: rotate(180deg); }
+    .record-card.done { opacity: 0.45; }
+    .record-card.done .timer-box { border-color: #1e2340; }
+    .record-card.done .timer-box .t-time { color: #3a3d5a; font-size: 13px; }
+    .record-card.done .timer-box .t-stage { color: #3a3d5a; }
+
+    /* ── Popup overlay ── */
+    .popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: overlayIn 0.2s ease;
+    }
+    @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
+
+    .popup-card {
+      background: #13162b;
+      border: 2px solid #c03030;
+      border-radius: 18px;
+      padding: 28px;
+      max-width: 420px;
+      width: 92%;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      animation: cardUp 0.28s cubic-bezier(0.16,1,0.3,1);
+    }
+    .popup-card.final { border-color: #ff2020; }
+    @keyframes cardUp { from { transform: translateY(24px) scale(0.96); opacity:0; } to { transform: none; opacity:1; } }
+
+    .popup-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 14px;
+    }
+    .popup-badge.first { background: rgba(224,160,82,0.15); color: #e0a052; border: 1px solid rgba(224,160,82,0.4); }
+    .popup-badge.final { background: rgba(224,48,48,0.2); color: #ff5050; border: 1px solid rgba(224,48,48,0.5); animation: pulse 0.8s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
+
+    .popup-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 18px; }
+
+    .popup-detail {
+      background: #0d0f18;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+    }
+    .popup-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 9px;
+      font-size: 13px;
+    }
+    .popup-row:last-child { margin-bottom: 0; }
+    .popup-label { color: #5a6080; min-width: 52px; flex-shrink: 0; }
+    .popup-value { color: #d0d4e8; font-weight: 600; word-break: break-all; }
+
+    .popup-queue-note { font-size: 12px; color: #5a6080; text-align: center; margin-bottom: 14px; }
+
+    .popup-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn-popup-done {
+      padding: 13px;
+      background: #2e5a2e;
+      color: #4caf50;
+      border: 1px solid #3e7a3e;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .btn-popup-done:hover { background: #3e7a3e; }
+    .btn-popup-sec {
+      padding: 13px;
+      background: #1e2340;
+      color: #8b8fa8;
+      border: 1px solid #2a2d50;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .btn-popup-sec:hover { background: #2a2d50; color: #c0c4d8; }
+
+    /* ── Responsive ── */
+    @media (max-width: 520px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .record-card { flex-wrap: wrap; }
+      .record-actions { flex-direction: row; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>回覆提醒</h1>
+  <span class="header-badge" id="header-badge">0</span>
+  <button class="notification-btn" id="notif-btn" onclick="requestNotifPermission()">🔔 開啟通知</button>
+</div>
+
+<div class="container">
+
+  <!-- ── Add form ── -->
+  <div class="form-card">
+    <div class="form-title">新增記錄</div>
+    <form id="add-form" onsubmit="handleSubmit(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>類型 *</label>
+          <input id="f-type" list="type-list" placeholder="注單 / 異常投注 / 客訴 …" autocomplete="off" required>
+          <datalist id="type-list">
+            <option value="注單">
+            <option value="異常投注">
+            <option value="客訴">
+            <option value="入款">
+            <option value="出款">
+            <option value="優惠">
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label>注單號 <span style="color:#3a3d5a">（選填）</span></label>
+          <input id="f-order" placeholder="可留空" autocomplete="off">
+        </div>
+        <div class="form-group form-full">
+          <label>需求 *</label>
+          <input id="f-req" placeholder="客戶的需求或問題描述" autocomplete="off" required>
+        </div>
+        <div class="form-group form-full">
+          <label>群組 *</label>
+          <input id="f-group" placeholder="群組名稱" autocomplete="off" required>
+        </div>
+        <div class="form-full">
+          <button type="submit" class="btn-add">＋ 新增並開始計時</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Active records ── -->
+  <div class="section-header">
+    <span class="section-title">待處理</span>
+    <span class="count-badge" id="active-count" style="display:none">0</span>
+  </div>
+  <div id="active-records"></div>
+
+  <!-- ── Completed records ── -->
+  <div class="completed-section">
+    <div class="section-header toggle-row" onclick="toggleCompleted()">
+      <span class="section-title">已完成</span>
+      <span class="count-badge gray" id="done-count">0</span>
+      <span class="chevron" id="chevron">▼</span>
+    </div>
+    <div id="completed-list" style="display:none">
+      <div id="completed-records"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Popup (injected dynamically) ── -->
+
+<script>
+  // ═══════════════════════════════════════════════
+  //  Constants
+  // ═══════════════════════════════════════════════
+  const STAGE1_MS = 9 * 60 * 1000;
+  const STAGE2_MS = 9 * 60 * 1000;
+  const STORAGE_KEY = 'reminder4me_v2';
+
+  // ═══════════════════════════════════════════════
+  //  State
+  // ═══════════════════════════════════════════════
+  let records = [];
+  let timerHandles = {};   // { id: timeoutId }
+  let popupQueue  = [];   // pending record ids
+  let activePopupId = null;
+
+  // ═══════════════════════════════════════════════
+  //  Persistence
+  // ═══════════════════════════════════════════════
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      records = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      records = [];
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Record helpers
+  // ═══════════════════════════════════════════════
+  function getRemaining(r) {
+    if (r.completedAt) return -1;
+    if (r.stage === 1) return STAGE1_MS - (Date.now() - r.createdAt);
+    return STAGE2_MS - (Date.now() - (r.stage2StartAt || r.createdAt));
+  }
+
+  function timerClass(ms) {
+    if (ms <= 0)           return 'expired';
+    if (ms < 60_000)       return 'alert';
+    if (ms < 3 * 60_000)   return 'warn';
+    return 'normal';
+  }
+
+  function cardClass(ms) {
+    if (ms <= 0 || ms < 60_000) return 'alert';
+    if (ms < 3 * 60_000)        return 'warn';
+    return '';
+  }
+
+  function fmtTime(ms) {
+    if (ms <= 0) return '超時';
+    const s = Math.ceil(ms / 1000);
+    return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+  }
+
+  function fmtDuration(ms) {
+    const m = Math.floor(ms / 60_000);
+    const s = Math.floor((ms % 60_000) / 1000);
+    return m > 0 ? `${m}m${s}s` : `${s}s`;
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  function sortedActive() {
+    return records
+      .filter(r => !r.completedAt)
+      .sort((a,b) => getRemaining(a) - getRemaining(b));
+  }
+
+  function sortedDone() {
+    return records
+      .filter(r => r.completedAt)
+      .sort((a,b) => b.completedAt - a.completedAt);
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Add / complete / delete
+  // ═══════════════════════════════════════════════
+  function addRecord(type, orderNo, requirement, group) {
+    const r = {
+      id:           `r${Date.now()}${Math.random().toString(36).slice(2,5)}`,
+      type,
+      orderNo:      orderNo.trim(),
+      requirement:  requirement.trim(),
+      group:        group.trim(),
+      createdAt:    Date.now(),
+      stage:        1,
+      stage2StartAt:null,
+      completedAt:  null,
+    };
+    records.push(r);
+    save();
+    schedule(r);
+    fullRender();
+  }
+
+  function markDone(id) {
+    const r = records.find(x => x.id === id);
+    if (!r || r.completedAt) return;
+    r.completedAt = Date.now();
+    clearTimeout(timerHandles[id]);
+    delete timerHandles[id];
+    popupQueue = popupQueue.filter(x => x !== id);
+    if (activePopupId === id) dismissPopup();
+    save();
+    fullRender();
+  }
+
+  function deleteRecord(id) {
+    records = records.filter(x => x.id !== id);
+    clearTimeout(timerHandles[id]);
+    delete timerHandles[id];
+    popupQueue = popupQueue.filter(x => x !== id);
+    if (activePopupId === id) dismissPopup();
+    save();
+    fullRender();
+  }
+
+  function ackStage1(id) {
+    // User acknowledged stage-1 popup → start stage-2 countdown
+    const r = records.find(x => x.id === id);
+    if (!r || r.stage !== 1) return;
+    r.stage = 2;
+    r.stage2StartAt = Date.now();
+    save();
+    dismissPopup();
+    schedule(r);
+    fullRender();
+  }
+
+  function snooze(id, minutes) {
+    // Reschedule stage-2 popup N minutes from now
+    clearTimeout(timerHandles[id]);
+    timerHandles[id] = setTimeout(() => enqueue(id), minutes * 60_000);
+    dismissPopup();
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Timer scheduling
+  // ═══════════════════════════════════════════════
+  function schedule(r) {
+    if (r.completedAt) return;
+    clearTimeout(timerHandles[r.id]);
+    const remaining = getRemaining(r);
+    if (remaining <= 0) {
+      enqueue(r.id);
+    } else {
+      timerHandles[r.id] = setTimeout(() => enqueue(r.id), remaining);
+    }
+  }
+
+  function scheduleAll() {
+    records.filter(r => !r.completedAt).forEach(schedule);
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Popup queue
+  // ═══════════════════════════════════════════════
+  function enqueue(id) {
+    if (popupQueue.includes(id) || activePopupId === id) return;
+    const r = records.find(x => x.id === id);
+    if (!r || r.completedAt) return;
+    popupQueue.push(id);
+    processQueue();
+  }
+
+  function processQueue() {
+    if (activePopupId || popupQueue.length === 0) return;
+    const id = popupQueue.shift();
+    const r  = records.find(x => x.id === id);
+    if (!r || r.completedAt) { processQueue(); return; }
+    activePopupId = id;
+    renderPopup(r);
+    playSound();
+    sendBrowserNotif(r);
+  }
+
+  function dismissPopup() {
+    activePopupId = null;
+    const el = document.getElementById('popup-overlay');
+    if (el) el.remove();
+    setTimeout(processQueue, 200);
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Sound  (Web Audio API — no file needed)
+  // ═══════════════════════════════════════════════
+  function playSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const beep = (freq, start, dur, vol=0.28) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur + 0.01);
+      };
+      beep(880,  0.00, 0.12);
+      beep(1100, 0.18, 0.12);
+      beep(880,  0.36, 0.22);
+    } catch(e) { /* ignore */ }
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Browser Notifications
+  // ═══════════════════════════════════════════════
+  async function requestNotifPermission() {
+    if (!('Notification' in window)) { alert('此瀏覽器不支援桌面通知'); return; }
+    const result = await Notification.requestPermission();
+    updateNotifBtn();
+    if (result === 'granted') {
+      new Notification('✅ 通知已開啟', { body: '提醒出現時會同步通知您' });
+    }
+  }
+
+  function updateNotifBtn() {
+    const btn = document.getElementById('notif-btn');
+    if (!btn) return;
+    if (!('Notification' in window)) { btn.style.display='none'; return; }
+    if (Notification.permission === 'granted') {
+      btn.textContent = '🔔 通知已開啟';
+      btn.classList.add('granted');
+      btn.disabled = true;
+    } else {
+      btn.textContent = '🔔 開啟通知';
+      btn.classList.remove('granted');
+      btn.disabled = false;
+    }
+  }
+
+  function sendBrowserNotif(r) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const stage = r.stage === 1 ? '第一次提醒' : '最終提醒！';
+    new Notification(`${stage} ─ ${r.type}`, {
+      body: `需求：${r.requirement}\n群組：${r.group}${r.orderNo ? '\n注單：'+r.orderNo : ''}`,
+      requireInteraction: true,
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Render ── full re-render
+  // ═══════════════════════════════════════════════
+  function fullRender() {
+    renderActive();
+    renderDone();
+    updateHeaderBadge();
+    if (activePopupId) {
+      const r = records.find(x => x.id === activePopupId);
+      if (r) renderPopup(r);
+    }
+  }
+
+  function renderActive() {
+    const active  = sortedActive();
+    const el      = document.getElementById('active-records');
+    const badge   = document.getElementById('active-count');
+
+    badge.textContent = active.length;
+    badge.style.display = active.length ? 'inline-flex' : 'none';
+
+    if (active.length === 0) {
+      el.innerHTML = '<div class="empty-state">目前沒有待處理的記錄 👋</div>';
+      return;
+    }
+
+    el.innerHTML = active.map(r => {
+      const ms  = getRemaining(r);
+      const tc  = timerClass(ms);
+      const cc  = cardClass(ms);
+      const t   = fmtTime(ms);
+      return `
+        <div class="record-card ${cc}" id="card-${r.id}">
+          <div class="timer-box ${tc}" id="timer-${r.id}">
+            <span class="t-time">${t}</span>
+            <span class="t-stage">S${r.stage}</span>
+          </div>
+          <div class="record-info">
+            <div class="record-type-row">
+              <span class="record-type-tag">${esc(r.type)}</span>
+              ${r.orderNo ? `<span class="record-order">#${esc(r.orderNo)}</span>` : ''}
+            </div>
+            <div class="record-req" title="${esc(r.requirement)}">${esc(r.requirement)}</div>
+            <div class="record-group">群組：<b>${esc(r.group)}</b></div>
+          </div>
+          <div class="record-actions">
+            <button class="btn-done" onclick="markDone('${r.id}')">✓ 已回覆</button>
+            <button class="btn-del"  onclick="deleteRecord('${r.id}')">刪除</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderDone() {
+    const done = sortedDone();
+    const el   = document.getElementById('completed-records');
+    document.getElementById('done-count').textContent = done.length;
+
+    if (done.length === 0) {
+      el.innerHTML = '<div class="empty-state">沒有已完成的記錄</div>';
+      return;
+    }
+
+    el.innerHTML = done.slice(0,30).map(r => {
+      const dur = fmtDuration(r.completedAt - r.createdAt);
+      return `
+        <div class="record-card done">
+          <div class="timer-box" style="border-color:#1e2340">
+            <span class="t-time" style="font-size:12px;color:#3a3d5a">${dur}</span>
+            <span class="t-stage" style="color:#3a3d5a">完成</span>
+          </div>
+          <div class="record-info">
+            <div class="record-type-row">
+              <span class="record-type-tag" style="color:#3a4a8a;background:rgba(60,80,150,0.1)">${esc(r.type)}</span>
+              ${r.orderNo ? `<span class="record-order">#${esc(r.orderNo)}</span>` : ''}
+            </div>
+            <div class="record-req">${esc(r.requirement)}</div>
+            <div class="record-group">群組：<b>${esc(r.group)}</b></div>
+          </div>
+          <div class="record-actions">
+            <button class="btn-del" onclick="deleteRecord('${r.id}')">刪除</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderPopup(r) {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+
+    const isFinal   = r.stage === 2;
+    const queueLeft = popupQueue.length;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card ${isFinal ? 'final' : ''}">
+        <div class="popup-badge ${isFinal ? 'final' : 'first'}">
+          ${isFinal ? '⚠️ 最終提醒' : '🔔 第一次提醒'}
+        </div>
+        <div class="popup-title">請回覆客戶！</div>
+        <div class="popup-detail">
+          <div class="popup-row">
+            <span class="popup-label">類型</span>
+            <span class="popup-value">${esc(r.type)}</span>
+          </div>
+          ${r.orderNo ? `
+          <div class="popup-row">
+            <span class="popup-label">注單號</span>
+            <span class="popup-value">${esc(r.orderNo)}</span>
+          </div>` : ''}
+          <div class="popup-row">
+            <span class="popup-label">需求</span>
+            <span class="popup-value">${esc(r.requirement)}</span>
+          </div>
+          <div class="popup-row">
+            <span class="popup-label">群組</span>
+            <span class="popup-value">${esc(r.group)}</span>
+          </div>
+        </div>
+        ${queueLeft > 0 ? `<div class="popup-queue-note">還有 ${queueLeft} 個提醒在等待中</div>` : ''}
+        <div class="popup-btns">
+          <button class="btn-popup-done" onclick="markDone('${r.id}')">✓ 已回覆</button>
+          ${isFinal
+            ? `<button class="btn-popup-sec" onclick="snooze('${r.id}', 5)">延遲 5 分鐘</button>`
+            : `<button class="btn-popup-sec" onclick="ackStage1('${r.id}')">知道了，繼續計時</button>`
+          }
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+
+  // ── Lightweight timer-only update (every second, no full re-render) ──
+  function tickTimers() {
+    sortedActive().forEach(r => {
+      const timerEl = document.getElementById(`timer-${r.id}`);
+      const cardEl  = document.getElementById(`card-${r.id}`);
+      if (!timerEl) return;
+
+      const ms  = getRemaining(r);
+      const tc  = timerClass(ms);
+      const t   = fmtTime(ms);
+
+      timerEl.className = `timer-box ${tc}`;
+      timerEl.querySelector('.t-time').textContent = t;
+
+      if (cardEl) {
+        const cc = cardClass(ms);
+        cardEl.className = `record-card ${cc}`;
+      }
+    });
+    updateHeaderBadge();
+  }
+
+  function updateHeaderBadge() {
+    const n     = sortedActive().length;
+    const badge = document.getElementById('header-badge');
+    if (!badge) return;
+    const hasExpired = sortedActive().some(r => getRemaining(r) <= 0);
+    badge.textContent = n;
+    badge.classList.toggle('show', n > 0);
+    badge.style.background = hasExpired ? '#ff2020' : '#e05252';
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Form submit
+  // ═══════════════════════════════════════════════
+  function handleSubmit(e) {
+    e.preventDefault();
+    const type  = document.getElementById('f-type').value.trim();
+    const order = document.getElementById('f-order').value.trim();
+    const req   = document.getElementById('f-req').value.trim();
+    const grp   = document.getElementById('f-group').value.trim();
+
+    if (!type || !req || !grp) return;
+
+    addRecord(type, order, req, grp);
+
+    // Keep type & group, clear order & requirement for fast re-entry
+    document.getElementById('f-order').value = '';
+    document.getElementById('f-req').value   = '';
+    document.getElementById('f-req').focus();
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Toggle completed list
+  // ═══════════════════════════════════════════════
+  function toggleCompleted() {
+    const list    = document.getElementById('completed-list');
+    const chevron = document.getElementById('chevron');
+    const isOpen  = list.style.display !== 'none';
+    list.style.display = isOpen ? 'none' : 'block';
+    chevron.classList.toggle('open', !isOpen);
+  }
+
+  // ═══════════════════════════════════════════════
+  //  Init
+  // ═══════════════════════════════════════════════
+  function init() {
+    load();
+    scheduleAll();
+    fullRender();
+    updateNotifBtn();
+
+    // Update countdown displays every second without full re-render
+    setInterval(tickTimers, 1000);
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
