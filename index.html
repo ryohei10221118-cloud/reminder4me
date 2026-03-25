@@ -986,13 +986,13 @@
     const name      = r.eventName;
 
     _replyTexts = isFinal ? {
-      en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
-      zh: `${name}\n已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny`,
-      kr: `${name}\n해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`,
+      en: `${name} We've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
+      zh: `${name} 已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny`,
+      kr: `${name} 해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`,
     } : {
-      en: `${name}\nOne moment. We've submitted it to the relevant department. - Sunny`,
-      zh: `${name}\n已为您反馈至相关单位查询中，请您稍候。- Sunny`,
-      kr: `${name}\n잠시만요. 관련 부서에 제출했습니다. - Sunny`,
+      en: `${name} One moment. We've submitted it to the relevant department. - Sunny`,
+      zh: `${name} 已为您反馈至相关单位查询中，请您稍候。- Sunny`,
+      kr: `${name} 잠시만요. 관련 부서에 제출했습니다. - Sunny`,
     };
 
     const displayText = `${_replyTexts.en}\n\n${_replyTexts.zh}\n\n${_replyTexts.kr}`;
