@@ -259,11 +259,13 @@
     .record-card.alert { border-color: var(--red); background: rgba(196,120,120,0.04); }
     .card-header {
       display: flex;
-      align-items: center;
+      align-items: stretch;
       padding: 7px 10px 6px;
       border-bottom: 1px solid var(--border-light);
       gap: 6px;
     }
+    .card-events { display: flex; flex-direction: column; flex: 1; gap: 3px; min-width: 0; }
+    .card-event-row { display: flex; align-items: center; gap: 5px; }
     .card-event-name {
       flex: 1;
       font-size: 12px;
@@ -835,10 +837,16 @@
   }
 
   // ── Record CRUD ──
-  function addRecord(eventName, orderNos, requirement, group, additionalInfo) {
+  // backward-compat helper
+  function getEventNames(r) {
+    return r.eventNames || (r.eventName ? [r.eventName] : ['']);
+  }
+
+  function addRecord(eventNames, orderNos, requirement, group, additionalInfo) {
+    const names = (Array.isArray(eventNames) ? eventNames : [eventNames]).map(e => e.trim()).filter(Boolean);
     const r = {
       id:             `r${Date.now()}${Math.random().toString(36).slice(2,5)}`,
-      eventName:      eventName.trim(),
+      eventNames:     names,
       orderNos:       orderNos.map(o => o.trim()).filter(Boolean),
       requirement:    requirement.trim(),
       group:          group.trim(),
@@ -847,7 +855,7 @@
       stage:          1,
       stage2StartAt:  null,
       completedAt:    null,
-      eventNote:      '',
+      eventNotes:     {},
     };
     records.push(r);
     save();
@@ -986,7 +994,7 @@
   function sendBrowserNotif(r) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const stage = r.stage === 1 ? '第一次提醒' : '最終提醒！';
-    new Notification(`${stage} ─ ${r.eventName}`, {
+    new Notification(`${stage} ─ ${getEventNames(r)[0]}`, {
       body: `需求：${r.requirement}\n群組：${r.group}`,
       requireInteraction: true,
     });
@@ -1014,11 +1022,16 @@
       const orderTagsHtml = r.orderNos.length
         ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
         : '';
+      const eventNames = getEventNames(r);
+      const eventRowsHtml = eventNames.map((name, ei) => `
+        <div class="card-event-row">
+          <span class="card-event-name">🏆 ${esc(name)}</span>
+          <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
+        </div>`).join('');
       return `
         <div class="record-card ${cc}" id="card-${r.id}">
           <div class="card-header">
-            <span class="card-event-name">🏆 ${esc(r.eventName)}</span>
-            <button class="btn-msg" onclick="openMsgPopup('${r.id}')">📝 訊息</button>
+            <div class="card-events">${eventRowsHtml}</div>
           </div>
           <div class="card-body">
             <div class="timer-box ${tc}" id="timer-${r.id}">
@@ -1051,7 +1064,7 @@
       return `
         <div class="record-card done">
           <div class="card-header">
-            <span class="card-event-name">🏆 ${esc(r.eventName)}</span>
+            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name">🏆 ${esc(n)}</span></div>`).join('')}</div>
           </div>
           <div class="card-body">
             <div class="timer-box" style="border-color:var(--border)">
@@ -1076,7 +1089,7 @@
     if (existing) existing.remove();
     const isFinal   = forceFinal || r.stage === 2;
     const queueLeft = popupQueue.length;
-    const name      = r.eventName;
+    const name      = getEventNames(r).join(' / ');
 
     _replyTexts = isFinal ? {
       en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
@@ -1119,9 +1132,13 @@
     document.body.appendChild(overlay);
   }
 
-  function openMsgPopup(id) {
+  function openMsgPopup(id, eventIdx) {
     const r = records.find(x => x.id === id);
     if (!r) return;
+    const names = getEventNames(r);
+    const eventName = names[eventIdx] || names[0] || '';
+    if (!r.eventNotes) r.eventNotes = {};
+    const note = r.eventNotes[eventName] || r.eventNote || '';
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
     const overlay = document.createElement('div');
@@ -1131,11 +1148,13 @@
       <div class="popup-card msg-popup" style="border-color:var(--border)">
         <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info">📝 賽事記錄</div>
-        <div class="popup-title">🏆 ${esc(r.eventName)}</div>
-        <textarea class="msg-textarea" id="msg-textarea-${id}" placeholder="在此輸入賽事相關訊息...">${esc(r.eventNote || '')}</textarea>
-        <button class="btn-copy-reply" onclick="saveCopyMsg('${id}',this)">📋 複製記錄</button>
+        <div class="popup-title">🏆 ${esc(eventName)}</div>
+        <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(note)}</textarea>
+        <button class="btn-copy-reply" onclick="saveCopyMsg('${id}',${eventIdx},this)">📋 複製記錄</button>
       </div>`;
     document.body.appendChild(overlay);
+    const ta = overlay.querySelector('.msg-textarea');
+    if (ta) ta.focus();
   }
 
   function closeMsgPopup() {
@@ -1143,13 +1162,16 @@
     if (el) el.remove();
   }
 
-  function saveCopyMsg(id, btn) {
+  function saveCopyMsg(id, eventIdx, btn) {
     const r = records.find(x => x.id === id);
     if (!r) return;
-    const ta = document.getElementById(`msg-textarea-${id}`);
-    r.eventNote = ta ? ta.value : '';
+    const names = getEventNames(r);
+    const eventName = names[eventIdx] || names[0] || '';
+    if (!r.eventNotes) r.eventNotes = {};
+    const ta = document.getElementById(`msg-textarea-${id}-${eventIdx}`);
+    r.eventNotes[eventName] = ta ? ta.value : '';
     save();
-    copyText(`${r.eventName}\n${r.eventNote}`, btn);
+    copyText(`${eventName}\n${r.eventNotes[eventName]}`, btn);
   }
 
   function buildSummaryText(groups, requirement, group, additionalInfo) {
@@ -1166,7 +1188,7 @@
   function getRecordSummary(id) {
     const r = records.find(x => x.id === id);
     if (!r) return '';
-    const parts = [...r.orderNos.filter(Boolean), r.eventName, r.requirement, r.group];
+    const parts = [...r.orderNos.filter(Boolean), ...getEventNames(r), r.requirement, r.group];
     if (r.additionalInfo) parts.push(r.additionalInfo);
     return parts.join('\n');
   }
@@ -1251,7 +1273,7 @@
     });
     if (!recordsToAdd.length) { alert('請輸入至少一個賽事名稱'); return; }
 
-    recordsToAdd.forEach(g => g.eventNames.forEach(name => addRecord(name, g.orderNos, req, grp, info)));
+    recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info));
 
     showSubmitPopup(recordsToAdd, req, grp, info);
 
