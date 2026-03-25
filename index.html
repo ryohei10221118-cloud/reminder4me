@@ -745,6 +745,10 @@
     });
   }
   function copyReply(lang, btn) { copyText(_replyTexts[lang] || '', btn); }
+  function copyAndClose(text, btn) {
+    copyText(text, btn);
+    setTimeout(() => dismissPopup(), 900);
+  }
 
   // ── Form group management ──
   function syncGroupValues() {
@@ -1207,7 +1211,7 @@
         <button class="popup-close-btn" onclick="dismissPopup()">×</button>
         <div class="popup-badge success">📋 概要</div>
         <div class="submit-content-box">${esc(content)}</div>
-        <button class="btn-copy-reply" onclick="copyText(_pendingCopy,this)">📋 複製內容</button>
+        <button class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
       </div>`;
     document.body.appendChild(overlay);
   }
@@ -1226,7 +1230,7 @@
         <button class="popup-close-btn" onclick="dismissPopup()">×</button>
         <div class="popup-badge success">✅ 已建立計時器</div>
         <div class="submit-content-box">${esc(content)}</div>
-        <button class="btn-copy-reply" onclick="copyText(_pendingCopy,this)">📋 複製內容</button>
+        <button class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
       </div>`;
     document.body.appendChild(overlay);
   }
