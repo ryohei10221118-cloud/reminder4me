@@ -466,6 +466,7 @@
       word-break: break-word;
       font-family: 'Menlo', 'Courier New', monospace;
     }
+    .popup-lang-btns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .btn-copy-reply {
       width: 100%;
       padding: 9px;
@@ -596,6 +597,7 @@
   let popupQueue   = [];
   let activePopupId = null;
   let _pendingCopy = '';   // stores text for popup copy buttons
+  let _replyTexts  = { zh: '', en: '', kr: '' };
 
   // ── Form group state ──
   let groupCounter = 0;
@@ -658,6 +660,7 @@
       document.execCommand('copy'); document.body.removeChild(ta);
     });
   }
+  function copyReply(lang, btn) { copyText(_replyTexts[lang] || '', btn); }
 
   // ── Form group management ──
   function syncGroupValues() {
@@ -784,9 +787,13 @@
     r.stage = 1; r.createdAt = Date.now(); r.stage2StartAt = null;
     clearTimeout(timerHandles[id]);
     popupQueue = popupQueue.filter(x => x !== id);
-    if (activePopupId === id) dismissPopup();
+    if (activePopupId === id) { const el = document.getElementById('popup-overlay'); if (el) el.remove(); }
+    activePopupId = id;
     save(); fullRender();
-    enqueue(id);
+    renderPopup(r, true);  // show stage-2 escalation reply for follow-up
+    playSound();
+    sendBrowserNotif(r);
+    schedule(r);  // schedule stage-1 timer from now
   }
 
   // ── Timer scheduling ──
@@ -946,16 +953,24 @@
   }
 
   // ── Popups ──
-  function renderPopup(r) {
+  function renderPopup(r, forceFinal = false) {
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
-    const isFinal = r.stage === 2;
+    const isFinal   = forceFinal || r.stage === 2;
     const queueLeft = popupQueue.length;
+    const name      = r.eventName;
 
-    const stage1Reply = `已为您反馈至相关单位查询中，请您稍候。- Sunny\nOne moment. We've submitted it to the relevant department. - Sunny\n잠시만요. 관련 부서에 제출했습니다. - Sunny`;
-    const stage2Reply = `已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny\n해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`;
-    const replyText = isFinal ? stage2Reply : stage1Reply;
-    const replyId = `reply-btn-${r.id}`;
+    _replyTexts = isFinal ? {
+      zh: `[${name}] 已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny`,
+      en: `[${name}] We've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
+      kr: `[${name}] 해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`,
+    } : {
+      zh: `[${name}] 已为您反馈至相关单位查询中，请您稍候。- Sunny`,
+      en: `[${name}] One moment. We've submitted it to the relevant department. - Sunny`,
+      kr: `[${name}] 잠시만요. 관련 부서에 제출했습니다. - Sunny`,
+    };
+
+    const displayText = `${_replyTexts.zh}\n${_replyTexts.en}\n${_replyTexts.kr}`;
 
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
@@ -963,9 +978,13 @@
     overlay.innerHTML = `
       <div class="popup-card ${isFinal ? 'stage2' : 'stage1'}">
         <div class="popup-badge ${isFinal ? 'final' : 'first'}">${isFinal ? '⚠️ 最終提醒' : '🔔 第一次提醒'}</div>
-        <div class="popup-event-name">🏆 ${esc(r.eventName)}</div>
-        <div class="reply-box">${esc(replyText)}</div>
-        <button class="btn-copy-reply" id="${replyId}" onclick="copyText(${JSON.stringify(replyText)},this)">📋 複製回覆內容</button>
+        <div class="popup-event-name">🏆 ${esc(name)}</div>
+        <div class="reply-box">${esc(displayText)}</div>
+        <div class="popup-lang-btns">
+          <button class="btn-copy-reply" onclick="copyReply('zh',this)">📋 複製（中文）</button>
+          <button class="btn-copy-reply" onclick="copyReply('en',this)">📋 Copy (English)</button>
+          <button class="btn-copy-reply" onclick="copyReply('kr',this)">📋 복사 (한국어)</button>
+        </div>
         ${queueLeft > 0 ? `<div class="popup-queue-note">還有 ${queueLeft} 個提醒在等待中</div>` : ''}
         <div class="popup-btns">
           <button class="btn-popup-done" onclick="markDone('${r.id}')">✓ 已回覆</button>
