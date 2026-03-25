@@ -489,7 +489,36 @@
       word-break: break-word;
       font-family: 'Menlo', 'Courier New', monospace;
     }
-    .popup-lang-btns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .reply-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .reply-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .reply-row-text {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text-pri);
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .btn-copy-inline {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--text-muted);
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .btn-copy-inline:hover { color: var(--blue); background: var(--blue-bg); }
+    .btn-copy-inline.copied { color: var(--green); }
     .btn-copy-reply {
       width: 100%;
       padding: 9px;
@@ -919,7 +948,7 @@
       const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
       const stageLabel = r.stage === 1 ? '第1次' : '第2次';
       const orderTagsHtml = r.orderNos.length
-        ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" onclick="copyText(${JSON.stringify(o)},this)">⧉</button></span>`).join('')
+        ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
         : '';
       return `
         <div class="record-card ${cc}" id="card-${r.id}">
@@ -995,8 +1024,6 @@
       kr: `${name} 잠시만요. 관련 부서에 제출했습니다. - Sunny`,
     };
 
-    const displayText = `${_replyTexts.en}\n\n${_replyTexts.zh}\n\n${_replyTexts.kr}`;
-
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
@@ -1005,11 +1032,19 @@
         <button class="popup-close-btn" onclick="dismissPopup()">×</button>
         <div class="popup-badge ${isFinal ? 'final' : 'first'}">${isFinal ? '⚠️ 最終提醒' : '🔔 第一次提醒'}</div>
         <div class="popup-event-name">🏆 ${esc(name)}</div>
-        <div class="reply-box">${esc(displayText)}</div>
-        <div class="popup-lang-btns">
-          <button class="btn-copy-reply" onclick="copyReply('en',this)">📋 Copy (English)</button>
-          <button class="btn-copy-reply" onclick="copyReply('zh',this)">📋 複製（中文）</button>
-          <button class="btn-copy-reply" onclick="copyReply('kr',this)">📋 복사 (한국어)</button>
+        <div class="reply-rows">
+          <div class="reply-row">
+            <span class="reply-row-text">${esc(_replyTexts.en)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('en',this)" title="Copy">📋</button>
+          </div>
+          <div class="reply-row">
+            <span class="reply-row-text">${esc(_replyTexts.zh)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('zh',this)" title="複製">📋</button>
+          </div>
+          <div class="reply-row">
+            <span class="reply-row-text">${esc(_replyTexts.kr)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('kr',this)" title="복사">📋</button>
+          </div>
         </div>
         ${queueLeft > 0 ? `<div class="popup-queue-note">還有 ${queueLeft} 個提醒在等待中</div>` : ''}
         <div class="popup-btns">
@@ -1149,11 +1184,11 @@
 
     showSubmitPopup(validGroups, req, grp, info);
 
-    // Reset form: clear groups to one empty, clear req+info, keep group name
     formGroups = [{ id: `g${++groupCounter}`, eventName: '', orderNos: [''] }];
     renderFormGroups();
-    document.getElementById('f-req').value  = '';
-    document.getElementById('f-info').value = '';
+    document.getElementById('f-req').value   = '';
+    document.getElementById('f-group').value = '';
+    document.getElementById('f-info').value  = '';
   }
 
   // ── Toggle completed ──
