@@ -71,7 +71,10 @@
     .notification-btn.granted { color: var(--green); border-color: var(--green-border); }
 
     /* ── Layout ── */
-    .container { max-width: 480px; margin: 0 auto; padding: 16px 14px; }
+    .container { max-width: 1020px; margin: 0 auto; padding: 16px 20px; }
+    .main-layout { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+    .right-col { min-width: 0; }
+    @media (max-width: 720px) { .main-layout { grid-template-columns: 1fr; } }
 
     /* ── Back to top ── */
     .back-to-top {
@@ -408,7 +411,11 @@
     .empty-state { text-align: center; padding: 36px; color: var(--text-muted); font-size: 14px; }
 
     /* ── Completed section ── */
-    .completed-section { margin-top: 28px; }
+    .completed-section { margin-top: 16px; }
+    /* ── Pending timer ── */
+    .timer-box.pending { border-color: var(--text-muted); background: var(--surface2); }
+    .timer-box.pending .t-time { color: var(--text-muted); font-size: 11px; }
+    .timer-box.pending .t-stage { color: var(--text-muted); }
     .toggle-row { cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; }
     .toggle-row:hover .section-title { color: var(--text-sec); }
     .chevron { color: var(--text-muted); font-size: 11px; transition: transform 0.2s; }
@@ -505,6 +512,7 @@
       color: var(--text-pri);
       line-height: 1.5;
       word-break: break-word;
+      white-space: pre-wrap;
     }
     .btn-copy-inline {
       flex-shrink: 0;
@@ -591,50 +599,55 @@
 </div>
 
 <div class="container">
+  <div class="main-layout">
 
-  <!-- ── Add form ── -->
-  <div class="form-card">
-    <div class="form-title">新增記錄</div>
-    <form id="add-form" onsubmit="handleSubmit(event)">
-      <div class="group-list" id="group-list"></div>
-      <button type="button" class="btn-add-group" onclick="addFormGroup()">＋ 新增賽事群組</button>
-      <div class="shared-fields">
-        <div class="form-group">
-          <label>需求 *</label>
-          <input id="f-req" placeholder="客戶的需求或問題描述" autocomplete="off" required>
+    <!-- ── Left: Add form ── -->
+    <div class="left-col">
+      <div class="form-card">
+        <div class="form-title">新增記錄</div>
+        <form id="add-form" onsubmit="handleSubmit(event)">
+          <div class="group-list" id="group-list"></div>
+          <button type="button" class="btn-add-group" onclick="addFormGroup()">＋ 新增賽事群組</button>
+          <div class="shared-fields">
+            <div class="form-group">
+              <label>需求 *</label>
+              <input id="f-req" placeholder="客戶的需求或問題描述" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+              <label>群組名稱 *</label>
+              <input id="f-group" placeholder="群組名稱" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+              <label>附加資訊</label>
+              <textarea id="f-info" placeholder="選填，附加說明…"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn-submit">⏱ 添加計時器</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Right: Records ── -->
+    <div class="right-col">
+      <div class="section-header">
+        <span class="section-title">待處理</span>
+        <span class="count-badge" id="active-count" style="display:none">0</span>
+      </div>
+      <div id="active-records"></div>
+
+      <div class="completed-section">
+        <div class="section-header toggle-row" onclick="toggleCompleted()">
+          <span class="section-title">已完成</span>
+          <span class="count-badge gray" id="done-count">0</span>
+          <span class="chevron" id="chevron">▼</span>
         </div>
-        <div class="form-group">
-          <label>群組名稱 *</label>
-          <input id="f-group" placeholder="群組名稱" autocomplete="off" required>
-        </div>
-        <div class="form-group">
-          <label>附加資訊</label>
-          <textarea id="f-info" placeholder="選填，附加說明…"></textarea>
+        <div id="completed-list" style="display:none">
+          <div id="completed-records"></div>
         </div>
       </div>
-      <button type="submit" class="btn-submit">⏱ 添加計時器</button>
-    </form>
-  </div>
-
-  <!-- ── Active records ── -->
-  <div class="section-header">
-    <span class="section-title">待處理</span>
-    <span class="count-badge" id="active-count" style="display:none">0</span>
-  </div>
-  <div id="active-records"></div>
-
-  <!-- ── Completed records ── -->
-  <div class="completed-section">
-    <div class="section-header toggle-row" onclick="toggleCompleted()">
-      <span class="section-title">已完成</span>
-      <span class="count-badge gray" id="done-count">0</span>
-      <span class="chevron" id="chevron">▼</span>
     </div>
-    <div id="completed-list" style="display:none">
-      <div id="completed-records"></div>
-    </div>
-  </div>
 
+  </div>
 </div>
 
 <button class="back-to-top" id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂部">↑</button>
@@ -666,21 +679,24 @@
   // ── Helpers ──
   function getRemaining(r) {
     if (r.completedAt) return -1;
+    if (r.stage >= 3) return null; // pending — no countdown
     if (r.stage === 1) return STAGE1_MS - (Date.now() - r.createdAt);
     return STAGE2_MS - (Date.now() - (r.stage2StartAt || r.createdAt));
   }
   function timerClass(ms) {
-    if (ms <= 0) return 'expired';
-    if (ms < 60000) return 'alert';
+    if (ms === null)  return 'pending';
+    if (ms <= 0)      return 'expired';
+    if (ms < 60000)   return 'alert';
     if (ms < 3*60000) return 'warn';
     return 'normal';
   }
   function cardClass(ms) {
+    if (ms === null || ms > 0 && ms >= 60000) return ms === null ? '' : ms < 3*60000 ? 'warn' : '';
     if (ms <= 0 || ms < 60000) return 'alert';
-    if (ms < 3*60000) return 'warn';
     return '';
   }
   function fmtTime(ms) {
+    if (ms === null) return '待定';
     if (ms <= 0) return '超時';
     const s = Math.ceil(ms / 1000);
     return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
@@ -693,7 +709,13 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
   function sortedActive() {
-    return records.filter(r => !r.completedAt).sort((a,b) => getRemaining(a) - getRemaining(b));
+    return records.filter(r => !r.completedAt).sort((a,b) => {
+      const ra = getRemaining(a), rb = getRemaining(b);
+      if (ra === null && rb === null) return 0;
+      if (ra === null) return 1;
+      if (rb === null) return -1;
+      return ra - rb;
+    });
   }
   function sortedDone() {
     return records.filter(r => r.completedAt).sort((a,b) => b.completedAt - a.completedAt);
@@ -835,24 +857,40 @@
     save(); dismissPopup(); schedule(r); fullRender();
   }
 
+  function dismissAndPend(id) {
+    const r = records.find(x => x.id === id);
+    if (r && r.stage === 2) {
+      r.stage = 3;
+      clearTimeout(timerHandles[id]);
+      delete timerHandles[id];
+      save(); fullRender();
+    }
+    dismissPopup();
+  }
+
   function restartTimer(id) {
     const r = records.find(x => x.id === id);
     if (!r) return;
-    r.stage = 1; r.createdAt = Date.now(); r.stage2StartAt = null;
     clearTimeout(timerHandles[id]);
+    delete timerHandles[id];
+    // If pending (stage 3), reset to stage 1 first
+    if (r.stage >= 3) {
+      r.stage = 1; r.createdAt = Date.now(); r.stage2StartAt = null;
+      save();
+    }
+    // Clear from queue and immediately show current stage popup
     popupQueue = popupQueue.filter(x => x !== id);
-    if (activePopupId === id) { const el = document.getElementById('popup-overlay'); if (el) el.remove(); }
+    if (activePopupId === id) { const el = document.getElementById('popup-overlay'); if (el) el.remove(); activePopupId = null; }
+    fullRender();
     activePopupId = id;
-    save(); fullRender();
-    renderPopup(r, true);  // show stage-2 escalation reply for follow-up
+    renderPopup(r);
     playSound();
     sendBrowserNotif(r);
-    schedule(r);  // schedule stage-1 timer from now
   }
 
   // ── Timer scheduling ──
   function schedule(r) {
-    if (r.completedAt) return;
+    if (r.completedAt || r.stage >= 3) return;
     clearTimeout(timerHandles[r.id]);
     const remaining = getRemaining(r);
     if (remaining <= 0) enqueue(r.id);
@@ -946,7 +984,7 @@
     if (active.length === 0) { el.innerHTML = '<div class="empty-state">目前沒有待處理的記錄</div>'; return; }
     el.innerHTML = active.map(r => {
       const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
-      const stageLabel = r.stage === 1 ? '第1次' : '第2次';
+      const stageLabel = r.stage === 1 ? '第1次' : r.stage === 2 ? '第2次' : '待定';
       const orderTagsHtml = r.orderNos.length
         ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
         : '';
@@ -1015,13 +1053,13 @@
     const name      = r.eventName;
 
     _replyTexts = isFinal ? {
-      en: `${name} We've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
-      zh: `${name} 已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny`,
-      kr: `${name} 해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`,
+      en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
+      zh: `${name}\n已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny`,
+      kr: `${name}\n해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`,
     } : {
-      en: `${name} One moment. We've submitted it to the relevant department. - Sunny`,
-      zh: `${name} 已为您反馈至相关单位查询中，请您稍候。- Sunny`,
-      kr: `${name} 잠시만요. 관련 부서에 제출했습니다. - Sunny`,
+      en: `${name}\nOne moment. We've submitted it to the relevant department. - Sunny`,
+      zh: `${name}\n已为您反馈至相关单位查询中，请您稍候。- Sunny`,
+      kr: `${name}\n잠시만요. 관련 부서에 제출했습니다. - Sunny`,
     };
 
     const overlay = document.createElement('div');
@@ -1049,7 +1087,7 @@
         ${queueLeft > 0 ? `<div class="popup-queue-note">還有 ${queueLeft} 個提醒在等待中</div>` : ''}
         <div class="popup-btns">
           <button class="btn-popup-done" onclick="markDone('${r.id}')">✓ 已回覆</button>
-          <button class="btn-popup-sec" onclick="${isFinal ? `dismissPopup()` : `ackStage1('${r.id}')`}">${isFinal ? '關閉' : '繼續計時'}</button>
+          <button class="btn-popup-sec" onclick="${isFinal ? `dismissAndPend('${r.id}')` : `ackStage1('${r.id}')`}">${isFinal ? '關閉' : '繼續計時'}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -1148,10 +1186,12 @@
   // ── Tick timers ──
   function tickTimers() {
     sortedActive().forEach(r => {
+      const ms = getRemaining(r);
+      if (ms === null) return; // pending — no tick needed
       const timerEl = document.getElementById(`timer-${r.id}`);
       const cardEl  = document.getElementById(`card-${r.id}`);
       if (!timerEl) return;
-      const ms = getRemaining(r), tc = timerClass(ms);
+      const tc = timerClass(ms);
       timerEl.className = `timer-box ${tc}`;
       timerEl.querySelector('.t-time').textContent = fmtTime(ms);
       if (cardEl) cardEl.className = `record-card ${cardClass(ms)}`;
@@ -1165,7 +1205,7 @@
     if (!badge) return;
     badge.textContent = active.length;
     badge.classList.toggle('show', active.length > 0);
-    badge.style.background = active.some(r => getRemaining(r) <= 0) ? '#a05555' : 'var(--red)';
+    badge.style.background = active.some(r => { const ms = getRemaining(r); return ms !== null && ms <= 0; }) ? '#a05555' : 'var(--red)';
   }
 
   // ── Form submit ──
