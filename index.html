@@ -743,9 +743,8 @@
     formGroups.forEach(g => {
       const container = document.querySelector(`[data-group="${g.id}"]`);
       if (!container) return;
-      const eventInput = container.querySelector('.event-input');
-      if (eventInput) g.eventName = eventInput.value;
-      g.orderNos = Array.from(container.querySelectorAll('.order-input')).map(i => i.value);
+      g.orderNos   = Array.from(container.querySelectorAll('.order-input')).map(i => i.value);
+      g.eventNames = Array.from(container.querySelectorAll('.event-input')).map(i => i.value);
     });
   }
 
@@ -758,10 +757,6 @@
           ${formGroups.length > 1 ? `<button type="button" class="btn-remove-group" onclick="removeFormGroup('${g.id}')">×</button>` : ''}
         </div>
         <div class="form-group">
-          <label>賽事名稱 *</label>
-          <input class="event-input" value="${esc(g.eventName)}" placeholder="賽事名稱" autocomplete="off" required>
-        </div>
-        <div class="form-group">
           <label>注單號</label>
           <div class="order-rows" id="order-rows-${g.id}">
             ${g.orderNos.map((o, oi) => `
@@ -772,13 +767,24 @@
           </div>
           <button type="button" class="btn-add-order" onclick="addOrderNo('${g.id}')">＋ 新增注單號</button>
         </div>
+        <div class="form-group">
+          <label>賽事名稱 *</label>
+          <div class="order-rows" id="event-rows-${g.id}">
+            ${g.eventNames.map((e, ei) => `
+              <div class="order-row">
+                <input class="event-input" value="${esc(e)}" placeholder="賽事名稱" autocomplete="off" required>
+                ${g.eventNames.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeEventName('${g.id}',${ei})">×</button>` : ''}
+              </div>`).join('')}
+          </div>
+          <button type="button" class="btn-add-order" onclick="addEventName('${g.id}')">＋ 新增賽事名稱</button>
+        </div>
       </div>`).join('');
   }
 
   function addFormGroup() {
     syncGroupValues();
     const id = `g${++groupCounter}`;
-    formGroups.push({ id, eventName: '', orderNos: [''] });
+    formGroups.push({ id, orderNos: [''], eventNames: [''] });
     renderFormGroups();
   }
 
@@ -802,9 +808,23 @@
     renderFormGroups();
   }
 
+  function addEventName(gid) {
+    syncGroupValues();
+    const g = formGroups.find(x => x.id === gid);
+    if (g) g.eventNames.push('');
+    renderFormGroups();
+  }
+
+  function removeEventName(gid, idx) {
+    syncGroupValues();
+    const g = formGroups.find(x => x.id === gid);
+    if (g && g.eventNames.length > 1) g.eventNames.splice(idx, 1);
+    renderFormGroups();
+  }
+
   function initFormGroups() {
     groupCounter = 0;
-    formGroups = [{ id: `g${++groupCounter}`, eventName: '', orderNos: [''] }];
+    formGroups = [{ id: `g${++groupCounter}`, orderNos: [''], eventNames: [''] }];
     renderFormGroups();
   }
 
@@ -1130,7 +1150,7 @@
     const parts = [];
     groups.forEach(g => {
       g.orderNos.filter(Boolean).forEach(o => parts.push(o));
-      parts.push(g.eventName);
+      (g.eventNames || []).filter(Boolean).forEach(e => parts.push(e));
     });
     parts.push(requirement, group);
     if (additionalInfo) parts.push(additionalInfo);
@@ -1217,14 +1237,19 @@
     const info = document.getElementById('f-info').value.trim();
     if (!req || !grp) return;
 
-    const validGroups = formGroups.filter(g => g.eventName.trim());
-    if (!validGroups.length) { alert('請輸入至少一個賽事名稱'); return; }
+    // Flatten: each (group × eventName) → one record
+    const recordsToAdd = [];
+    formGroups.forEach(g => {
+      const validNames = g.eventNames.map(e => e.trim()).filter(Boolean);
+      if (validNames.length) recordsToAdd.push({ orderNos: g.orderNos, eventNames: validNames });
+    });
+    if (!recordsToAdd.length) { alert('請輸入至少一個賽事名稱'); return; }
 
-    validGroups.forEach(g => addRecord(g.eventName, g.orderNos, req, grp, info));
+    recordsToAdd.forEach(g => g.eventNames.forEach(name => addRecord(name, g.orderNos, req, grp, info)));
 
-    showSubmitPopup(validGroups, req, grp, info);
+    showSubmitPopup(recordsToAdd, req, grp, info);
 
-    formGroups = [{ id: `g${++groupCounter}`, eventName: '', orderNos: [''] }];
+    formGroups = [{ id: `g${++groupCounter}`, orderNos: [''], eventNames: [''] }];
     renderFormGroups();
     document.getElementById('f-req').value   = '';
     document.getElementById('f-group').value = '';
