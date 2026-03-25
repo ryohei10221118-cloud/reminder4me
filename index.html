@@ -45,7 +45,7 @@
       top: 0;
       z-index: 10;
     }
-    .header h1 { font-size: 18px; font-weight: 700; color: var(--text-pri); }
+    .header h1 { font-size: 15px; font-weight: 700; color: var(--text-pri); }
     .header-badge {
       background: var(--red);
       color: #fff;
@@ -71,23 +71,46 @@
     .notification-btn.granted { color: var(--green); border-color: var(--green-border); }
 
     /* ── Layout ── */
-    .container { max-width: 860px; margin: 0 auto; padding: 24px 20px; }
+    .container { max-width: 480px; margin: 0 auto; padding: 16px 14px; }
+
+    /* ── Back to top ── */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(143,172,200,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 900;
+      transition: opacity 0.2s;
+    }
+    .back-to-top.show { display: flex; }
+    .back-to-top:hover { background: #7a9ab8; }
 
     /* ── Form card ── */
     .form-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 28px;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
     }
     .form-title {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
     .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
     .form-group:last-child { margin-bottom: 0; }
@@ -96,9 +119,9 @@
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 9px 12px;
+      padding: 7px 10px;
       color: var(--text-pri);
-      font-size: 14px;
+      font-size: 13px;
       outline: none;
       transition: border-color 0.18s;
       width: 100%;
@@ -218,8 +241,8 @@
     .record-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      margin-bottom: 8px;
+      border-radius: 8px;
+      margin-bottom: 6px;
       overflow: hidden;
       transition: border-color 0.3s;
     }
@@ -228,13 +251,13 @@
     .card-header {
       display: flex;
       align-items: center;
-      padding: 9px 14px 8px;
+      padding: 7px 10px 6px;
       border-bottom: 1px solid var(--border-light);
-      gap: 8px;
+      gap: 6px;
     }
     .card-event-name {
       flex: 1;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       color: var(--text-pri);
       white-space: nowrap;
@@ -255,15 +278,15 @@
     .card-body {
       display: flex;
       align-items: flex-start;
-      gap: 12px;
-      padding: 10px 14px 12px;
+      gap: 8px;
+      padding: 8px 10px 10px;
     }
 
     /* ── Timer box ── */
     .timer-box {
-      width: 68px;
-      min-width: 68px;
-      height: 58px;
+      width: 58px;
+      min-width: 58px;
+      height: 50px;
       border-radius: 10px;
       border: 2px solid var(--border);
       display: flex;
@@ -275,7 +298,7 @@
       flex-shrink: 0;
     }
     .timer-box .t-time {
-      font-size: 17px;
+      font-size: 14px;
       font-weight: 800;
       line-height: 1;
       font-variant-numeric: tabular-nums;
@@ -291,7 +314,7 @@
     .timer-box.alert  .t-time { color: var(--red); }
     .timer-box.alert  .t-stage { color: var(--red); }
     .timer-box.expired { border-color: var(--red); background: var(--red-bg); animation: blink 1s infinite; }
-    .timer-box.expired .t-time { color: var(--red); font-size: 14px; }
+    .timer-box.expired .t-time { color: var(--red); font-size: 11px; }
     .timer-box.expired .t-stage { color: var(--red); }
     @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.45; } }
 
@@ -321,10 +344,10 @@
     }
     .btn-copy-tag:hover { color: var(--blue); }
     .record-req {
-      font-size: 14px;
+      font-size: 12px;
       color: var(--text-pri);
       font-weight: 600;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -466,7 +489,36 @@
       word-break: break-word;
       font-family: 'Menlo', 'Courier New', monospace;
     }
-    .popup-lang-btns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .reply-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .reply-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .reply-row-text {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text-pri);
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .btn-copy-inline {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--text-muted);
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .btn-copy-inline:hover { color: var(--blue); background: var(--blue-bg); }
+    .btn-copy-inline.copied { color: var(--green); }
     .btn-copy-reply {
       width: 100%;
       padding: 9px;
@@ -584,6 +636,8 @@
   </div>
 
 </div>
+
+<button class="back-to-top" id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂部">↑</button>
 
 <!-- ── Popup (injected dynamically) ── -->
 
@@ -894,7 +948,7 @@
       const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
       const stageLabel = r.stage === 1 ? '第1次' : '第2次';
       const orderTagsHtml = r.orderNos.length
-        ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" onclick="copyText(${JSON.stringify(o)},this)">⧉</button></span>`).join('')
+        ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
         : '';
       return `
         <div class="record-card ${cc}" id="card-${r.id}">
@@ -961,29 +1015,36 @@
     const name      = r.eventName;
 
     _replyTexts = isFinal ? {
-      zh: `[${name}] 已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny`,
-      en: `[${name}] We've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
-      kr: `[${name}] 해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`,
+      en: `${name} We've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
+      zh: `${name} 已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- Sunny`,
+      kr: `${name} 해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - Sunny`,
     } : {
-      zh: `[${name}] 已为您反馈至相关单位查询中，请您稍候。- Sunny`,
-      en: `[${name}] One moment. We've submitted it to the relevant department. - Sunny`,
-      kr: `[${name}] 잠시만요. 관련 부서에 제출했습니다. - Sunny`,
+      en: `${name} One moment. We've submitted it to the relevant department. - Sunny`,
+      zh: `${name} 已为您反馈至相关单位查询中，请您稍候。- Sunny`,
+      kr: `${name} 잠시만요. 관련 부서에 제출했습니다. - Sunny`,
     };
-
-    const displayText = `${_replyTexts.zh}\n${_replyTexts.en}\n${_replyTexts.kr}`;
 
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card ${isFinal ? 'stage2' : 'stage1'}">
+        <button class="popup-close-btn" onclick="dismissPopup()">×</button>
         <div class="popup-badge ${isFinal ? 'final' : 'first'}">${isFinal ? '⚠️ 最終提醒' : '🔔 第一次提醒'}</div>
         <div class="popup-event-name">🏆 ${esc(name)}</div>
-        <div class="reply-box">${esc(displayText)}</div>
-        <div class="popup-lang-btns">
-          <button class="btn-copy-reply" onclick="copyReply('zh',this)">📋 複製（中文）</button>
-          <button class="btn-copy-reply" onclick="copyReply('en',this)">📋 Copy (English)</button>
-          <button class="btn-copy-reply" onclick="copyReply('kr',this)">📋 복사 (한국어)</button>
+        <div class="reply-rows">
+          <div class="reply-row">
+            <span class="reply-row-text">${esc(_replyTexts.en)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('en',this)" title="Copy">📋</button>
+          </div>
+          <div class="reply-row">
+            <span class="reply-row-text">${esc(_replyTexts.zh)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('zh',this)" title="複製">📋</button>
+          </div>
+          <div class="reply-row">
+            <span class="reply-row-text">${esc(_replyTexts.kr)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('kr',this)" title="복사">📋</button>
+          </div>
         </div>
         ${queueLeft > 0 ? `<div class="popup-queue-note">還有 ${queueLeft} 個提醒在等待中</div>` : ''}
         <div class="popup-btns">
@@ -1028,19 +1089,22 @@
   }
 
   function buildSummaryText(groups, requirement, group, additionalInfo) {
-    const lines = groups.map(g => {
-      const nos = g.orderNos.filter(Boolean).join('、');
-      return nos ? `[${nos}] → ${g.eventName}` : g.eventName;
+    const parts = [];
+    groups.forEach(g => {
+      g.orderNos.filter(Boolean).forEach(o => parts.push(o));
+      parts.push(g.eventName);
     });
-    return [...lines, requirement, group, ...(additionalInfo ? [additionalInfo] : [])].join('\n');
+    parts.push(requirement, group);
+    if (additionalInfo) parts.push(additionalInfo);
+    return parts.join('\n');
   }
 
   function getRecordSummary(id) {
     const r = records.find(x => x.id === id);
     if (!r) return '';
-    const nos = r.orderNos.filter(Boolean).join('、');
-    const line = nos ? `[${nos}] → ${r.eventName}` : r.eventName;
-    return [line, r.requirement, r.group, ...(r.additionalInfo ? [r.additionalInfo] : [])].join('\n');
+    const parts = [...r.orderNos.filter(Boolean), r.eventName, r.requirement, r.group];
+    if (r.additionalInfo) parts.push(r.additionalInfo);
+    return parts.join('\n');
   }
 
   function showSummaryPopup(id) {
@@ -1120,11 +1184,11 @@
 
     showSubmitPopup(validGroups, req, grp, info);
 
-    // Reset form: clear groups to one empty, clear req+info, keep group name
     formGroups = [{ id: `g${++groupCounter}`, eventName: '', orderNos: [''] }];
     renderFormGroups();
-    document.getElementById('f-req').value  = '';
-    document.getElementById('f-info').value = '';
+    document.getElementById('f-req').value   = '';
+    document.getElementById('f-group').value = '';
+    document.getElementById('f-info').value  = '';
   }
 
   // ── Toggle completed ──
@@ -1143,6 +1207,12 @@
     setInterval(tickTimers, 1000);
   }
   document.addEventListener('DOMContentLoaded', init);
+
+  // Back-to-top button
+  window.addEventListener('scroll', () => {
+    const btn = document.getElementById('back-to-top');
+    if (btn) btn.classList.toggle('show', window.scrollY > window.innerHeight * 0.8);
+  });
 </script>
 </body>
 </html>
