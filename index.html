@@ -173,17 +173,23 @@
       line-height: 1;
     }
     .btn-remove-order:hover { color: var(--red); }
-    .btn-add-order {
-      font-size: 12px;
+    .btn-add-inline {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--blue-light);
+      background: var(--blue-bg);
       color: var(--blue);
-      background: transparent;
-      border: none;
+      font-size: 15px;
+      line-height: 1;
       cursor: pointer;
-      padding: 4px 0;
-      text-decoration: underline;
-      text-underline-offset: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
     }
-    .btn-add-order:hover { color: #7a9ab8; }
+    .btn-add-inline:hover { background: rgba(143,172,200,0.25); }
     .btn-add-group {
       width: 100%;
       padding: 9px;
@@ -762,10 +768,10 @@
             ${g.orderNos.map((o, oi) => `
               <div class="order-row">
                 <input class="order-input" value="${esc(o)}" placeholder="注單號（選填）" autocomplete="off">
+                ${oi === g.orderNos.length - 1 ? `<button type="button" class="btn-add-inline" onclick="addOrderNo('${g.id}')" title="新增注單號">+</button>` : ''}
                 ${g.orderNos.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeOrderNo('${g.id}',${oi})">×</button>` : ''}
               </div>`).join('')}
           </div>
-          <button type="button" class="btn-add-order" onclick="addOrderNo('${g.id}')">＋ 新增注單號</button>
         </div>
         <div class="form-group">
           <label>賽事名稱 *</label>
@@ -773,10 +779,10 @@
             ${g.eventNames.map((e, ei) => `
               <div class="order-row">
                 <input class="event-input" value="${esc(e)}" placeholder="賽事名稱" autocomplete="off" required>
+                ${ei === g.eventNames.length - 1 ? `<button type="button" class="btn-add-inline" onclick="addEventName('${g.id}')" title="新增賽事名稱">+</button>` : ''}
                 ${g.eventNames.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeEventName('${g.id}',${ei})">×</button>` : ''}
               </div>`).join('')}
           </div>
-          <button type="button" class="btn-add-order" onclick="addEventName('${g.id}')">＋ 新增賽事名稱</button>
         </div>
       </div>`).join('');
   }
