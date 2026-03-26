@@ -747,7 +747,10 @@
   function copyReply(lang, btn) { copyText(_replyTexts[lang] || '', btn); }
   function copyAndClose(text, btn) {
     copyText(text, btn);
-    setTimeout(() => dismissPopup(), 900);
+    setTimeout(() => dismissPopup(), 400);
+  }
+  function attachOverlayClose(overlay) {
+    overlay.addEventListener('click', e => { if (e.target === overlay) dismissPopup(); });
   }
 
   // ── Form group management ──
@@ -1134,6 +1137,7 @@
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
   }
 
   function openMsgPopup(id, eventIdx) {
@@ -1214,6 +1218,7 @@
         <button class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
       </div>`;
     document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
   }
 
   function showSubmitPopup(groups, requirement, group, additionalInfo) {
@@ -1233,6 +1238,7 @@
         <button class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
       </div>`;
     document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
   }
 
   // ── Tick timers ──
