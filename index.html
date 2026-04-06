@@ -1162,7 +1162,7 @@
     if (existing) existing.remove();
     const isFinal   = forceFinal || r.stage === 2;
     const queueLeft = popupQueue.length;
-    const name      = getEventNames(r).join(' / ');
+    const name      = getEventNames(r).join('\n');
 
     _replyTexts = isFinal ? {
       en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
