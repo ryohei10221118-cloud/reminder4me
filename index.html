@@ -489,7 +489,11 @@
     .popup-badge.success{ background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
     .popup-badge.info   { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-light); }
     @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-    .popup-event-name { font-size: 20px; font-weight: 800; color: var(--text-pri); margin-bottom: 14px; }
+    .popup-event-name { font-size: 20px; font-weight: 800; color: var(--text-pri); margin-bottom: 8px; }
+    .popup-meta-info { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; min-height: 0; }
+    .popup-meta-info:empty { display: none; }
+    .popup-meta-tag { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; font-size: 11px; color: var(--text-sec); font-family: monospace; }
+    .popup-meta-group { background: var(--orange-bg); border: 1px solid rgba(196,149,106,0.3); border-radius: 4px; padding: 2px 7px; font-size: 11px; color: var(--orange); font-weight: 600; }
     .popup-title { font-size: 16px; font-weight: 700; color: var(--text-pri); margin-bottom: 14px; }
     .reply-box {
       background: var(--surface2);
@@ -1163,6 +1167,7 @@
     const isFinal   = forceFinal || r.stage === 2;
     const queueLeft = popupQueue.length;
     const name      = getEventNames(r).join('\n');
+    const nos       = r.orderNos.filter(Boolean);
 
     _replyTexts = isFinal ? {
       en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - Sunny`,
@@ -1182,6 +1187,7 @@
         <button class="popup-close-btn" onclick="dismissPopup()">×</button>
         <div class="popup-badge ${isFinal ? 'final' : 'first'}">${isFinal ? '⚠️ 最終提醒' : '🔔 第一次提醒'}</div>
         <div class="popup-event-name">🏆 ${esc(name)}</div>
+        <div class="popup-meta-info">${nos.map(o => `<span class="popup-meta-tag">${esc(o)}</span>`).join('')}${r.group ? `<span class="popup-meta-group">${esc(r.group)}</span>` : ''}</div>
         <div class="reply-rows">
           <div class="reply-row">
             <span class="reply-row-text">${esc(_replyTexts.en)}</span>
