@@ -1071,10 +1071,10 @@
   function sendBrowserNotif(r) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const stage = r.stage === 1 ? '第一次提醒' : '最終提醒！';
-    new Notification(`${stage} ─ ${getEventNames(r)[0]}`, {
+    const n = new Notification(`${stage} ─ ${getEventNames(r)[0]}`, {
       body: `需求：${r.requirement}\n群組：${r.group}`,
-      requireInteraction: true,
     });
+    setTimeout(() => n.close(), 2000);
   }
 
   // ── Render ──
