@@ -227,6 +227,14 @@
     }
     .btn-submit:hover { background: #7a9ab8; }
     .btn-submit:active { transform: scale(0.98); }
+    .lang-select-group { display: flex; gap: 6px; }
+    .lang-sel-btn {
+      flex: 1; padding: 6px 0; border-radius: 6px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .lang-sel-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .lang-sel-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
 
     /* ── Section header ── */
     .section-header {
@@ -529,7 +537,11 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 8px 10px;
+      transition: opacity 0.15s;
     }
+    .reply-row.lang-highlight { background: var(--blue-bg); border-color: var(--blue-light); }
+    .reply-row.lang-highlight .reply-row-text { color: var(--text-pri); font-weight: 500; }
+    .reply-row.lang-dim { opacity: 0.4; }
     .reply-row-text {
       flex: 1;
       font-size: 12px;
@@ -647,6 +659,14 @@
               <textarea id="f-info" placeholder="選填，附加說明…"></textarea>
             </div>
           </div>
+          <div class="form-group">
+            <label>回覆語言</label>
+            <div class="lang-select-group" id="lang-select">
+              <button type="button" class="lang-sel-btn" data-lang="en" onclick="setFormLang('en')">EN</button>
+              <button type="button" class="lang-sel-btn" data-lang="zh" onclick="setFormLang('zh')">中</button>
+              <button type="button" class="lang-sel-btn" data-lang="kr" onclick="setFormLang('kr')">KR</button>
+            </div>
+          </div>
           <button type="submit" class="btn-submit">⏱ 添加計時器</button>
         </form>
       </div>
@@ -694,6 +714,7 @@
   // ── Form group state ──
   let groupCounter = 0;
   let formGroups   = []; // [{id, eventName, orderNos:[]}]
+  let formLang     = null; // 'en'|'zh'|'kr'|null
 
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
   function load() {
@@ -868,7 +889,7 @@
     return r.eventNames || (r.eventName ? [r.eventName] : ['']);
   }
 
-  function addRecord(eventNames, orderNos, requirement, group, additionalInfo) {
+  function addRecord(eventNames, orderNos, requirement, group, additionalInfo, lang = null) {
     const names = (Array.isArray(eventNames) ? eventNames : [eventNames]).map(e => e.trim()).filter(Boolean);
     const r = {
       id:             `r${Date.now()}${Math.random().toString(36).slice(2,5)}`,
@@ -877,6 +898,7 @@
       requirement:    requirement.trim(),
       group:          group.trim(),
       additionalInfo: additionalInfo.trim(),
+      lang:           lang,
       createdAt:      Date.now(),
       stage:          1,
       stage2StartAt:  null,
@@ -1189,15 +1211,15 @@
         <div class="popup-event-name">🏆 ${esc(name)}</div>
         <div class="popup-meta-info">${nos.map(o => `<span class="popup-meta-tag">${esc(o)}</span>`).join('')}${r.group ? `<span class="popup-meta-group">${esc(r.group)}</span>` : ''}</div>
         <div class="reply-rows">
-          <div class="reply-row">
+          <div class="reply-row${r.lang === 'en' ? ' lang-highlight' : (r.lang ? ' lang-dim' : '')}">
             <span class="reply-row-text">${esc(_replyTexts.en)}</span>
             <button class="btn-copy-inline" onclick="copyReply('en',this)" title="Copy">📋</button>
           </div>
-          <div class="reply-row">
+          <div class="reply-row${r.lang === 'zh' ? ' lang-highlight' : (r.lang ? ' lang-dim' : '')}">
             <span class="reply-row-text">${esc(_replyTexts.zh)}</span>
             <button class="btn-copy-inline" onclick="copyReply('zh',this)" title="複製">📋</button>
           </div>
-          <div class="reply-row">
+          <div class="reply-row${r.lang === 'kr' ? ' lang-highlight' : (r.lang ? ' lang-dim' : '')}">
             <span class="reply-row-text">${esc(_replyTexts.kr)}</span>
             <button class="btn-copy-inline" onclick="copyReply('kr',this)" title="복사">📋</button>
           </div>
@@ -1340,6 +1362,11 @@
   }
 
   // ── Form submit ──
+  function setFormLang(lang) {
+    formLang = formLang === lang ? null : lang;
+    document.querySelectorAll('.lang-sel-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === formLang));
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
     syncGroupValues();
@@ -1356,7 +1383,7 @@
     });
     if (!recordsToAdd.length) { alert('請輸入至少一個賽事名稱'); return; }
 
-    recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info));
+    recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info, formLang));
 
     showSubmitPopup(recordsToAdd, req, grp, info);
 
