@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0ebe4; padding: 24px; color: #4a4238; }
+  h3 { font-size: 13px; color: #8a7d72; margin: 24px 0 10px; }
+  .box { background: #faf8f5; border: 1px solid #ddd5c8; border-radius: 10px; padding: 16px; max-width: 340px; margin-bottom: 8px; }
+  label { font-size: 12px; color: #8a7d72; display: block; margin-bottom: 6px; }
+
+  /* 語言按鈕 */
+  .lang-group { display: flex; gap: 6px; margin-bottom: 12px; }
+  .lang-btn {
+    flex: 1; padding: 7px 0; border-radius: 6px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid #ddd5c8; background: #ede8e0; color: #8a7d72;
+    transition: all 0.15s;
+  }
+  /* 單選：只有一個亮 */
+  .lang-btn.active-single { background: #8facc8; border-color: #8facc8; color: #fff; }
+  /* 多選：可多個亮 */
+  .lang-btn.active-multi  { background: #c5d5e8; border-color: #8facc8; color: #4a6a88; }
+
+  /* 添加按鈕 */
+  .add-btn {
+    width: 100%; padding: 11px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: none; background: #8facc8; color: #fff; cursor: pointer;
+  }
+  .note { font-size: 11px; color: #b5a99e; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h3>方案一：單選（同一時間只服務一種語言）</h3>
+<div class="box">
+  <label>回覆語言</label>
+  <div class="lang-group" id="single">
+    <button class="lang-btn active-single" onclick="setSingle(this)">EN</button>
+    <button class="lang-btn" onclick="setSingle(this)">中</button>
+    <button class="lang-btn" onclick="setSingle(this)">KR</button>
+  </div>
+  <button class="add-btn">⏱ 添加計時器</button>
+  <p class="note">點選其中一個，彈窗時該語言置頂/高亮</p>
+</div>
+
+<h3>方案二：多選（同時服務多語言客戶）</h3>
+<div class="box">
+  <label>回覆語言（可多選）</label>
+  <div class="lang-group" id="multi">
+    <button class="lang-btn active-multi" onclick="toggleMulti(this)">EN</button>
+    <button class="lang-btn" onclick="toggleMulti(this)">中</button>
+    <button class="lang-btn active-multi" onclick="toggleMulti(this)">KR</button>
+  </div>
+  <button class="add-btn">⏱ 添加計時器</button>
+  <p class="note">可同時選多個，彈窗時選中的語言高亮，其餘淡化</p>
+</div>
+
+<script>
+  function setSingle(btn) {
+    btn.closest('.lang-group').querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active-single'));
+    btn.classList.add('active-single');
+  }
+  function toggleMulti(btn) {
+    btn.classList.toggle('active-multi');
+  }
+</script>
+</body>
+</html>
