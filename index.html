@@ -1278,14 +1278,14 @@
   }
 
   function buildSummaryText(groups, requirement, group, additionalInfo) {
-    const parts = [];
-    groups.forEach(g => {
-      g.orderNos.filter(Boolean).forEach(o => parts.push(o));
-      (g.eventNames || []).filter(Boolean).forEach(e => parts.push(e));
-    });
-    parts.push(requirement, group);
-    if (additionalInfo) parts.push(additionalInfo);
-    return parts.join('\n');
+    const groupLines = groups.map(g => {
+      const lines = [];
+      g.orderNos.filter(Boolean).forEach(o => lines.push(o));
+      (g.eventNames || []).filter(Boolean).forEach(e => lines.push(e));
+      return lines.join('\n');
+    }).filter(Boolean);
+    const tail = [requirement, group, additionalInfo].filter(Boolean);
+    return [...groupLines, ...tail].join('\n\n');
   }
 
   function getRecordSummary(id) {
