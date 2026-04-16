@@ -1515,7 +1515,9 @@
       return lines.join('\n');
     }).filter(Boolean);
     const tail = [requirement, group, additionalInfo].filter(Boolean).join('\n');
-    return [...groupLines, tail].filter(Boolean).join('\n\n');
+    if (groupLines.length === 0) return tail;
+    const last = groupLines[groupLines.length - 1] + (tail ? '\n' + tail : '');
+    return [...groupLines.slice(0, -1), last].join('\n\n');
   }
 
   function getRecordSummary(id) {
