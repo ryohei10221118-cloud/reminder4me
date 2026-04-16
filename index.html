@@ -270,27 +270,26 @@
       display: flex; align-items: center; gap: 8px;
       padding: 6px 10px; background: var(--surface2);
       border: 1px solid var(--border); border-radius: 8px;
+      flex-wrap: wrap;
     }
     .batch-group-label { font-size: 12px; font-weight: 700; color: var(--text-sec); }
     .batch-group-count { font-size: 11px; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border-light); border-radius: 10px; padding: 1px 7px; }
+    .batch-group-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+    .batch-bar-count { font-size: 12px; color: var(--blue); font-weight: 600; }
     .batch-cb {
       width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
       accent-color: var(--blue); margin-right: 2px;
     }
     .batch-card .card-header { display: flex; align-items: flex-start; gap: 8px; }
     .card-selected { outline: 2px solid var(--blue-light); }
-    .batch-action-bar {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      padding: 8px 12px; background: var(--blue-bg);
-      border: 1px solid var(--blue-light); border-radius: 8px;
-    }
-    .batch-bar-count { font-size: 12px; color: var(--blue); font-weight: 600; flex: 1; }
     .batch-bar-btn {
-      padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
-      cursor: pointer; border: 1px solid;
+      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+      cursor: pointer; border: 1px solid; white-space: nowrap;
     }
-    .batch-bar-done { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
-    .batch-bar-msg  { background: var(--surface); border-color: var(--border); color: var(--text-sec); }
+    .batch-bar-done    { background: var(--green-bg);  border-color: var(--green-border); color: var(--green); }
+    .batch-bar-restart { background: var(--orange-bg); border-color: rgba(196,149,106,0.4); color: var(--orange); }
+    .batch-bar-msg     { background: var(--surface);   border-color: var(--border); color: var(--text-sec); }
+    .batch-bar-btn[disabled] { opacity: 0.35; cursor: default; }
     .batch-msg-item { margin-bottom: 10px; }
     .batch-msg-label { font-size: 12px; font-weight: 600; color: var(--text-sec); margin-bottom: 4px; }
 
@@ -957,15 +956,34 @@
   }
 
   // ── Batch selection ──
+  function toggleSelectAll(batchId, checked) {
+    const group = records.filter(r => r.batchId === batchId && !r.completedAt);
+    group.forEach(r => {
+      if (checked) selectedIds.add(r.id);
+      else selectedIds.delete(r.id);
+      const cb = document.getElementById(`cb-${r.id}`);
+      const card = document.getElementById(`card-${r.id}`);
+      if (cb) cb.checked = checked;
+      if (card) card.classList.toggle('card-selected', checked);
+    });
+    updateBatchBar(batchId);
+  }
+
   function toggleSelect(id) {
     if (selectedIds.has(id)) selectedIds.delete(id);
     else selectedIds.add(id);
-    // update just the checkbox + action bar without full re-render
     const cb = document.getElementById(`cb-${id}`);
     const card = document.getElementById(`card-${id}`);
     if (cb) cb.checked = selectedIds.has(id);
     if (card) card.classList.toggle('card-selected', selectedIds.has(id));
-    updateBatchBar(getBatchIdFor(id));
+    const batchId = getBatchIdFor(id);
+    updateBatchBar(batchId);
+    // sync select-all checkbox
+    if (batchId) {
+      const group = records.filter(r => r.batchId === batchId && !r.completedAt);
+      const allCb = document.getElementById(`cb-all-${batchId}`);
+      if (allCb) allCb.checked = group.length > 0 && group.every(r => selectedIds.has(r.id));
+    }
   }
 
   function getBatchIdFor(id) {
@@ -981,10 +999,27 @@
       const r = records.find(x => x.id === id);
       return r && r.batchId === batchId && !r.completedAt;
     });
-    if (selected.length === 0) { bar.style.display = 'none'; return; }
-    bar.style.display = 'flex';
     const countEl = bar.querySelector('.batch-bar-count');
-    if (countEl) countEl.textContent = `已選 ${selected.length} 張`;
+    if (countEl) countEl.textContent = selected.length > 0 ? `已選 ${selected.length}` : '';
+    bar.querySelectorAll('.batch-bar-btn').forEach(b => b.disabled = selected.length === 0);
+  }
+
+  function batchRestartTimer(batchId) {
+    const toRestart = [...selectedIds].filter(id => {
+      const r = records.find(x => x.id === id);
+      return r && r.batchId === batchId && !r.completedAt;
+    });
+    toRestart.forEach(id => {
+      const r = records.find(x => x.id === id);
+      if (!r) return;
+      clearTimeout(timerHandles[id]); delete timerHandles[id];
+      if (r.stage >= 3) { r.stage = 1; r.createdAt = Date.now(); r.stage2StartAt = null; }
+      else if (r.stage === 2) { r.stage2StartAt = Date.now(); }
+      else { r.createdAt = Date.now(); }
+      popupQueue = popupQueue.filter(x => x !== id);
+      if (activePopupId === id) { const el = document.getElementById('popup-overlay'); if (el) el.remove(); activePopupId = null; }
+    });
+    save(); fullRender();
   }
 
   function batchMarkDone(batchId) {
@@ -1326,18 +1361,21 @@
       const group = batches[bid];
       const selCount = group.filter(r => selectedIds.has(r.id)).length;
       const grpName = group[0].group;
+      const allChecked = group.length > 0 && group.every(r => selectedIds.has(r.id));
       parts.push(`
         <div class="batch-group" id="batch-${bid}">
           <div class="batch-group-header">
+            <input type="checkbox" class="batch-cb" id="cb-all-${bid}" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll('${bid}',this.checked)" title="全選">
             <span class="batch-group-label">${esc(grpName)}</span>
             <span class="batch-group-count">${group.length} 張</span>
+            <div class="batch-group-actions" id="batch-bar-${bid}">
+              <span class="batch-bar-count">${selCount > 0 ? `已選 ${selCount}` : ''}</span>
+              <button class="batch-bar-btn batch-bar-done"    ${selCount === 0 ? 'disabled' : ''} onclick="batchMarkDone('${bid}')">✓ 完成</button>
+              <button class="batch-bar-btn batch-bar-restart" ${selCount === 0 ? 'disabled' : ''} onclick="batchRestartTimer('${bid}')">↺ 重新計時</button>
+              <button class="batch-bar-btn batch-bar-msg"     ${selCount === 0 ? 'disabled' : ''} onclick="showBatchMsgPopup('${bid}')">📝 批量訊息</button>
+            </div>
           </div>
           ${group.map(r => renderCardHtml(r, true)).join('')}
-          <div class="batch-action-bar" id="batch-bar-${bid}" style="display:${selCount > 0 ? 'flex' : 'none'}">
-            <span class="batch-bar-count">已選 ${selCount} 張</span>
-            <button class="batch-bar-btn batch-bar-done" onclick="batchMarkDone('${bid}')">✓ 標記完成</button>
-            <button class="batch-bar-btn batch-bar-msg"  onclick="showBatchMsgPopup('${bid}')">📝 批量訊息</button>
-          </div>
         </div>`);
     });
 
@@ -1476,8 +1514,8 @@
       (g.eventNames || []).filter(Boolean).forEach(e => lines.push(e));
       return lines.join('\n');
     }).filter(Boolean);
-    const tail = [requirement, group, additionalInfo].filter(Boolean);
-    return [...groupLines, ...tail].join('\n\n');
+    const tail = [requirement, group, additionalInfo].filter(Boolean).join('\n');
+    return [...groupLines, tail].filter(Boolean).join('\n\n');
   }
 
   function getRecordSummary(id) {
