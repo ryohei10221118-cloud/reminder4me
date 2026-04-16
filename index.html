@@ -265,7 +265,10 @@
     .count-badge.gray { background: var(--surface2); color: var(--text-sec); border: 1px solid var(--border); }
 
     /* ── Batch group ── */
-    .batch-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+    .batch-group { display: flex; flex-direction: column; gap: 0; margin-bottom: 14px; border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface2); }
+    .batch-group-header { border-radius: 0; border: none; border-bottom: 1px solid var(--border); }
+    .batch-group .record-card { border-radius: 0; border: none; border-bottom: 1px solid var(--border-light); margin: 0; }
+    .batch-group .record-card:last-child { border-bottom: none; }
     .batch-group-header {
       display: flex; align-items: center; gap: 8px;
       padding: 6px 10px; background: var(--surface2);
