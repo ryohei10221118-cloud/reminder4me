@@ -264,6 +264,36 @@
     }
     .count-badge.gray { background: var(--surface2); color: var(--text-sec); border: 1px solid var(--border); }
 
+    /* ── Batch group ── */
+    .batch-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+    .batch-group-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .batch-group-label { font-size: 12px; font-weight: 700; color: var(--text-sec); }
+    .batch-group-count { font-size: 11px; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border-light); border-radius: 10px; padding: 1px 7px; }
+    .batch-cb {
+      width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
+      accent-color: var(--blue); margin-right: 2px;
+    }
+    .batch-card .card-header { display: flex; align-items: flex-start; gap: 8px; }
+    .card-selected { outline: 2px solid var(--blue-light); }
+    .batch-action-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 12px; background: var(--blue-bg);
+      border: 1px solid var(--blue-light); border-radius: 8px;
+    }
+    .batch-bar-count { font-size: 12px; color: var(--blue); font-weight: 600; flex: 1; }
+    .batch-bar-btn {
+      padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid;
+    }
+    .batch-bar-done { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+    .batch-bar-msg  { background: var(--surface); border-color: var(--border); color: var(--text-sec); }
+    .batch-msg-item { margin-bottom: 10px; }
+    .batch-msg-label { font-size: 12px; font-weight: 600; color: var(--text-sec); margin-bottom: 4px; }
+
     /* ── Record card ── */
     .record-card {
       background: var(--surface);
@@ -710,6 +740,7 @@
   let activePopupId = null;
   let _pendingCopy = '';   // stores text for popup copy buttons
   let _replyTexts  = { zh: '', en: '', kr: '' };
+  let selectedIds  = new Set();
 
   // ── Form group state ──
   let groupCounter = 0;
@@ -889,10 +920,11 @@
     return r.eventNames || (r.eventName ? [r.eventName] : ['']);
   }
 
-  function addRecord(eventNames, orderNos, requirement, group, additionalInfo, lang = null) {
+  function addRecord(eventNames, orderNos, requirement, group, additionalInfo, lang = null, batchId = null) {
     const names = (Array.isArray(eventNames) ? eventNames : [eventNames]).map(e => e.trim()).filter(Boolean);
     const r = {
       id:             `r${Date.now()}${Math.random().toString(36).slice(2,5)}`,
+      batchId:        batchId,
       eventNames:     names,
       orderNos:       orderNos.map(o => o.trim()).filter(Boolean),
       requirement:    requirement.trim(),
@@ -920,7 +952,124 @@
     delete timerHandles[id];
     popupQueue = popupQueue.filter(x => x !== id);
     if (activePopupId === id) dismissPopup();
+    selectedIds.delete(id);
     save(); fullRender();
+  }
+
+  // ── Batch selection ──
+  function toggleSelect(id) {
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
+    // update just the checkbox + action bar without full re-render
+    const cb = document.getElementById(`cb-${id}`);
+    const card = document.getElementById(`card-${id}`);
+    if (cb) cb.checked = selectedIds.has(id);
+    if (card) card.classList.toggle('card-selected', selectedIds.has(id));
+    updateBatchBar(getBatchIdFor(id));
+  }
+
+  function getBatchIdFor(id) {
+    const r = records.find(x => x.id === id);
+    return r ? r.batchId : null;
+  }
+
+  function updateBatchBar(batchId) {
+    if (!batchId) return;
+    const bar = document.getElementById(`batch-bar-${batchId}`);
+    if (!bar) return;
+    const selected = [...selectedIds].filter(id => {
+      const r = records.find(x => x.id === id);
+      return r && r.batchId === batchId && !r.completedAt;
+    });
+    if (selected.length === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    const countEl = bar.querySelector('.batch-bar-count');
+    if (countEl) countEl.textContent = `已選 ${selected.length} 張`;
+  }
+
+  function batchMarkDone(batchId) {
+    const toMark = [...selectedIds].filter(id => {
+      const r = records.find(x => x.id === id);
+      return r && r.batchId === batchId && !r.completedAt;
+    });
+    toMark.forEach(id => {
+      const r = records.find(x => x.id === id);
+      if (!r) return;
+      r.completedAt = Date.now();
+      clearTimeout(timerHandles[id]); delete timerHandles[id];
+      popupQueue = popupQueue.filter(x => x !== id);
+      if (activePopupId === id) dismissPopup();
+      selectedIds.delete(id);
+    });
+    save(); fullRender();
+  }
+
+  function showBatchMsgPopup(batchId) {
+    const toProcess = [...selectedIds].filter(id => {
+      const r = records.find(x => x.id === id);
+      return r && r.batchId === batchId && !r.completedAt;
+    }).map(id => records.find(x => x.id === id));
+    if (!toProcess.length) return;
+
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card msg-popup" style="border-color:var(--border);max-width:460px;width:92%">
+        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info">📝 批量訊息</div>
+        <div class="popup-title" style="margin-bottom:14px">共 ${toProcess.length} 場賽事</div>
+        ${toProcess.map(r => {
+          const names = getEventNames(r);
+          const note = (r.eventNotes && names[0]) ? (r.eventNotes[names[0]] || '') : '';
+          return `<div class="batch-msg-item">
+            <div class="batch-msg-label">🏆 ${esc(names.join(' / '))}</div>
+            <textarea class="msg-textarea" id="batch-ta-${r.id}" placeholder="輸入賽事訊息...">${esc(note)}</textarea>
+          </div>`;
+        }).join('')}
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn-copy-reply" style="flex:1;margin-bottom:0" onclick="saveCopyBatchMsg('${batchId}',this)">📋 複製全部</button>
+          <button class="btn-copy-reply" style="flex:1;margin-bottom:0;background:var(--green-bg);border-color:var(--green-border);color:var(--green)" onclick="saveCopyBatchMsg('${batchId}',this,true)">✓ 複製並完成</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
+    const first = overlay.querySelector('.msg-textarea');
+    if (first) first.focus();
+  }
+
+  function saveCopyBatchMsg(batchId, btn, markAllDone = false) {
+    const toProcess = [...selectedIds].filter(id => {
+      const r = records.find(x => x.id === id);
+      return r && r.batchId === batchId && !r.completedAt;
+    }).map(id => records.find(x => x.id === id));
+
+    const lines = [];
+    toProcess.forEach(r => {
+      const names = getEventNames(r);
+      const ta = document.getElementById(`batch-ta-${r.id}`);
+      const msg = ta ? ta.value.trim() : '';
+      if (!r.eventNotes) r.eventNotes = {};
+      names.forEach(n => { r.eventNotes[n] = msg; });
+      lines.push(`${names.join('\n')}${msg ? '\n' + msg : ''}`);
+    });
+    save();
+    copyText(lines.join('\n\n'), btn);
+    if (markAllDone) {
+      setTimeout(() => {
+        toProcess.forEach(r => {
+          r.completedAt = Date.now();
+          clearTimeout(timerHandles[r.id]); delete timerHandles[r.id];
+          popupQueue = popupQueue.filter(x => x !== r.id);
+          if (activePopupId === r.id) dismissPopup();
+          selectedIds.delete(r.id);
+        });
+        save(); fullRender();
+        closeMsgPopup();
+      }, 500);
+    }
   }
 
   function deleteRecord(id) {
@@ -1108,6 +1257,47 @@
     }
   }
 
+  function renderCardHtml(r, inBatch = false) {
+    const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
+    const stageLabel = r.stage === 1 ? '第1次' : r.stage === 2 ? '第2次' : '待定';
+    const orderTagsHtml = r.orderNos.length
+      ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
+      : '';
+    const eventNames = getEventNames(r);
+    const eventRowsHtml = eventNames.map((name, ei) => `
+      <div class="card-event-row">
+        <span class="card-event-name">🏆 ${esc(name)}</span>
+        <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
+      </div>`).join('');
+    const checkboxHtml = inBatch
+      ? `<input type="checkbox" class="batch-cb" id="cb-${r.id}" ${selectedIds.has(r.id) ? 'checked' : ''} onchange="toggleSelect('${r.id}')">`
+      : '';
+    return `
+      <div class="record-card ${cc}${inBatch ? ' batch-card' : ''}${selectedIds.has(r.id) ? ' card-selected' : ''}" id="card-${r.id}">
+        <div class="card-header">
+          ${checkboxHtml}
+          <div class="card-events">${eventRowsHtml}</div>
+        </div>
+        <div class="card-body">
+          <div class="timer-box ${tc}" id="timer-${r.id}">
+            <span class="t-time">${t}</span>
+            <span class="t-stage">${stageLabel}</span>
+          </div>
+          <div class="record-info">
+            ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
+            <div class="record-req" title="${esc(r.requirement)}">${esc(r.requirement)}</div>
+            <div class="record-meta">群組：<b>${esc(r.group)}</b>${r.additionalInfo ? `<br>備註：${esc(r.additionalInfo)}` : ''}</div>
+          </div>
+          <div class="record-actions">
+            <button class="btn-done"    onclick="markDone('${r.id}')">✓ 搞定</button>
+            <button class="btn-summary" onclick="showSummaryPopup('${r.id}')">📋 概要</button>
+            <button class="btn-restart" onclick="restartTimer('${r.id}')">↺ 重新計時</button>
+            <button class="btn-del"     onclick="deleteRecord('${r.id}')">移除</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
   function renderActive() {
     const active = sortedActive();
     const el = document.getElementById('active-records');
@@ -1115,42 +1305,44 @@
     badge.textContent = active.length;
     badge.style.display = active.length ? 'inline-flex' : 'none';
     if (active.length === 0) { el.innerHTML = '<div class="empty-state">目前沒有待處理的記錄</div>'; return; }
-    el.innerHTML = active.map(r => {
-      const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
-      const stageLabel = r.stage === 1 ? '第1次' : r.stage === 2 ? '第2次' : '待定';
-      const orderTagsHtml = r.orderNos.length
-        ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
-        : '';
-      const eventNames = getEventNames(r);
-      const eventRowsHtml = eventNames.map((name, ei) => `
-        <div class="card-event-row">
-          <span class="card-event-name">🏆 ${esc(name)}</span>
-          <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
-        </div>`).join('');
-      return `
-        <div class="record-card ${cc}" id="card-${r.id}">
-          <div class="card-header">
-            <div class="card-events">${eventRowsHtml}</div>
+
+    // separate batch vs solo records
+    const batches = {};
+    const solos = [];
+    active.forEach(r => {
+      if (r.batchId) {
+        if (!batches[r.batchId]) batches[r.batchId] = [];
+        batches[r.batchId].push(r);
+      } else {
+        solos.push(r);
+      }
+    });
+
+    // build HTML: batches first (in creation order), then solos
+    const batchOrder = [...new Set(active.filter(r => r.batchId).map(r => r.batchId))];
+    const parts = [];
+
+    batchOrder.forEach(bid => {
+      const group = batches[bid];
+      const selCount = group.filter(r => selectedIds.has(r.id)).length;
+      const grpName = group[0].group;
+      parts.push(`
+        <div class="batch-group" id="batch-${bid}">
+          <div class="batch-group-header">
+            <span class="batch-group-label">${esc(grpName)}</span>
+            <span class="batch-group-count">${group.length} 張</span>
           </div>
-          <div class="card-body">
-            <div class="timer-box ${tc}" id="timer-${r.id}">
-              <span class="t-time">${t}</span>
-              <span class="t-stage">${stageLabel}</span>
-            </div>
-            <div class="record-info">
-              ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
-              <div class="record-req" title="${esc(r.requirement)}">${esc(r.requirement)}</div>
-              <div class="record-meta">群組：<b>${esc(r.group)}</b>${r.additionalInfo ? `<br>備註：${esc(r.additionalInfo)}` : ''}</div>
-            </div>
-            <div class="record-actions">
-              <button class="btn-done"    onclick="markDone('${r.id}')">✓ 搞定</button>
-              <button class="btn-summary" onclick="showSummaryPopup('${r.id}')">📋 概要</button>
-              <button class="btn-restart" onclick="restartTimer('${r.id}')">↺ 重新計時</button>
-              <button class="btn-del"     onclick="deleteRecord('${r.id}')">移除</button>
-            </div>
+          ${group.map(r => renderCardHtml(r, true)).join('')}
+          <div class="batch-action-bar" id="batch-bar-${bid}" style="display:${selCount > 0 ? 'flex' : 'none'}">
+            <span class="batch-bar-count">已選 ${selCount} 張</span>
+            <button class="batch-bar-btn batch-bar-done" onclick="batchMarkDone('${bid}')">✓ 標記完成</button>
+            <button class="batch-bar-btn batch-bar-msg"  onclick="showBatchMsgPopup('${bid}')">📝 批量訊息</button>
           </div>
-        </div>`;
-    }).join('');
+        </div>`);
+    });
+
+    solos.forEach(r => parts.push(renderCardHtml(r, false)));
+    el.innerHTML = parts.join('');
   }
 
   function renderDone() {
@@ -1278,14 +1470,14 @@
   }
 
   function buildSummaryText(groups, requirement, group, additionalInfo) {
-    const parts = [];
-    groups.forEach(g => {
-      g.orderNos.filter(Boolean).forEach(o => parts.push(o));
-      (g.eventNames || []).filter(Boolean).forEach(e => parts.push(e));
-    });
-    parts.push(requirement, group);
-    if (additionalInfo) parts.push(additionalInfo);
-    return parts.join('\n');
+    const groupLines = groups.map(g => {
+      const lines = [];
+      g.orderNos.filter(Boolean).forEach(o => lines.push(o));
+      (g.eventNames || []).filter(Boolean).forEach(e => lines.push(e));
+      return lines.join('\n');
+    }).filter(Boolean);
+    const tail = [requirement, group, additionalInfo].filter(Boolean);
+    return [...groupLines, ...tail].join('\n\n');
   }
 
   function getRecordSummary(id) {
@@ -1383,7 +1575,8 @@
     });
     if (!recordsToAdd.length) { alert('請輸入至少一個賽事名稱'); return; }
 
-    recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info, formLang));
+    const batchId = recordsToAdd.length > 1 ? `b${Date.now()}` : null;
+    recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info, formLang, batchId));
 
     showSubmitPopup(recordsToAdd, req, grp, info);
 
