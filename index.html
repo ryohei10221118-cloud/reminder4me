@@ -243,6 +243,17 @@
       gap: 8px;
       margin-bottom: 12px;
     }
+    .export-btn {
+      margin-left: auto;
+      padding: 4px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text-sec);
+      cursor: pointer;
+    }
+    .export-btn:hover { background: var(--blue-bg); border-color: var(--blue-light); color: var(--blue); }
     .section-title {
       font-size: 12px;
       font-weight: 700;
@@ -709,6 +720,7 @@
       <div class="section-header">
         <span class="section-title">待處理</span>
         <span class="count-badge" id="active-count" style="display:none">0</span>
+        <button class="export-btn" onclick="showExportPopup()" title="匯出所有待處理">📤 匯出</button>
       </div>
       <div id="active-records"></div>
 
@@ -1207,6 +1219,39 @@
       };
       beep(880,0.00,0.12); beep(1100,0.18,0.12); beep(880,0.36,0.22);
     } catch(e) {}
+  }
+
+  // ── Export active records ──
+  function showExportPopup() {
+    const active = sortedActive();
+    if (active.length === 0) { alert('目前沒有待處理的記錄'); return; }
+
+    const circled = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+    const lines = active.map((r, i) => {
+      const num = i < circled.length ? circled[i] : `(${i + 1})`;
+      const names = getEventNames(r).join(' / ');
+      const nos = r.orderNos.filter(Boolean).join('、');
+      const parts = [`${num} ${names}`];
+      if (nos) parts.push(`注單：${nos}`);
+      parts.push(`需求：${r.requirement}  ·  群組：${r.group}`);
+      return parts.join('\n');
+    });
+    const text = lines.join('\n\n');
+    _pendingCopy = text;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    overlay.id = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="max-width:480px;width:92%">
+        <div class="popup-title">📤 匯出待處理記錄</div>
+        <div style="font-size:13px;color:var(--text-sec);margin-bottom:8px">共 ${active.length} 筆</div>
+        <textarea readonly style="width:100%;height:260px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text-pri);font-family:inherit;line-height:1.6">${esc(text)}</textarea>
+        <button class="btn-copy-reply" style="margin-top:10px;margin-bottom:0" onclick="copyText(_pendingCopy,this)">📋 複製全部</button>
+        <button class="btn-popup-sec" style="width:100%;margin-top:6px" onclick="dismissPopup()">關閉</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
   }
 
   // ── Daily Settlement ──
