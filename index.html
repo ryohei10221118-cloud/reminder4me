@@ -1401,11 +1401,20 @@
       }
     });
 
-    // build HTML: batches first (in creation order), then solos
-    const batchOrder = [...new Set(active.filter(r => r.batchId).map(r => r.batchId))];
-    const parts = [];
+    // sort key: min remaining time in batch / solo remaining (null=pending → Infinity)
+    const sortKey = ms => ms === null ? Infinity : ms;
+    const batchMinMs = bid => Math.min(...batches[bid].map(r => sortKey(getRemaining(r))));
 
-    batchOrder.forEach(bid => {
+    // interleave batches and solos sorted by urgency
+    const items = [
+      ...Object.keys(batches).map(bid => ({ type: 'batch', bid, ms: batchMinMs(bid) })),
+      ...solos.map(r => ({ type: 'solo', r, ms: sortKey(getRemaining(r)) })),
+    ].sort((a, b) => a.ms - b.ms);
+
+    const parts = [];
+    items.forEach(item => {
+      if (item.type === 'solo') { parts.push(renderCardHtml(item.r, false)); return; }
+      const bid = item.bid;
       const group = batches[bid];
       const selCount = group.filter(r => selectedIds.has(r.id)).length;
       const grpName = group[0].group;
@@ -1427,7 +1436,6 @@
         </div>`);
     });
 
-    solos.forEach(r => parts.push(renderCardHtml(r, false)));
     el.innerHTML = parts.join('');
   }
 
