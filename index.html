@@ -882,7 +882,10 @@
       const container = document.querySelector(`[data-group="${g.id}"]`);
       if (!container) return;
       g.orderNos   = Array.from(container.querySelectorAll('.order-input')).map(i => i.value);
-      g.eventNames = Array.from(container.querySelectorAll('.event-input')).map(i => i.value);
+      const prevStatuses = g.eventStatuses || [];
+      g.eventNames = Array.from(container.querySelectorAll('.event-input')).map((inp, ei) => inp.value);
+      // keep statuses aligned with current event name count
+      g.eventStatuses = g.eventNames.map((_, ei) => prevStatuses[ei] ?? null);
     });
   }
 
@@ -908,12 +911,19 @@
         <div class="form-group">
           <label>賽事名稱 *</label>
           <div class="order-rows" id="event-rows-${g.id}">
-            ${g.eventNames.map((e, ei) => `
+            ${g.eventNames.map((e, ei) => {
+              const st = (g.eventStatuses || [])[ei] ?? null;
+              const stInfo = {0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
+              const stColor = {0:'var(--blue)',1:'var(--red)',2:'var(--green)',3:'var(--text-muted)',4:'var(--text-muted)',15:'var(--text-muted)',16:'var(--orange)',17:'var(--green)',32:'var(--orange)'};
+              const badge = st !== null && stInfo[st] ? `<span style="font-size:11px;font-weight:600;color:${stColor[st]};white-space:nowrap;flex-shrink:0">${stInfo[st]}</span>` : '';
+              return `
               <div class="order-row">
                 <input class="event-input" value="${esc(e)}" placeholder="賽事名稱" autocomplete="off" required>
+                ${badge}
                 ${ei === g.eventNames.length - 1 ? `<button type="button" class="btn-add-inline" onclick="addEventName('${g.id}')" title="新增賽事名稱">+</button>` : ''}
                 ${g.eventNames.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeEventName('${g.id}',${ei})">×</button>` : ''}
-              </div>`).join('')}
+              </div>`;
+            }).join('')}
           </div>
         </div>
       </div>`).join('');
@@ -1074,8 +1084,9 @@
   function applyJsonImport(indices) {
     if (!_jsonImportData) return;
     const { ticketId, selections } = _jsonImportData;
-    const eventNames = indices.map(i => selections[i].eventName);
-    const newGroup = { id: `g${++groupCounter}`, orderNos: [ticketId], eventNames };
+    const eventNames    = indices.map(i => selections[i].eventName);
+    const eventStatuses = indices.map(i => selections[i].status);
+    const newGroup = { id: `g${++groupCounter}`, orderNos: [ticketId], eventNames, eventStatuses };
 
     // check if form already has data
     syncGroupValues();
@@ -1115,7 +1126,7 @@
     if (!_pendingImportGroup) return;
     if (mode === 'overwrite') {
       groupCounter = 0;
-      formGroups = [{ id: `g${++groupCounter}`, ..._pendingImportGroup }];
+      formGroups = [{ ..._pendingImportGroup, id: `g${++groupCounter}` }];
     } else {
       formGroups.push(_pendingImportGroup);
     }
