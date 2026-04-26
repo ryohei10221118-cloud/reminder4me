@@ -1159,7 +1159,31 @@
   }
 
   // ── JSON Import ──
-  let _jsonImportData = null; // { ticketId, selections: [{eventName, startDate}] }
+  let _jsonImportData = null;
+
+  const _jsonStatusMap = {
+    0: { label: 'Opened',    color: 'var(--blue)' },
+    1: { label: 'Lost',      color: 'var(--red)' },
+    2: { label: 'Won',       color: 'var(--green)' },
+    3: { label: 'Draw',      color: 'var(--text-muted)' },
+    4: { label: 'Canceled',  color: 'var(--text-muted)' },
+    15: { label: 'Declined', color: 'var(--text-muted)' },
+    16: { label: 'Half Lost',color: 'var(--orange)' },
+    17: { label: 'Half Won', color: 'var(--green)' },
+    32: { label: 'Cashout',  color: 'var(--orange)' },
+  };
+  function _jsonStatusBadge(st) {
+    const s = _jsonStatusMap[st];
+    if (!s) return '';
+    return `<span style="font-size:11px;font-weight:600;color:${s.color}">${s.label}</span>`;
+  }
+  function _jsonToUtc8(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const u8 = new Date(d.getTime() + 8 * 3600000);
+    const pad = n => String(n).padStart(2,'0');
+    return `${u8.getUTCFullYear()}/${pad(u8.getUTCMonth()+1)}/${pad(u8.getUTCDate())} ${pad(u8.getUTCHours())}:${pad(u8.getUTCMinutes())} (UTC+8)`;
+  }
 
   function showJsonImportPopup() {
     const existing = document.getElementById('popup-overlay');
@@ -1167,27 +1191,40 @@
     const overlay = document.createElement('div');
     overlay.className = 'popup-overlay';
     overlay.id = 'popup-overlay';
+    document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
+    _renderJsonPasteState(overlay);
+  }
+
+  function _renderJsonPasteState(overlay, successMsg) {
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--border);max-width:480px;width:92%">
         <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info">📥 匯入 JSON</div>
         <div class="popup-title" style="margin-bottom:10px">貼入注單 JSON</div>
-        <textarea class="msg-textarea" id="json-import-ta" placeholder='貼入 JSON...' style="height:160px"></textarea>
-        <button class="btn-copy-reply" style="margin-top:8px;margin-bottom:0" onclick="parseJsonImport()">解析</button>
+        ${successMsg ? `<div style="font-size:12px;color:var(--green);margin-bottom:8px;padding:6px 10px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:6px">✓ ${esc(successMsg)}</div>` : ''}
+        <textarea class="msg-textarea" id="json-import-ta" placeholder="貼入 JSON..." style="height:140px;resize:vertical"></textarea>
+        <div id="json-parse-err" style="display:none;font-size:12px;color:var(--red);margin-top:6px;padding:6px 10px;background:var(--red-bg);border-radius:6px"></div>
+        <button class="btn-popup-sec" style="margin-top:10px;width:100%" onclick="closeMsgPopup()">完成</button>
       </div>`;
-    document.body.appendChild(overlay);
-    attachOverlayClose(overlay);
-    setTimeout(() => { const ta = overlay.querySelector('#json-import-ta'); if (ta) ta.focus(); }, 50);
+    const ta = overlay.querySelector('#json-import-ta');
+    ta.addEventListener('paste', () => setTimeout(() => _autoParseJson(overlay), 80));
+    setTimeout(() => ta.focus(), 50);
   }
 
-  function parseJsonImport() {
+  function _autoParseJson(overlay) {
     const ta = document.getElementById('json-import-ta');
     if (!ta) return;
     const raw = ta.value.trim();
-    let data;
-    try { data = JSON.parse(raw); } catch(e) { alert('JSON 格式錯誤，請確認後再試'); return; }
+    if (!raw) return;
 
-    // Extract SQLTicketId as string from raw text to avoid JS float precision loss
+    let data;
+    try { data = JSON.parse(raw); } catch(e) {
+      const err = document.getElementById('json-parse-err');
+      if (err) { err.textContent = '⚠ JSON 格式錯誤，請確認後再試'; err.style.display = 'block'; }
+      return;
+    }
+
     const ticketMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
     const ticketId = ticketMatch ? ticketMatch[1] : String(data.SQLTicketId || '');
     const selections = (data.Selections || []).map(s => ({
@@ -1196,126 +1233,85 @@
       status: s.SelectionStatus ?? null,
     })).filter(s => s.eventName);
 
-    if (!ticketId) { alert('找不到 SQLTicketId'); return; }
-    if (selections.length === 0) { alert('找不到任何 EventName'); return; }
+    const err = document.getElementById('json-parse-err');
+    if (!ticketId) {
+      if (err) { err.textContent = '⚠ 找不到 SQLTicketId'; err.style.display = 'block'; }
+      return;
+    }
+    if (selections.length === 0) {
+      if (err) { err.textContent = '⚠ 找不到任何賽事 (EventName)'; err.style.display = 'block'; }
+      return;
+    }
 
     _jsonImportData = { ticketId, selections };
 
     if (selections.length === 1) {
-      applyJsonImport([0]);
-      return;
+      _doJsonImport(overlay, [0]);
+    } else {
+      _renderJsonSelectionState(overlay);
     }
-
-    // show selection UI
-    const toUtc8 = iso => {
-      if (!iso) return '';
-      const d = new Date(iso);
-      const u8 = new Date(d.getTime() + 8 * 3600000);
-      const pad = n => String(n).padStart(2,'0');
-      return `${u8.getUTCFullYear()}/${pad(u8.getUTCMonth()+1)}/${pad(u8.getUTCDate())}  ${pad(u8.getUTCHours())}:${pad(u8.getUTCMinutes())} (UTC+8)`;
-    };
-    const statusMap = {
-      0: { label: 'Opened',    color: 'var(--blue)' },
-      1: { label: 'Lost',      color: 'var(--red)' },
-      2: { label: 'Won',       color: 'var(--green)' },
-      3: { label: 'Draw',      color: 'var(--text-muted)' },
-      4: { label: 'Canceled',  color: 'var(--text-muted)' },
-      15: { label: 'Declined', color: 'var(--text-muted)' },
-      16: { label: 'Half Lost',color: 'var(--orange)' },
-      17: { label: 'Half Won', color: 'var(--green)' },
-      32: { label: 'Cashout',  color: 'var(--orange)' },
-    };
-    const statusBadge = st => {
-      const s = statusMap[st];
-      if (!s) return '';
-      return `<span style="font-size:11px;font-weight:600;color:${s.color}">${s.label}</span>`;
-    };
-
-    const card = document.querySelector('#popup-overlay .popup-card');
-    if (!card) return;
-    card.innerHTML = `
-      <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
-      <div class="popup-badge info">📥 匯入 JSON</div>
-      <div class="popup-title" style="margin-bottom:4px">選擇要帶入的賽事</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">注單號：${esc(ticketId)}</div>
-      <div id="json-sel-list">
-        ${selections.map((s, i) => `
-          <label class="json-event-item">
-            <input type="checkbox" id="json-cb-${i}" ${s.status === 0 ? 'checked' : ''}>
-            <div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="json-event-name">${esc(s.eventName)}</span>
-                ${statusBadge(s.status)}
-              </div>
-              <div class="json-event-time">${toUtc8(s.startDate)}</div>
-            </div>
-          </label>`).join('')}
-      </div>
-      <button class="btn-copy-reply" style="margin-top:4px;margin-bottom:0" onclick="confirmJsonImport()">✓ 帶入表單</button>`;
   }
 
-  function confirmJsonImport() {
+  function _renderJsonSelectionState(overlay) {
+    if (!_jsonImportData) return;
+    const { ticketId, selections } = _jsonImportData;
+    overlay.innerHTML = `
+      <div class="popup-card msg-popup" style="border-color:var(--border);max-width:480px;width:92%">
+        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info">📥 匯入 JSON</div>
+        <div class="popup-title" style="margin-bottom:4px">選擇要帶入的賽事</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">注單號：${esc(ticketId)}</div>
+        <div id="json-sel-list">
+          ${selections.map((s, i) => `
+            <label class="json-event-item">
+              <input type="checkbox" id="json-cb-${i}" ${s.status === 0 ? 'checked' : ''}>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="json-event-name">${esc(s.eventName)}</span>
+                  ${_jsonStatusBadge(s.status)}
+                </div>
+                <div class="json-event-time">${_jsonToUtc8(s.startDate)}</div>
+              </div>
+            </label>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-copy-reply" style="flex:1;margin:0" onclick="_confirmJsonSelection()">✓ 匯入</button>
+          <button class="btn-popup-sec" style="flex:1" onclick="_renderJsonPasteState(document.getElementById('popup-overlay'))">← 返回</button>
+        </div>
+        <button class="btn-popup-sec" style="margin-top:6px;width:100%" onclick="closeMsgPopup()">完成</button>
+      </div>`;
+  }
+
+  function _confirmJsonSelection() {
     if (!_jsonImportData) return;
     const checked = _jsonImportData.selections
       .map((_, i) => i)
       .filter(i => { const cb = document.getElementById(`json-cb-${i}`); return cb && cb.checked; });
     if (checked.length === 0) { alert('請至少勾選一場賽事'); return; }
-    applyJsonImport(checked);
+    _doJsonImport(document.getElementById('popup-overlay'), checked);
   }
 
-  function applyJsonImport(indices) {
+  function _doJsonImport(overlay, indices) {
     if (!_jsonImportData) return;
     const { ticketId, selections } = _jsonImportData;
     const eventNames    = indices.map(i => selections[i].eventName);
     const eventStatuses = indices.map(i => selections[i].status);
     const newGroup = { id: `g${++groupCounter}`, orderNos: [ticketId], eventNames, eventStatuses };
 
-    // check if form already has data
     syncGroupValues();
     const hasData = formGroups.length > 1 ||
       formGroups[0].orderNos.some(o => o.trim()) ||
       formGroups[0].eventNames.some(e => e.trim());
 
     if (hasData) {
-      _pendingImportGroup = newGroup;
-      const overlay = document.createElement('div');
-      overlay.className = 'popup-overlay';
-      overlay.id = 'import-confirm-overlay';
-      overlay.innerHTML = `
-        <div class="popup-card" style="max-width:360px;width:92%">
-          <div class="popup-title" style="margin-bottom:8px">表單已有資料</div>
-          <div style="font-size:13px;color:var(--text-sec);margin-bottom:16px">要如何處理目前已填寫的內容？</div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn-copy-reply" style="margin-bottom:0" onclick="doImport('append')">＋ 保留並新增一組</button>
-            <button class="btn-copy-reply" style="margin-bottom:0;background:var(--orange-bg);border-color:rgba(196,149,106,0.4);color:var(--orange)" onclick="doImport('overwrite')">覆蓋全部</button>
-            <button class="btn-popup-sec" onclick="document.getElementById('import-confirm-overlay').remove()">取消</button>
-          </div>
-        </div>`;
-      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-      document.body.appendChild(overlay);
+      formGroups.push(newGroup);
     } else {
       formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames, eventStatuses };
-      renderFormGroups();
-      closeMsgPopup();
-      _jsonImportData = null;
     }
-  }
 
-  let _pendingImportGroup = null;
-  function doImport(mode) {
-    const overlay = document.getElementById('import-confirm-overlay');
-    if (overlay) overlay.remove();
-    if (!_pendingImportGroup) return;
-    if (mode === 'overwrite') {
-      groupCounter = 0;
-      formGroups = [{ ..._pendingImportGroup, id: `g${++groupCounter}` }];
-    } else {
-      formGroups.push(_pendingImportGroup);
-    }
-    _pendingImportGroup = null;
     _jsonImportData = null;
     renderFormGroups();
-    closeMsgPopup();
+    _renderJsonPasteState(overlay, `已新增注單 ${ticketId}`);
   }
 
   // ── Record CRUD ──
