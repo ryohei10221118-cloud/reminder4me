@@ -238,14 +238,20 @@
       flex: 1; padding: 8px 12px; border: 1px solid var(--border);
       border-right: none; border-radius: 8px 0 0 8px;
       background: var(--surface2); font-size: 13px; color: var(--text-pri); outline: none;
+      transition: border-color 0.15s, background 0.15s;
     }
     .req-input:focus { border-color: var(--blue-light); background: var(--surface); }
+    .req-input:focus + .req-toggle { border-color: var(--blue-light); }
     .req-toggle {
       padding: 0 10px; border: 1px solid var(--border); border-left: none;
       border-radius: 0 8px 8px 0; background: var(--surface2);
-      cursor: pointer; color: var(--text-muted); font-size: 11px; flex-shrink: 0;
+      cursor: pointer; color: var(--text-sec); font-size: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      line-height: 1;
     }
-    .req-toggle:hover { background: var(--border); }
+    .req-toggle:hover { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-light); }
+    .req-toggle:active { background: var(--border); }
     .req-dropdown {
       position: absolute; top: calc(100% + 4px); left: 0; right: 0;
       background: var(--surface); border: 1px solid var(--border);
@@ -779,7 +785,9 @@
               <div class="req-combobox" id="req-combobox">
                 <div class="req-input-row">
                   <input id="f-req" class="req-input" placeholder="客戶的需求或問題描述" autocomplete="off" required oninput="onReqInput()" onfocus="onReqInput()" onkeydown="onReqKeydown(event)">
-                  <button type="button" class="req-toggle" onclick="toggleReqDrop()">▾</button>
+                  <button type="button" class="req-toggle" onclick="toggleReqDrop()" title="顯示建議">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,4 6,8 10,4"/></svg>
+                  </button>
                 </div>
                 <div class="req-dropdown" id="req-dropdown" style="display:none"></div>
               </div>
