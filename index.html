@@ -1001,6 +1001,7 @@
     const selections = (data.Selections || []).map(s => ({
       eventName: s.EventName || '',
       startDate: s.StartEventDate || null,
+      status: s.SelectionStatus ?? null,
     })).filter(s => s.eventName);
 
     if (!ticketId) { alert('找不到 SQLTicketId'); return; }
@@ -1021,6 +1022,22 @@
       const pad = n => String(n).padStart(2,'0');
       return `${u8.getUTCFullYear()}/${pad(u8.getUTCMonth()+1)}/${pad(u8.getUTCDate())}  ${pad(u8.getUTCHours())}:${pad(u8.getUTCMinutes())} (UTC+8)`;
     };
+    const statusMap = {
+      0: { label: 'Opened',    color: 'var(--blue)' },
+      1: { label: 'Lost',      color: 'var(--red)' },
+      2: { label: 'Won',       color: 'var(--green)' },
+      3: { label: 'Draw',      color: 'var(--text-muted)' },
+      4: { label: 'Canceled',  color: 'var(--text-muted)' },
+      15: { label: 'Declined', color: 'var(--text-muted)' },
+      16: { label: 'Half Lost',color: 'var(--orange)' },
+      17: { label: 'Half Won', color: 'var(--green)' },
+      32: { label: 'Cashout',  color: 'var(--orange)' },
+    };
+    const statusBadge = st => {
+      const s = statusMap[st];
+      if (!s) return '';
+      return `<span style="font-size:11px;font-weight:600;color:${s.color}">${s.label}</span>`;
+    };
 
     const card = document.querySelector('#popup-overlay .popup-card');
     if (!card) return;
@@ -1034,7 +1051,10 @@
           <label class="json-event-item">
             <input type="checkbox" id="json-cb-${i}" checked>
             <div>
-              <div class="json-event-name">${esc(s.eventName)}</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="json-event-name">${esc(s.eventName)}</span>
+                ${statusBadge(s.status)}
+              </div>
               <div class="json-event-time">${toUtc8(s.startDate)}</div>
             </div>
           </label>`).join('')}
