@@ -136,7 +136,14 @@
       text-transform: uppercase;
       letter-spacing: 0.8px;
       margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between;
     }
+    .btn-clear-form {
+      font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0;
+      color: var(--text-muted); background: none; border: none; cursor: pointer;
+      padding: 2px 6px; border-radius: 5px; transition: color 0.15s, background 0.15s;
+    }
+    .btn-clear-form:hover { color: var(--red); background: var(--red-bg); }
     .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
     .form-group:last-child { margin-bottom: 0; }
     .form-group label { font-size: 12px; color: var(--text-sec); }
@@ -768,7 +775,10 @@
     <!-- ── Left: Add form ── -->
     <div class="left-col">
       <div class="form-card">
-        <div class="form-title">新增記錄</div>
+        <div class="form-title">
+          <span>新增記錄</span>
+          <button type="button" class="btn-clear-form" onclick="clearForm()" title="清除所有內容">清空</button>
+        </div>
         <form id="add-form" onsubmit="handleSubmit(event)">
           <div class="group-list" id="group-list"></div>
           <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -1158,6 +1168,11 @@
     renderFormGroups();
   }
 
+  function clearForm() {
+    initFormGroups();
+    ['f-req','f-group','f-info'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  }
+
   // ── JSON Import ──
   let _jsonImportData = null;
 
@@ -1249,7 +1264,7 @@
 
     _jsonImportData = { ticketId, selections };
 
-    if (selections.length === 1) {
+    if (selections.length === 1 && !_jsonIsUpcoming(selections[0].startDate)) {
       _doJsonImport(overlay, [0]);
     } else {
       _renderJsonSelectionState(overlay);
