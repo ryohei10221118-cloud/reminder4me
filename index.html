@@ -1075,11 +1075,54 @@
     if (!_jsonImportData) return;
     const { ticketId, selections } = _jsonImportData;
     const eventNames = indices.map(i => selections[i].eventName);
-    // overwrite first form group
-    formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames };
+    const newGroup = { id: `g${++groupCounter}`, orderNos: [ticketId], eventNames };
+
+    // check if form already has data
+    syncGroupValues();
+    const hasData = formGroups.length > 1 ||
+      formGroups[0].orderNos.some(o => o.trim()) ||
+      formGroups[0].eventNames.some(e => e.trim());
+
+    if (hasData) {
+      _pendingImportGroup = newGroup;
+      const overlay = document.createElement('div');
+      overlay.className = 'popup-overlay';
+      overlay.id = 'import-confirm-overlay';
+      overlay.innerHTML = `
+        <div class="popup-card" style="max-width:360px;width:92%">
+          <div class="popup-title" style="margin-bottom:8px">表單已有資料</div>
+          <div style="font-size:13px;color:var(--text-sec);margin-bottom:16px">要如何處理目前已填寫的內容？</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn-copy-reply" style="margin-bottom:0" onclick="doImport('append')">＋ 保留並新增一組</button>
+            <button class="btn-copy-reply" style="margin-bottom:0;background:var(--orange-bg);border-color:rgba(196,149,106,0.4);color:var(--orange)" onclick="doImport('overwrite')">覆蓋全部</button>
+            <button class="btn-popup-sec" onclick="document.getElementById('import-confirm-overlay').remove()">取消</button>
+          </div>
+        </div>`;
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    } else {
+      formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames };
+      renderFormGroups();
+      closeMsgPopup();
+      _jsonImportData = null;
+    }
+  }
+
+  let _pendingImportGroup = null;
+  function doImport(mode) {
+    const overlay = document.getElementById('import-confirm-overlay');
+    if (overlay) overlay.remove();
+    if (!_pendingImportGroup) return;
+    if (mode === 'overwrite') {
+      groupCounter = 0;
+      formGroups = [{ id: `g${++groupCounter}`, ..._pendingImportGroup }];
+    } else {
+      formGroups.push(_pendingImportGroup);
+    }
+    _pendingImportGroup = null;
+    _jsonImportData = null;
     renderFormGroups();
     closeMsgPopup();
-    _jsonImportData = null;
   }
 
   // ── Record CRUD ──
