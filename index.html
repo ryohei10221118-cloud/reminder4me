@@ -232,26 +232,24 @@
     .btn-import-json:hover { background: rgba(196,149,106,0.2); }
 
     /* ── Requirement combobox ── */
-    .req-combobox { position: relative; }
-    .req-input-row {
-      display: flex; align-items: center;
-      border: 1px solid var(--border); border-radius: 8px;
-      background: var(--surface2); transition: border-color 0.15s, background 0.15s;
-    }
-    .req-input-row:focus-within { border-color: var(--blue-light); background: var(--surface); }
+    .req-combobox { position: relative; display: flex; gap: 6px; align-items: center; }
+    .req-input-row { display: contents; }
     .req-input {
-      flex: 1; padding: 8px 12px; border: none; border-radius: 8px;
-      background: transparent; font-size: 13px; color: var(--text-pri); outline: none;
+      flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface2); font-size: 13px; color: var(--text-pri); outline: none;
+      transition: border-color 0.15s, background 0.15s;
     }
+    .req-input:focus { border-color: var(--blue-light); background: var(--surface); }
     .req-toggle {
-      padding: 0 10px; border: none; background: transparent;
-      cursor: pointer; color: var(--text-muted); flex-shrink: 0;
+      flex-shrink: 0; width: 32px; height: 32px;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--surface2);
+      cursor: pointer; color: var(--text-sec);
       display: flex; align-items: center; justify-content: center;
-      transition: color 0.15s; border-radius: 0 8px 8px 0; height: 100%;
+      transition: all 0.15s;
     }
-    .req-toggle:hover { color: var(--blue); }
+    .req-toggle:hover { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-light); }
     .req-dropdown {
-      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      position: absolute; top: calc(100% + 4px); left: 0; right: 38px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       z-index: 50; overflow: hidden; max-height: 200px; overflow-y: auto;
