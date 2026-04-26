@@ -1184,6 +1184,10 @@
     const pad = n => String(n).padStart(2,'0');
     return `${u8.getUTCFullYear()}/${pad(u8.getUTCMonth()+1)}/${pad(u8.getUTCDate())} ${pad(u8.getUTCHours())}:${pad(u8.getUTCMinutes())} (UTC+8)`;
   }
+  function _jsonIsUpcoming(iso) {
+    if (!iso) return false;
+    return new Date(iso).getTime() > Date.now();
+  }
 
   function showJsonImportPopup() {
     const existing = document.getElementById('popup-overlay');
@@ -1270,7 +1274,7 @@
                   <span class="json-event-name">${esc(s.eventName)}</span>
                   ${_jsonStatusBadge(s.status)}
                 </div>
-                <div class="json-event-time">${_jsonToUtc8(s.startDate)}</div>
+                <div class="json-event-time" ${_jsonIsUpcoming(s.startDate) ? 'style="color:var(--red)"' : ''}>${_jsonToUtc8(s.startDate)}${_jsonIsUpcoming(s.startDate) ? ' · 尚未開賽' : ''}</div>
               </div>
             </label>`).join('')}
         </div>
