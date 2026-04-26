@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0ebe4; padding: 24px; color: #4a4238; }
+  :root {
+    --bg:#f0ebe4;--surface:#faf8f5;--surface2:#ede8e0;--border:#ddd5c8;--border-light:#ece6de;
+    --text-pri:#4a4238;--text-sec:#8a7d72;--text-muted:#b5a99e;
+    --blue:#8facc8;--blue-light:#c5d5e8;--blue-bg:rgba(143,172,200,0.12);
+    --red:#c47878;--red-bg:rgba(196,120,120,0.12);
+    --green:#7aab8a;--green-bg:rgba(122,171,138,0.12);--green-border:rgba(122,171,138,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; max-width: 360px; }
+  label { font-size: 12px; color: var(--text-sec); display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .gear-btn { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text-muted); padding: 0; line-height: 1; }
+  .gear-btn:hover { color: var(--text-sec); transform: rotate(30deg); transition: transform 0.2s; }
+
+  /* Combobox */
+  .combobox-wrap { position: relative; }
+  .combobox-input-row { display: flex; }
+  .combobox-input {
+    flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+    border-right: none; border-radius: 8px 0 0 8px;
+    background: var(--surface2); font-size: 13px; color: var(--text-pri); outline: none;
+  }
+  .combobox-input:focus { border-color: var(--blue-light); background: var(--surface); }
+  .combobox-toggle {
+    padding: 0 10px; border: 1px solid var(--border); border-left: none;
+    border-radius: 0 8px 8px 0; background: var(--surface2);
+    cursor: pointer; color: var(--text-muted); font-size: 11px;
+  }
+  .combobox-toggle:hover { background: var(--border); }
+  .combobox-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    z-index: 100; overflow: hidden;
+  }
+  .combobox-item {
+    padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text-pri);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .combobox-item:hover { background: var(--blue-bg); color: var(--blue); }
+
+  /* Overlay */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; width: 340px; max-width: 92vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .preset-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; max-height: 260px; overflow-y: auto; }
+  .preset-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px;
+  }
+  .preset-text { flex: 1; color: var(--text-pri); }
+  .btn-del-preset {
+    background: none; border: none; cursor: pointer; color: var(--text-muted);
+    font-size: 15px; line-height: 1; padding: 0 2px;
+  }
+  .btn-del-preset:hover { color: var(--red); }
+  .add-row { display: flex; gap: 8px; }
+  .add-input {
+    flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface2); font-size: 13px; color: var(--text-pri); outline: none;
+  }
+  .add-input:focus { border-color: var(--blue-light); }
+  .btn-add-preset {
+    padding: 8px 14px; background: var(--blue-bg); border: 1px solid var(--blue-light);
+    border-radius: 8px; color: var(--blue); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-close-modal {
+    width: 100%; margin-top: 10px; padding: 9px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; color: var(--text-sec); cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <label>
+    需求 *
+    <button class="gear-btn" onclick="openGear()" title="管理預設需求">⚙️</button>
+  </label>
+  <div class="combobox-wrap" id="combo-wrap">
+    <div class="combobox-input-row">
+      <input class="combobox-input" id="f-req" placeholder="客戶的需求或問題描述" />
+      <button class="combobox-toggle" onclick="toggleDrop()">▾</button>
+    </div>
+    <div class="combobox-dropdown" id="dropdown" style="display:none"></div>
+  </div>
+</div>
+
+<!-- Gear modal -->
+<div class="overlay" id="gear-overlay" style="display:none" onclick="if(event.target===this)closeGear()">
+  <div class="modal">
+    <div class="modal-title">⚙️ 管理預設需求</div>
+    <div class="preset-list" id="preset-list"></div>
+    <div class="add-row">
+      <input class="add-input" id="new-preset-input" placeholder="輸入新需求..." onkeydown="if(event.key==='Enter')addPreset()">
+      <button class="btn-add-preset" onclick="addPreset()">新增</button>
+    </div>
+    <button class="btn-close-modal" onclick="closeGear()">完成</button>
+  </div>
+</div>
+
+<script>
+  const DEFAULT = [
+    'Pls check if the market and odds are correct',
+    'Could use as ref link?',
+    'Pls check the settlement',
+    'Check score',
+  ];
+
+  let presets = JSON.parse(localStorage.getItem('req_presets') || 'null') || [...DEFAULT];
+
+  function savePresets() { localStorage.setItem('req_presets', JSON.stringify(presets)); }
+
+  function renderDropdown() {
+    const d = document.getElementById('dropdown');
+    if (presets.length === 0) { d.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--text-muted)">沒有預設需求</div>'; return; }
+    d.innerHTML = presets.map((p, i) => `<div class="combobox-item" onclick="pick(${i})">${p}</div>`).join('');
+  }
+
+  function renderPresetList() {
+    const list = document.getElementById('preset-list');
+    if (presets.length === 0) { list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 0">尚無預設需求</div>'; return; }
+    list.innerHTML = presets.map((p, i) => `
+      <div class="preset-row">
+        <span class="preset-text">${p}</span>
+        <button class="btn-del-preset" onclick="deletePreset(${i})">×</button>
+      </div>`).join('');
+  }
+
+  function toggleDrop() {
+    const d = document.getElementById('dropdown');
+    const show = d.style.display === 'none';
+    if (show) renderDropdown();
+    d.style.display = show ? 'block' : 'none';
+  }
+
+  function pick(i) {
+    document.getElementById('f-req').value = presets[i];
+    document.getElementById('dropdown').style.display = 'none';
+  }
+
+  function openGear() {
+    renderPresetList();
+    document.getElementById('gear-overlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('new-preset-input').focus(), 50);
+  }
+
+  function closeGear() {
+    document.getElementById('gear-overlay').style.display = 'none';
+    document.getElementById('new-preset-input').value = '';
+  }
+
+  function addPreset() {
+    const val = document.getElementById('new-preset-input').value.trim();
+    if (!val) return;
+    presets.push(val);
+    savePresets();
+    document.getElementById('new-preset-input').value = '';
+    renderPresetList();
+  }
+
+  function deletePreset(i) {
+    presets.splice(i, 1);
+    savePresets();
+    renderPresetList();
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#combo-wrap')) document.getElementById('dropdown').style.display = 'none';
+  });
+</script>
+</body>
+</html>

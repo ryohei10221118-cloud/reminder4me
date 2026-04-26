@@ -230,6 +230,60 @@
       border: 1px dashed rgba(196,149,106,0.5); border-radius: 8px; cursor: pointer;
     }
     .btn-import-json:hover { background: rgba(196,149,106,0.2); }
+
+    /* ── Requirement combobox ── */
+    .req-combobox { position: relative; }
+    .req-input-row { display: flex; }
+    .req-input {
+      flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+      border-right: none; border-radius: 8px 0 0 8px;
+      background: var(--surface2); font-size: 13px; color: var(--text-pri); outline: none;
+    }
+    .req-input:focus { border-color: var(--blue-light); background: var(--surface); }
+    .req-toggle {
+      padding: 0 10px; border: 1px solid var(--border); border-left: none;
+      border-radius: 0 8px 8px 0; background: var(--surface2);
+      cursor: pointer; color: var(--text-muted); font-size: 11px; flex-shrink: 0;
+    }
+    .req-toggle:hover { background: var(--border); }
+    .req-dropdown {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      z-index: 50; overflow: hidden; max-height: 200px; overflow-y: auto;
+    }
+    .req-option {
+      padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text-pri);
+    }
+    .req-option:hover, .req-option.highlighted { background: var(--blue-bg); color: var(--blue); }
+    .req-option-hint { font-size: 11px; color: var(--text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gear-btn { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text-muted); padding: 0; line-height: 1; }
+    .gear-btn:hover { color: var(--text-sec); }
+
+    /* ── Presets gear modal ── */
+    .preset-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
+    }
+    .preset-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px; width: 400px; max-width: 92vw; max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    .preset-row {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px;
+    }
+    .preset-row-label { font-size: 12px; font-weight: 700; color: var(--text-sec); width: 56px; flex-shrink: 0; }
+    .preset-row-value { font-size: 12px; color: var(--text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-del-preset { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 15px; padding: 0 2px; flex-shrink: 0; }
+    .btn-del-preset:hover { color: var(--red); }
+    .preset-add-grid { display: grid; grid-template-columns: 80px 1fr auto; gap: 6px; margin-top: 8px; }
+    .preset-add-input {
+      padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px;
+      background: var(--surface2); font-size: 12px; color: var(--text-pri); outline: none;
+    }
+    .preset-add-input:focus { border-color: var(--blue-light); }
     .json-event-item {
       display: flex; align-items: flex-start; gap: 10px;
       padding: 8px 10px; border-radius: 8px; cursor: pointer;
@@ -721,8 +775,14 @@
           </div>
           <div class="shared-fields">
             <div class="form-group">
-              <label>需求 *</label>
-              <input id="f-req" placeholder="客戶的需求或問題描述" autocomplete="off" required>
+              <label>需求 * <button type="button" class="gear-btn" onclick="openPresetsModal()" title="管理預設需求">⚙️</button></label>
+              <div class="req-combobox" id="req-combobox">
+                <div class="req-input-row">
+                  <input id="f-req" class="req-input" placeholder="客戶的需求或問題描述" autocomplete="off" required oninput="onReqInput()" onfocus="onReqInput()" onkeydown="onReqKeydown(event)">
+                  <button type="button" class="req-toggle" onclick="toggleReqDrop()">▾</button>
+                </div>
+                <div class="req-dropdown" id="req-dropdown" style="display:none"></div>
+              </div>
             </div>
             <div class="form-group">
               <label>群組名稱 *</label>
@@ -799,6 +859,124 @@
   }
   function getAgentName() { return (document.getElementById('agent-name') || {}).value?.trim() || ''; }
   function saveAgentName() { localStorage.setItem('reminder4me_agent', getAgentName()); }
+
+  // ── Requirement presets ──
+  const PRESETS_KEY = 'reminder4me_req_presets';
+  const DEFAULT_PRESETS = [
+    { label: '結算',    value: 'set pls' },
+    { label: '賽果',    value: 'Pls check if the settlement is correct and a link, ty' },
+    { label: '盤口賠率', value: 'Pls check if the market and odds are correct, ty' },
+    { label: '無效進球', value: 'Pls check if any disallowed goal, ty' },
+  ];
+  function loadPresets() {
+    try { const r = localStorage.getItem(PRESETS_KEY); return r ? JSON.parse(r) : [...DEFAULT_PRESETS]; }
+    catch(e) { return [...DEFAULT_PRESETS]; }
+  }
+  function savePresetsData(p) { localStorage.setItem(PRESETS_KEY, JSON.stringify(p)); }
+
+  let _reqHighlight = -1;
+  function getFilteredPresets(q) {
+    const presets = loadPresets();
+    if (!q) return presets;
+    const lq = q.toLowerCase();
+    return presets.filter(p => p.label.toLowerCase().includes(lq) || p.value.toLowerCase().includes(lq));
+  }
+  function renderReqDropdown(items) {
+    const drop = document.getElementById('req-dropdown');
+    if (!items.length) { drop.style.display = 'none'; return; }
+    _reqHighlight = -1;
+    drop.innerHTML = items.map((p, i) =>
+      `<div class="req-option" data-idx="${i}" onmousedown="pickPreset(${i})" onmouseover="highlightReq(${i})">
+        <div>${esc(p.label)}</div>
+        <div class="req-option-hint">${esc(p.value)}</div>
+      </div>`
+    ).join('');
+    drop.style.display = 'block';
+    drop._items = items;
+  }
+  function onReqInput() {
+    const q = document.getElementById('f-req').value;
+    renderReqDropdown(getFilteredPresets(q));
+  }
+  function toggleReqDrop() {
+    const drop = document.getElementById('req-dropdown');
+    if (drop.style.display !== 'none') { drop.style.display = 'none'; return; }
+    renderReqDropdown(loadPresets());
+  }
+  function pickPreset(i) {
+    const drop = document.getElementById('req-dropdown');
+    const item = (drop._items || [])[i];
+    if (!item) return;
+    document.getElementById('f-req').value = item.value;
+    drop.style.display = 'none';
+  }
+  function highlightReq(i) {
+    _reqHighlight = i;
+    document.querySelectorAll('.req-option').forEach((el, idx) => el.classList.toggle('highlighted', idx === i));
+  }
+  function onReqKeydown(e) {
+    const drop = document.getElementById('req-dropdown');
+    if (drop.style.display === 'none') return;
+    const opts = drop.querySelectorAll('.req-option');
+    if (e.key === 'ArrowDown') { e.preventDefault(); _reqHighlight = Math.min(_reqHighlight + 1, opts.length - 1); opts.forEach((el, i) => el.classList.toggle('highlighted', i === _reqHighlight)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _reqHighlight = Math.max(_reqHighlight - 1, 0); opts.forEach((el, i) => el.classList.toggle('highlighted', i === _reqHighlight)); }
+    else if (e.key === 'Enter' && _reqHighlight >= 0) { e.preventDefault(); pickPreset(_reqHighlight); }
+    else if (e.key === 'Escape') { drop.style.display = 'none'; }
+  }
+
+  // Presets management modal
+  function openPresetsModal() {
+    const existing = document.getElementById('presets-modal-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'preset-modal-overlay';
+    overlay.id = 'presets-modal-overlay';
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.innerHTML = `
+      <div class="preset-modal">
+        <div style="font-size:15px;font-weight:700;margin-bottom:14px">⚙️ 管理預設需求</div>
+        <div id="presets-list-inner"></div>
+        <div class="preset-add-grid" style="margin-top:10px">
+          <input class="preset-add-input" id="new-preset-label" placeholder="標題" maxlength="12">
+          <input class="preset-add-input" id="new-preset-value" placeholder="填入內容" onkeydown="if(event.key==='Enter')addPresetItem()">
+          <button class="btn-add-preset" style="padding:7px 12px;background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:7px;color:var(--blue);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="addPresetItem()">＋ 新增</button>
+        </div>
+        <button class="btn-popup-sec" style="width:100%;margin-top:10px" onclick="document.getElementById('presets-modal-overlay').remove()">完成</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    renderPresetsListInner();
+    setTimeout(() => document.getElementById('new-preset-label').focus(), 50);
+  }
+  function renderPresetsListInner() {
+    const el = document.getElementById('presets-list-inner');
+    if (!el) return;
+    const presets = loadPresets();
+    if (!presets.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 0 8px">尚無預設需求</div>'; return; }
+    el.innerHTML = presets.map((p, i) => `
+      <div class="preset-row">
+        <span class="preset-row-label">${esc(p.label)}</span>
+        <span class="preset-row-value" title="${esc(p.value)}">${esc(p.value)}</span>
+        <button class="btn-del-preset" onclick="deletePresetItem(${i})">×</button>
+      </div>`).join('');
+  }
+  function addPresetItem() {
+    const label = document.getElementById('new-preset-label').value.trim();
+    const value = document.getElementById('new-preset-value').value.trim();
+    if (!label || !value) return;
+    const presets = loadPresets();
+    presets.push({ label, value });
+    savePresetsData(presets);
+    document.getElementById('new-preset-label').value = '';
+    document.getElementById('new-preset-value').value = '';
+    renderPresetsListInner();
+    document.getElementById('new-preset-label').focus();
+  }
+  function deletePresetItem(i) {
+    const presets = loadPresets();
+    presets.splice(i, 1);
+    savePresetsData(presets);
+    renderPresetsListInner();
+  }
   function loadAgentName() {
     const v = localStorage.getItem('reminder4me_agent');
     const el = document.getElementById('agent-name');
@@ -1112,7 +1290,7 @@
       overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
       document.body.appendChild(overlay);
     } else {
-      formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames };
+      formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames, eventStatuses };
       renderFormGroups();
       closeMsgPopup();
       _jsonImportData = null;
@@ -1907,6 +2085,13 @@
     setInterval(tickTimers, 1000);
   }
   document.addEventListener('DOMContentLoaded', init);
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#req-combobox')) {
+      const drop = document.getElementById('req-dropdown');
+      if (drop) drop.style.display = 'none';
+    }
+  });
 
   // Back-to-top button
   window.addEventListener('scroll', () => {
