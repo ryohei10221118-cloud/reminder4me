@@ -1049,7 +1049,7 @@
       <div id="json-sel-list">
         ${selections.map((s, i) => `
           <label class="json-event-item">
-            <input type="checkbox" id="json-cb-${i}" checked>
+            <input type="checkbox" id="json-cb-${i}" ${s.status === 0 ? 'checked' : ''}>
             <div>
               <div style="display:flex;align-items:center;gap:8px">
                 <span class="json-event-name">${esc(s.eventName)}</span>
