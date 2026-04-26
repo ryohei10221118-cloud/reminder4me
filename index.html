@@ -779,7 +779,7 @@
     try { const raw = localStorage.getItem(STORAGE_KEY); records = raw ? JSON.parse(raw) : []; }
     catch(e) { records = []; }
   }
-  function getAgentName() { return (document.getElementById('agent-name') || {}).value?.trim() || 'Sunny'; }
+  function getAgentName() { return (document.getElementById('agent-name') || {}).value?.trim() || ''; }
   function saveAgentName() { localStorage.setItem('reminder4me_agent', getAgentName()); }
   function loadAgentName() {
     const v = localStorage.getItem('reminder4me_agent');
@@ -1498,13 +1498,13 @@
     const nos       = r.orderNos.filter(Boolean);
 
     _replyTexts = isFinal ? {
-      en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience. - ${getAgentName()}`,
-      zh: `${name}\n已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。- ${getAgentName()}`,
-      kr: `${name}\n해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다. - ${getAgentName()}`,
+      en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience.${getAgentName() ? ` - ${getAgentName()}` : ''}`,
+      zh: `${name}\n已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。${getAgentName() ? `- ${getAgentName()}` : ''}`,
+      kr: `${name}\n해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다.${getAgentName() ? ` - ${getAgentName()}` : ''}`,
     } : {
-      en: `${name}\nOne moment. We've submitted it to the relevant department. - ${getAgentName()}`,
-      zh: `${name}\n已为您反馈至相关单位查询中，请您稍候。- ${getAgentName()}`,
-      kr: `${name}\n잠시만요. 관련 부서에 제출했습니다. - ${getAgentName()}`,
+      en: `${name}\nOne moment. We've submitted it to the relevant department.${getAgentName() ? ` - ${getAgentName()}` : ''}`,
+      zh: `${name}\n已为您反馈至相关单位查询中，请您稍候。${getAgentName() ? `- ${getAgentName()}` : ''}`,
+      kr: `${name}\n잠시만요. 관련 부서에 제출했습니다.${getAgentName() ? ` - ${getAgentName()}` : ''}`,
     };
 
     const overlay = document.createElement('div');
