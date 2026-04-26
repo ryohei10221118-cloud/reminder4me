@@ -80,13 +80,13 @@
     }
     .settlement-btn:hover { background: var(--orange-bg); border-color: var(--orange); color: var(--orange); }
     .agent-name-input {
-      padding: 5px 10px;
+      padding: 6px 12px;
       border: 1px solid var(--border);
       border-radius: 6px;
       background: var(--surface2);
       color: var(--text-pri);
       font-size: 12px;
-      width: 90px;
+      width: 100px;
       outline: none;
     }
     .agent-name-input:focus { border-color: var(--blue-light); background: var(--surface); }
@@ -224,6 +224,21 @@
       margin-bottom: 14px;
     }
     .btn-add-group:hover { background: rgba(143,172,200,0.2); }
+    .btn-import-json {
+      padding: 9px 14px; font-size: 13px; white-space: nowrap;
+      color: var(--orange); background: var(--orange-bg);
+      border: 1px dashed rgba(196,149,106,0.5); border-radius: 8px; cursor: pointer;
+    }
+    .btn-import-json:hover { background: rgba(196,149,106,0.2); }
+    .json-event-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 10px; border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface2); margin-bottom: 6px;
+    }
+    .json-event-item:hover { background: var(--blue-bg); border-color: var(--blue-light); }
+    .json-event-item input[type=checkbox] { margin-top: 2px; accent-color: var(--blue); flex-shrink: 0; }
+    .json-event-name { font-size: 13px; font-weight: 600; color: var(--text-pri); }
+    .json-event-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     .shared-fields { display: flex; flex-direction: column; gap: 0; margin-bottom: 14px; }
     .btn-submit {
       width: 100%;
@@ -700,7 +715,10 @@
         <div class="form-title">新增記錄</div>
         <form id="add-form" onsubmit="handleSubmit(event)">
           <div class="group-list" id="group-list"></div>
-          <button type="button" class="btn-add-group" onclick="addFormGroup()">＋ 新增賽事群組</button>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button type="button" class="btn-add-group" style="flex:1;margin-bottom:0" onclick="addFormGroup()">＋ 新增賽事群組</button>
+            <button type="button" class="btn-import-json" onclick="showJsonImportPopup()">📥 JSON</button>
+          </div>
           <div class="shared-fields">
             <div class="form-group">
               <label>需求 *</label>
@@ -946,6 +964,99 @@
     groupCounter = 0;
     formGroups = [{ id: `g${++groupCounter}`, orderNos: [''], eventNames: [''] }];
     renderFormGroups();
+  }
+
+  // ── JSON Import ──
+  let _jsonImportData = null; // { ticketId, selections: [{eventName, startDate}] }
+
+  function showJsonImportPopup() {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    overlay.id = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card msg-popup" style="border-color:var(--border);max-width:480px;width:92%">
+        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info">📥 匯入 JSON</div>
+        <div class="popup-title" style="margin-bottom:10px">貼入注單 JSON</div>
+        <textarea class="msg-textarea" id="json-import-ta" placeholder='貼入 JSON...' style="height:160px"></textarea>
+        <button class="btn-copy-reply" style="margin-top:8px;margin-bottom:0" onclick="parseJsonImport()">解析</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
+    setTimeout(() => { const ta = overlay.querySelector('#json-import-ta'); if (ta) ta.focus(); }, 50);
+  }
+
+  function parseJsonImport() {
+    const ta = document.getElementById('json-import-ta');
+    if (!ta) return;
+    let data;
+    try { data = JSON.parse(ta.value.trim()); } catch(e) { alert('JSON 格式錯誤，請確認後再試'); return; }
+
+    const ticketId = String(data.SQLTicketId || '');
+    const selections = (data.Selections || []).map(s => ({
+      eventName: s.EventName || '',
+      startDate: s.StartEventDate || null,
+    })).filter(s => s.eventName);
+
+    if (!ticketId) { alert('找不到 SQLTicketId'); return; }
+    if (selections.length === 0) { alert('找不到任何 EventName'); return; }
+
+    _jsonImportData = { ticketId, selections };
+
+    if (selections.length === 1) {
+      applyJsonImport([0]);
+      return;
+    }
+
+    // show selection UI
+    const toUtc8 = iso => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const u8 = new Date(d.getTime() + 8 * 3600000);
+      const pad = n => String(n).padStart(2,'0');
+      return `${u8.getUTCFullYear()}/${pad(u8.getUTCMonth()+1)}/${pad(u8.getUTCDate())}  ${pad(u8.getUTCHours())}:${pad(u8.getUTCMinutes())} (UTC+8)`;
+    };
+
+    const card = document.querySelector('#popup-overlay .popup-card');
+    if (!card) return;
+    card.innerHTML = `
+      <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+      <div class="popup-badge info">📥 匯入 JSON</div>
+      <div class="popup-title" style="margin-bottom:4px">選擇要帶入的賽事</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">注單號：${esc(ticketId)}</div>
+      <div id="json-sel-list">
+        ${selections.map((s, i) => `
+          <label class="json-event-item">
+            <input type="checkbox" id="json-cb-${i}" checked>
+            <div>
+              <div class="json-event-name">${esc(s.eventName)}</div>
+              <div class="json-event-time">${toUtc8(s.startDate)}</div>
+            </div>
+          </label>`).join('')}
+      </div>
+      <button class="btn-copy-reply" style="margin-top:4px;margin-bottom:0" onclick="confirmJsonImport()">✓ 帶入表單</button>`;
+  }
+
+  function confirmJsonImport() {
+    if (!_jsonImportData) return;
+    const checked = _jsonImportData.selections
+      .map((_, i) => i)
+      .filter(i => { const cb = document.getElementById(`json-cb-${i}`); return cb && cb.checked; });
+    if (checked.length === 0) { alert('請至少勾選一場賽事'); return; }
+    applyJsonImport(checked);
+  }
+
+  function applyJsonImport(indices) {
+    if (!_jsonImportData) return;
+    const { ticketId, selections } = _jsonImportData;
+    const eventNames = indices.map(i => selections[i].eventName);
+    // overwrite first form group
+    formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames };
+    renderFormGroups();
+    closeMsgPopup();
+    _jsonImportData = null;
   }
 
   // ── Record CRUD ──
