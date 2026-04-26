@@ -991,10 +991,13 @@
   function parseJsonImport() {
     const ta = document.getElementById('json-import-ta');
     if (!ta) return;
+    const raw = ta.value.trim();
     let data;
-    try { data = JSON.parse(ta.value.trim()); } catch(e) { alert('JSON 格式錯誤，請確認後再試'); return; }
+    try { data = JSON.parse(raw); } catch(e) { alert('JSON 格式錯誤，請確認後再試'); return; }
 
-    const ticketId = String(data.SQLTicketId || '');
+    // Extract SQLTicketId as string from raw text to avoid JS float precision loss
+    const ticketMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
+    const ticketId = ticketMatch ? ticketMatch[1] : String(data.SQLTicketId || '');
     const selections = (data.Selections || []).map(s => ({
       eventName: s.EventName || '',
       startDate: s.StartEventDate || null,
