@@ -276,15 +276,30 @@
     }
     .preset-modal {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      padding: 20px; width: 400px; max-width: 92vw; max-height: 85vh; overflow-y: auto;
+      padding: 20px; width: 400px; max-width: 92vw;
       box-shadow: 0 8px 32px rgba(0,0,0,0.12);
     }
+    .preset-list-scroll { max-height: 280px; overflow-y: auto; padding-right: 2px; margin-bottom: 2px; }
     .preset-row {
-      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      display: flex; align-items: center; gap: 6px; padding: 6px 8px;
       background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px;
+      cursor: default;
     }
-    .preset-row-label { font-size: 12px; font-weight: 700; color: var(--text-sec); width: 56px; flex-shrink: 0; }
-    .preset-row-value { font-size: 12px; color: var(--text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .preset-row.drag-over { border-color: var(--blue-light); background: var(--blue-bg); }
+    .preset-drag-handle {
+      cursor: grab; color: var(--text-muted); font-size: 14px; flex-shrink: 0;
+      padding: 0 2px; line-height: 1; user-select: none;
+    }
+    .preset-drag-handle:active { cursor: grabbing; }
+    .preset-edit-input {
+      border: 1px solid transparent; border-radius: 5px; background: transparent;
+      font-size: 12px; color: var(--text-pri); outline: none; padding: 2px 5px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .preset-edit-input:hover { border-color: var(--border); background: var(--surface); }
+    .preset-edit-input:focus { border-color: var(--blue-light); background: var(--surface); }
+    .preset-edit-label { width: 62px; flex-shrink: 0; font-weight: 700; color: var(--text-sec); }
+    .preset-edit-value { flex: 1; color: var(--text-muted); min-width: 0; }
     .btn-del-preset { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 15px; padding: 0 2px; flex-shrink: 0; }
     .btn-del-preset:hover { color: var(--red); }
     .preset-add-grid { display: grid; grid-template-columns: 80px 1fr auto; gap: 6px; margin-top: 8px; }
@@ -298,6 +313,7 @@
       padding: 8px 10px; border-radius: 8px; cursor: pointer;
       border: 1px solid var(--border); background: var(--surface2); margin-bottom: 6px;
     }
+    .json-event-item.is-opened { background: var(--blue-bg); border-color: var(--blue-light); }
     .json-event-item:hover { background: var(--blue-bg); border-color: var(--blue-light); }
     .json-event-item input[type=checkbox] { margin-top: 2px; accent-color: var(--blue); flex-shrink: 0; }
     .json-event-name { font-size: 13px; font-weight: 600; color: var(--text-pri); }
@@ -949,7 +965,7 @@
     overlay.innerHTML = `
       <div class="preset-modal">
         <div style="font-size:15px;font-weight:700;margin-bottom:14px">⚙️ 管理預設需求</div>
-        <div id="presets-list-inner"></div>
+        <div class="preset-list-scroll"><div id="presets-list-inner"></div></div>
         <div class="preset-add-grid" style="margin-top:10px">
           <input class="preset-add-input" id="new-preset-label" placeholder="標題" maxlength="12">
           <input class="preset-add-input" id="new-preset-value" placeholder="填入內容" onkeydown="if(event.key==='Enter')addPresetItem()">
@@ -961,17 +977,61 @@
     renderPresetsListInner();
     setTimeout(() => document.getElementById('new-preset-label').focus(), 50);
   }
+  let _presetDragSrc = -1;
   function renderPresetsListInner() {
     const el = document.getElementById('presets-list-inner');
     if (!el) return;
     const presets = loadPresets();
     if (!presets.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 0 8px">尚無預設需求</div>'; return; }
     el.innerHTML = presets.map((p, i) => `
-      <div class="preset-row">
-        <span class="preset-row-label">${esc(p.label)}</span>
-        <span class="preset-row-value" title="${esc(p.value)}">${esc(p.value)}</span>
+      <div class="preset-row" draggable="true"
+           ondragstart="_pDragStart(event,${i})"
+           ondragover="_pDragOver(event)"
+           ondragleave="_pDragLeave(event)"
+           ondrop="_pDrop(event,${i})"
+           ondragend="_pDragEnd(event)">
+        <span class="preset-drag-handle" title="拖曳排序">⠿</span>
+        <input class="preset-edit-input preset-edit-label" value="${esc(p.label)}" maxlength="12"
+               onblur="_pSaveLabel(${i},this)" onkeydown="if(event.key==='Enter')this.blur()">
+        <input class="preset-edit-input preset-edit-value" value="${esc(p.value)}"
+               onblur="_pSaveValue(${i},this)" onkeydown="if(event.key==='Enter')this.blur()">
         <button class="btn-del-preset" onclick="deletePresetItem(${i})">×</button>
       </div>`).join('');
+  }
+  function _pSaveLabel(i, el) {
+    const presets = loadPresets(); if (!presets[i]) return;
+    const v = el.value.trim();
+    if (v) { presets[i].label = v; savePresetsData(presets); } else { el.value = presets[i].label; }
+  }
+  function _pSaveValue(i, el) {
+    const presets = loadPresets(); if (!presets[i]) return;
+    const v = el.value.trim();
+    if (v) { presets[i].value = v; savePresetsData(presets); } else { el.value = presets[i].value; }
+  }
+  function _pDragStart(e, i) {
+    _presetDragSrc = i;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => e.currentTarget && (e.currentTarget.style.opacity = '0.4'), 0);
+  }
+  function _pDragOver(e) {
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drag-over');
+  }
+  function _pDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+  function _pDrop(e, i) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (_presetDragSrc === i) return;
+    const presets = loadPresets();
+    const [moved] = presets.splice(_presetDragSrc, 1);
+    presets.splice(i, 0, moved);
+    savePresetsData(presets);
+    renderPresetsListInner();
+  }
+  function _pDragEnd(e) {
+    if (e.currentTarget) e.currentTarget.style.opacity = '';
+    document.querySelectorAll('.preset-row').forEach(r => r.classList.remove('drag-over'));
+    _presetDragSrc = -1;
   }
   function addPresetItem() {
     const label = document.getElementById('new-preset-label').value.trim();
@@ -1203,6 +1263,10 @@
     if (!iso) return false;
     return new Date(iso).getTime() > Date.now();
   }
+  function _jsonIsStale(iso) {
+    if (!iso) return false;
+    return Date.now() - new Date(iso).getTime() > 24 * 3600000;
+  }
 
   function showJsonImportPopup() {
     const existing = document.getElementById('popup-overlay');
@@ -1274,24 +1338,34 @@
   function _renderJsonSelectionState(overlay) {
     if (!_jsonImportData) return;
     const { ticketId, selections } = _jsonImportData;
+    const _statusSortOrder = { 0:0, 1:1, 3:2, 4:3, 2:4, 32:5, 15:6 };
+    const sorted = selections
+      .map((s, i) => ({ ...s, origIdx: i }))
+      .sort((a, b) => (_statusSortOrder[a.status] ?? 7) - (_statusSortOrder[b.status] ?? 7));
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--border);max-width:480px;width:92%">
         <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info">📥 匯入 JSON</div>
         <div class="popup-title" style="margin-bottom:4px">選擇要帶入的賽事</div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">注單號：${esc(ticketId)}</div>
-        <div id="json-sel-list">
-          ${selections.map((s, i) => `
-            <label class="json-event-item">
-              <input type="checkbox" id="json-cb-${i}" ${s.status === 0 ? 'checked' : ''}>
+        <div id="json-sel-list" style="max-height:340px;overflow-y:auto;padding-right:2px">
+          ${sorted.map((s) => {
+            const upcoming = _jsonIsUpcoming(s.startDate);
+            const stale    = _jsonIsStale(s.startDate);
+            const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : '';
+            const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
+            return `
+            <label class="json-event-item${s.status === 0 ? ' is-opened' : ''}">
+              <input type="checkbox" id="json-cb-${s.origIdx}" ${s.status === 0 ? 'checked' : ''}>
               <div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span class="json-event-name">${esc(s.eventName)}</span>
                   ${_jsonStatusBadge(s.status)}
                 </div>
-                <div class="json-event-time" ${_jsonIsUpcoming(s.startDate) ? 'style="color:var(--red)"' : ''}>${_jsonToUtc8(s.startDate)}${_jsonIsUpcoming(s.startDate) ? ' · 尚未開賽' : ''}</div>
+                <div class="json-event-time"${timeColor ? ` style="color:${timeColor}"` : ''}>${_jsonToUtc8(s.startDate)}${timeNote}</div>
               </div>
-            </label>`).join('')}
+            </label>`;
+          }).join('')}
         </div>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn-copy-reply" style="flex:1;margin:0" onclick="_confirmJsonSelection()">✓ 匯入</button>
