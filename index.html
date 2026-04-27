@@ -1844,7 +1844,8 @@
     const eventNames = getEventNames(r);
     const eventRowsHtml = eventNames.map((name, ei) => `
       <div class="card-event-row">
-        <span class="card-event-name">🏆 ${esc(name)}</span>
+        <span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(name)}</span>
+        <button class="btn-copy-inline" onclick="copyText(${JSON.stringify(name)},this)" title="複製賽事名稱">⎘</button>
         <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
       </div>`).join('');
     const checkboxHtml = inBatch
@@ -1944,7 +1945,7 @@
       return `
         <div class="record-card done">
           <div class="card-header">
-            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name">🏆 ${esc(n)}</span></div>`).join('')}</div>
+            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(n)}</span><button class="btn-copy-inline" onclick="copyText(${JSON.stringify(n)},this)" title="複製賽事名稱">⎘</button></div>`).join('')}</div>
           </div>
           <div class="card-body">
             <div class="timer-box" style="border-color:var(--border)">
