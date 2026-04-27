@@ -1600,12 +1600,14 @@
     });
 
     save(); fullRender();
-    _showBatchRestartReply(allEventNames, lang, isFinal);
+    _showBatchRestartReply(toRestart, allEventNames, lang, isFinal);
   }
 
-  function _showBatchRestartReply(allEventNames, lang, isFinal) {
+  let _batchRestartIds = [];
+  function _showBatchRestartReply(ids, allEventNames, lang, isFinal) {
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
+    _batchRestartIds = ids;
     const name = allEventNames.join('\n');
     const agentSuffix = getAgentName() ? ` - ${getAgentName()}` : '';
     _replyTexts = isFinal ? {
@@ -1640,12 +1642,49 @@
           </div>
         </div>
         <div class="popup-btns">
-          <button class="btn-popup-sec" onclick="dismissPopup()">關閉</button>
+          <button class="btn-popup-done" onclick="_batchMarkDoneFromPopup()">✓ 已回覆</button>
+          <button class="btn-popup-sec" onclick="${isFinal ? '_batchDismissAndPend()' : '_batchAckStage1()'}">${isFinal ? '關閉' : '繼續計時'}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
     attachOverlayClose(overlay);
     playSound();
+  }
+
+  function _batchMarkDoneFromPopup() {
+    const now = Date.now();
+    _batchRestartIds.forEach(id => {
+      const r = records.find(x => x.id === id);
+      if (!r || r.completedAt) return;
+      r.completedAt = now;
+      clearTimeout(timerHandles[id]); delete timerHandles[id];
+      popupQueue = popupQueue.filter(x => x !== id);
+      selectedIds.delete(id);
+    });
+    _batchRestartIds = [];
+    save(); dismissPopup(); fullRender();
+  }
+
+  function _batchAckStage1() {
+    _batchRestartIds.forEach(id => {
+      const r = records.find(x => x.id === id);
+      if (!r || r.stage !== 1) return;
+      r.stage = 2; r.stage2StartAt = Date.now();
+      schedule(r);
+    });
+    _batchRestartIds = [];
+    save(); dismissPopup(); fullRender();
+  }
+
+  function _batchDismissAndPend() {
+    _batchRestartIds.forEach(id => {
+      const r = records.find(x => x.id === id);
+      if (!r || r.stage !== 2) return;
+      r.stage = 3;
+      clearTimeout(timerHandles[id]); delete timerHandles[id];
+    });
+    _batchRestartIds = [];
+    save(); fullRender(); dismissPopup();
   }
 
   function batchMarkDone(batchId) {
