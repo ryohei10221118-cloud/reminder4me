@@ -286,6 +286,13 @@
       cursor: default;
     }
     .preset-row.drag-over { border-color: var(--blue-light); background: var(--blue-bg); }
+    .preset-bet-toggle {
+      display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+      font-size: 11px; color: var(--text-muted); cursor: pointer; user-select: none;
+      white-space: nowrap;
+    }
+    .preset-bet-toggle input { accent-color: var(--blue); cursor: pointer; margin: 0; }
+    .preset-bet-toggle:has(input:checked) { color: var(--blue); }
     .preset-drag-handle {
       cursor: grab; color: var(--text-muted); font-size: 14px; flex-shrink: 0;
       padding: 0 2px; line-height: 1; user-select: none;
@@ -534,6 +541,12 @@
     }
     .record-meta { font-size: 12px; color: var(--text-sec); line-height: 1.6; }
     .record-meta b { color: var(--text-pri); font-weight: 600; }
+    .bet-info-block { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-light); }
+    .bet-info-line {
+      font-size: 12px; color: var(--text-pri); line-height: 1.5;
+      overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .bet-score-line { font-size: 12px; color: var(--text-sec); margin-top: 1px; }
 
     /* ── Record actions ── */
     .record-actions { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; flex-shrink: 0; }
@@ -996,6 +1009,9 @@
                onblur="_pSaveLabel(${i},this)" onkeydown="if(event.key==='Enter')this.blur()">
         <input class="preset-edit-input preset-edit-value" value="${esc(p.value)}"
                onblur="_pSaveValue(${i},this)" onkeydown="if(event.key==='Enter')this.blur()">
+        <label class="preset-bet-toggle" title="勾選後建立的卡片會顯示投注內容">
+          <input type="checkbox" ${p.showBetInfo ? 'checked' : ''} onchange="_pSaveBetInfo(${i},this.checked)">比分
+        </label>
         <button class="btn-del-preset" onclick="deletePresetItem(${i})">×</button>
       </div>`).join('');
   }
@@ -1008,6 +1024,34 @@
     const presets = loadPresets(); if (!presets[i]) return;
     const v = el.value.trim();
     if (v) { presets[i].value = v; savePresetsData(presets); } else { el.value = presets[i].value; }
+  }
+  function _pSaveBetInfo(i, checked) {
+    const presets = loadPresets(); if (!presets[i]) return;
+    presets[i].showBetInfo = checked;
+    savePresetsData(presets);
+  }
+  function _presetShowsBetInfo(requirementValue) {
+    return loadPresets().some(p => p.value === requirementValue && p.showBetInfo);
+  }
+  function _buildBetInfoHtml(r) {
+    if (!r.betInfos || !_presetShowsBetInfo(r.requirement)) return '';
+    const rows = r.betInfos.map(b => {
+      if (!b) return '';
+      const na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
+      const line1 = `${na(b.lineType)} / ${na(b.selectionName)}`;
+      const hasScore = b.score1 !== null || b.score2 !== null;
+      const hasSettlement = b.settlementResult !== null && b.settlementResult !== '';
+      const fullLine1 = line1;
+      const scorePart = hasScore ? `${na(b.score1)}-${na(b.score2)}` : null;
+      const settlePart = hasSettlement ? na(b.settlementResult) : null;
+      const line2 = (scorePart && settlePart) ? `${scorePart} / ${settlePart}`
+                  : scorePart ? scorePart
+                  : settlePart ? settlePart
+                  : null;
+      return `<div class="bet-info-line" title="${esc(fullLine1)}">${esc(fullLine1)}</div>`
+           + (line2 ? `<div class="bet-score-line">${esc(line2)}</div>` : '');
+    }).filter(Boolean).join('');
+    return rows ? `<div class="bet-info-block">${rows}</div>` : '';
   }
   function _pDragStart(e, i) {
     _presetDragSrc = i;
@@ -1136,9 +1180,10 @@
       if (!container) return;
       g.orderNos   = Array.from(container.querySelectorAll('.order-input')).map(i => i.value);
       const prevStatuses = g.eventStatuses || [];
+      const prevBetInfos = g.betInfos || [];
       g.eventNames = Array.from(container.querySelectorAll('.event-input')).map((inp, ei) => inp.value);
-      // keep statuses aligned with current event name count
       g.eventStatuses = g.eventNames.map((_, ei) => prevStatuses[ei] ?? null);
+      g.betInfos = g.eventNames.map((_, ei) => prevBetInfos[ei] ?? null);
     });
   }
 
@@ -1312,9 +1357,14 @@
     const ticketMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
     const ticketId = ticketMatch ? ticketMatch[1] : String(data.SQLTicketId || '');
     const selections = (data.Selections || []).map(s => ({
-      eventName: s.EventName || '',
-      startDate: s.StartEventDate || null,
-      status: s.SelectionStatus ?? null,
+      eventName:        s.EventName || '',
+      startDate:        s.StartEventDate || null,
+      status:           s.SelectionStatus ?? null,
+      lineType:         s.LineTypeName || '',
+      selectionName:    s.SelectionName || '',
+      score1:           s.Score1 ?? null,
+      score2:           s.Score2 ?? null,
+      settlementResult: s.SettlementResult || '',
     })).filter(s => s.eventName);
 
     const err = document.getElementById('json-parse-err');
@@ -1390,10 +1440,16 @@
     const { ticketId, selections } = _jsonImportData;
     const eventNames    = indices.map(i => selections[i].eventName);
     const eventStatuses = indices.map(i => selections[i].status);
+    const betInfos      = indices.map(i => ({
+      lineType:         selections[i].lineType,
+      selectionName:    selections[i].selectionName,
+      score1:           selections[i].score1,
+      score2:           selections[i].score2,
+      settlementResult: selections[i].settlementResult,
+    }));
 
     syncGroupValues();
 
-    // Find existing groups that share any event name
     const matched = formGroups.filter(g =>
       g.eventNames.some(en => en.trim() && eventNames.includes(en.trim()))
     );
@@ -1403,17 +1459,17 @@
       return;
     }
 
-    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses);
+    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses, betInfos);
   }
 
-  function _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses) {
+  function _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses, betInfos) {
     const hasData = formGroups.length > 1 ||
       formGroups[0].orderNos.some(o => o.trim()) ||
       formGroups[0].eventNames.some(e => e.trim());
     if (hasData) {
-      formGroups.push({ id: `g${++groupCounter}`, orderNos: [ticketId], eventNames, eventStatuses });
+      formGroups.push({ id: `g${++groupCounter}`, orderNos: [ticketId], eventNames, eventStatuses, betInfos });
     } else {
-      formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames, eventStatuses };
+      formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames, eventStatuses, betInfos };
     }
     _jsonImportData = null;
     renderFormGroups();
@@ -1473,7 +1529,7 @@
     return r.eventNames || (r.eventName ? [r.eventName] : ['']);
   }
 
-  function addRecord(eventNames, orderNos, requirement, group, additionalInfo, lang = null, batchId = null) {
+  function addRecord(eventNames, orderNos, requirement, group, additionalInfo, lang = null, batchId = null, betInfos = null) {
     const names = (Array.isArray(eventNames) ? eventNames : [eventNames]).map(e => e.trim()).filter(Boolean);
     const r = {
       id:             `r${Date.now()}${Math.random().toString(36).slice(2,5)}`,
@@ -1484,6 +1540,7 @@
       group:          group.trim(),
       additionalInfo: additionalInfo.trim(),
       lang:           lang,
+      betInfos:       betInfos || null,
       createdAt:      Date.now(),
       stage:          1,
       stage2StartAt:  null,
@@ -2021,6 +2078,7 @@
             ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
             <div class="record-req" title="${esc(r.requirement)}">${esc(r.requirement)}</div>
             <div class="record-meta">群組：<b>${esc(r.group)}</b>${r.additionalInfo ? `<br>備註：${esc(r.additionalInfo)}` : ''}</div>
+            ${_buildBetInfoHtml(r)}
           </div>
           <div class="record-actions">
             <button class="btn-done"    onclick="markDone('${r.id}')">✓ 搞定</button>
@@ -2318,12 +2376,12 @@
     const recordsToAdd = [];
     formGroups.forEach(g => {
       const validNames = g.eventNames.map(e => e.trim()).filter(Boolean);
-      if (validNames.length) recordsToAdd.push({ orderNos: g.orderNos, eventNames: validNames });
+      if (validNames.length) recordsToAdd.push({ orderNos: g.orderNos, eventNames: validNames, betInfos: g.betInfos || null });
     });
     if (!recordsToAdd.length) { alert('請輸入至少一個賽事名稱'); return; }
 
     const batchId = recordsToAdd.length > 1 ? `b${Date.now()}` : null;
-    recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info, formLang, batchId));
+    recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info, formLang, batchId, g.betInfos));
 
     showSubmitPopup(recordsToAdd, req, grp, info);
 
