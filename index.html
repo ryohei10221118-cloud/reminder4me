@@ -1385,11 +1385,7 @@
 
     _jsonImportData = { ticketId, selections };
 
-    if (selections.length === 1 && !_jsonIsUpcoming(selections[0].startDate)) {
-      _doJsonImport(overlay, [0]);
-    } else {
-      _renderJsonSelectionState(overlay);
-    }
+    _renderJsonSelectionState(overlay);
   }
 
   function _renderJsonSelectionState(overlay) {
