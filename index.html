@@ -324,7 +324,9 @@
     .json-event-item:hover { background: var(--blue-bg); border-color: var(--blue-light); }
     .json-event-item input[type=checkbox] { margin-top: 2px; accent-color: var(--blue); flex-shrink: 0; }
     .json-event-name { font-size: 13px; font-weight: 600; color: var(--text-pri); }
-    .json-event-time { font-size: 13px; color: var(--text-sec); margin-top: 3px; }
+    .json-event-time { font-size: 11px; color: var(--text-sec); margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+    .json-bet-line { font-size: 12px; color: var(--text-pri); margin-top: 3px; }
+    .json-score-line { font-size: 12px; color: var(--text-sec); margin-top: 1px; }
     .shared-fields { display: flex; flex-direction: column; gap: 0; margin-bottom: 14px; }
     .btn-submit {
       width: 100%;
@@ -1409,15 +1411,24 @@
             const stale    = s.status === 0 && _jsonIsStale(s.startDate);
             const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : '';
             const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
+            const na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
+            const betLine = s.lineType || s.selectionName
+              ? `${na(s.lineType)} / ${na(s.selectionName)}` : null;
+            const hasScore = s.score1 !== null && s.score1 !== undefined;
+            const hasSettle = s.settlementResult !== null && s.settlementResult !== '' && s.settlementResult !== undefined;
+            const scoreLine = hasScore && hasSettle ? `${na(s.score1)}-${na(s.score2)} / ${na(s.settlementResult)}`
+                            : hasScore ? `${na(s.score1)}-${na(s.score2)}` : null;
             return `
             <label class="json-event-item${s.status === 0 ? ' is-opened' : ''}">
               <input type="checkbox" id="json-cb-${s.origIdx}" ${s.status === 0 ? 'checked' : ''}>
-              <div>
+              <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:8px">
                   <span class="json-event-name">${esc(s.eventName)}</span>
                   ${_jsonStatusBadge(s.status)}
+                  <span class="json-event-time"${timeColor ? ` style="color:${timeColor}"` : ''}>${_jsonToUtc8(s.startDate)}${timeNote}</span>
                 </div>
-                <div class="json-event-time"${timeColor ? ` style="color:${timeColor}"` : ''}>${_jsonToUtc8(s.startDate)}${timeNote}</div>
+                ${betLine ? `<div class="json-bet-line">${esc(betLine)}</div>` : ''}
+                ${scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : ''}
               </div>
             </label>`;
           }).join('')}
