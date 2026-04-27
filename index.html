@@ -1351,7 +1351,7 @@
         <div id="json-sel-list" style="max-height:340px;overflow-y:auto;padding-right:2px">
           ${sorted.map((s) => {
             const upcoming = _jsonIsUpcoming(s.startDate);
-            const stale    = _jsonIsStale(s.startDate);
+            const stale    = s.status === 0 && _jsonIsStale(s.startDate);
             const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : '';
             const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
             return `
