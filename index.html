@@ -1578,17 +1578,74 @@
       const r = records.find(x => x.id === id);
       return r && r.batchId === batchId && !r.completedAt;
     });
+    if (!toRestart.length) return;
+
+    let isFinal = false;
+    const allEventNames = [];
+    let lang = null, group = '';
+
     toRestart.forEach(id => {
       const r = records.find(x => x.id === id);
       if (!r) return;
       clearTimeout(timerHandles[id]); delete timerHandles[id];
+      if (r.stage === 2) isFinal = true;
       if (r.stage >= 3) { r.stage = 1; r.createdAt = Date.now(); r.stage2StartAt = null; }
       else if (r.stage === 2) { r.stage2StartAt = Date.now(); }
       else { r.createdAt = Date.now(); }
       popupQueue = popupQueue.filter(x => x !== id);
       if (activePopupId === id) { const el = document.getElementById('popup-overlay'); if (el) el.remove(); activePopupId = null; }
+      getEventNames(r).forEach(n => { if (n && !allEventNames.includes(n)) allEventNames.push(n); });
+      if (!lang && r.lang) lang = r.lang;
+      if (!group && r.group) group = r.group;
     });
+
     save(); fullRender();
+    _showBatchRestartReply(allEventNames, lang, isFinal);
+  }
+
+  function _showBatchRestartReply(allEventNames, lang, isFinal) {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+    const name = allEventNames.join('\n');
+    const agentSuffix = getAgentName() ? ` - ${getAgentName()}` : '';
+    _replyTexts = isFinal ? {
+      en: `${name}\nWe've escalated to the relevant team for investigation and we will keep you posted. Thank you for your patience.${agentSuffix}`,
+      zh: `${name}\n已为您提交相关单位确认，若有进一步更新，将会立即与您告知，提前感谢您的耐心。${getAgentName() ? `- ${getAgentName()}` : ''}`,
+      kr: `${name}\n해당 팀에 조사를 요청했으며, 진행 상황을 계속 알려드리겠습니다. 기다려 주셔서 감사합니다.${agentSuffix}`,
+    } : {
+      en: `${name}\nOne moment. We've submitted it to the relevant department.${agentSuffix}`,
+      zh: `${name}\n已为您反馈至相关单位查询中，请您稍候。${getAgentName() ? `- ${getAgentName()}` : ''}`,
+      kr: `${name}\n잠시만요. 관련 부서에 제출했습니다.${agentSuffix}`,
+    };
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card ${isFinal ? 'stage2' : 'stage1'}">
+        <button class="popup-close-btn" onclick="dismissPopup()">×</button>
+        <div class="popup-badge ${isFinal ? 'final' : 'first'}">${isFinal ? '⚠️ 最終提醒' : '🔔 第一次提醒'}</div>
+        <div class="popup-event-name" style="white-space:pre-line">🏆 ${esc(name)}</div>
+        <div class="reply-rows">
+          <div class="reply-row${lang === 'en' ? ' lang-highlight' : (lang ? ' lang-dim' : '')}">
+            <span class="reply-row-text">${esc(_replyTexts.en)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('en',this)" title="Copy">📋</button>
+          </div>
+          <div class="reply-row${lang === 'zh' ? ' lang-highlight' : (lang ? ' lang-dim' : '')}">
+            <span class="reply-row-text">${esc(_replyTexts.zh)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('zh',this)" title="複製">📋</button>
+          </div>
+          <div class="reply-row${lang === 'kr' ? ' lang-highlight' : (lang ? ' lang-dim' : '')}">
+            <span class="reply-row-text">${esc(_replyTexts.kr)}</span>
+            <button class="btn-copy-inline" onclick="copyReply('kr',this)" title="복사">📋</button>
+          </div>
+        </div>
+        <div class="popup-btns">
+          <button class="btn-popup-sec" onclick="dismissPopup()">關閉</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    attachOverlayClose(overlay);
+    playSound();
   }
 
   function batchMarkDone(batchId) {
@@ -1904,7 +1961,7 @@
     const eventRowsHtml = eventNames.map((name, ei) => `
       <div class="card-event-row">
         <span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(name)}</span>
-        <button class="btn-copy-inline" onclick="copyText(${JSON.stringify(name)},this)" title="複製賽事名稱">⎘</button>
+        <button class="btn-copy-inline" data-copy="${esc(name)}" onclick="copyText(this.dataset.copy,this)" title="複製賽事名稱">⎘</button>
         <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
       </div>`).join('');
     const checkboxHtml = inBatch
@@ -2004,7 +2061,7 @@
       return `
         <div class="record-card done">
           <div class="card-header">
-            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(n)}</span><button class="btn-copy-inline" onclick="copyText(${JSON.stringify(n)},this)" title="複製賽事名稱">⎘</button></div>`).join('')}</div>
+            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(n)}</span><button class="btn-copy-inline" data-copy="${esc(n)}" onclick="copyText(this.dataset.copy,this)" title="複製賽事名稱">⎘</button></div>`).join('')}</div>
           </div>
           <div class="card-body">
             <div class="timer-box" style="border-color:var(--border)">
