@@ -1390,22 +1390,81 @@
     const { ticketId, selections } = _jsonImportData;
     const eventNames    = indices.map(i => selections[i].eventName);
     const eventStatuses = indices.map(i => selections[i].status);
-    const newGroup = { id: `g${++groupCounter}`, orderNos: [ticketId], eventNames, eventStatuses };
 
     syncGroupValues();
+
+    // Find existing groups that share any event name
+    const matched = formGroups.filter(g =>
+      g.eventNames.some(en => en.trim() && eventNames.includes(en.trim()))
+    );
+
+    if (matched.length) {
+      _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses);
+      return;
+    }
+
+    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses);
+  }
+
+  function _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses) {
     const hasData = formGroups.length > 1 ||
       formGroups[0].orderNos.some(o => o.trim()) ||
       formGroups[0].eventNames.some(e => e.trim());
-
     if (hasData) {
-      formGroups.push(newGroup);
+      formGroups.push({ id: `g${++groupCounter}`, orderNos: [ticketId], eventNames, eventStatuses });
     } else {
       formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames, eventStatuses };
     }
-
     _jsonImportData = null;
     renderFormGroups();
     _renderJsonPasteState(overlay, `已新增注單 ${ticketId}`);
+  }
+
+  function _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses) {
+    const mergeRows = matched.map((g, mi) => {
+      const label = g.eventNames.filter(Boolean).join(' / ');
+      const tickets = g.orderNos.filter(Boolean).join(', ');
+      return `<button class="btn-popup-sec" style="width:100%;text-align:left;padding:10px 12px;margin-bottom:6px"
+        onclick="_doMerge(${mi})">
+        <div style="font-size:12px;font-weight:700;color:var(--text-pri);margin-bottom:2px">${esc(label)}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${esc(tickets)}</div>
+      </button>`;
+    }).join('');
+
+    _pendingMergeData = { overlay, matched, ticketId, eventNames, eventStatuses };
+
+    overlay.innerHTML = `
+      <div class="popup-card msg-popup" style="border-color:var(--border);max-width:480px;width:92%">
+        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info">📥 匯入 JSON</div>
+        <div class="popup-title" style="margin-bottom:4px">發現相同賽事</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">注單 <b>${esc(ticketId)}</b> 含有已存在的賽事，要合併還是獨立新增？</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-sec);margin-bottom:6px">合併到：</div>
+        <div style="max-height:200px;overflow-y:auto">${mergeRows}</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn-copy-reply" style="flex:1;margin:0" onclick="_doSeparate()">＋ 獨立新增</button>
+          <button class="btn-popup-sec" style="flex:1" onclick="_renderJsonPasteState(document.getElementById('popup-overlay'))">← 返回</button>
+        </div>
+        <button class="btn-popup-sec" style="margin-top:6px;width:100%" onclick="closeMsgPopup()">完成</button>
+      </div>`;
+  }
+
+  let _pendingMergeData = null;
+  function _doMerge(matchedIdx) {
+    if (!_pendingMergeData) return;
+    const { overlay, matched, ticketId } = _pendingMergeData;
+    const g = matched[matchedIdx];
+    if (g && !g.orderNos.includes(ticketId)) g.orderNos.push(ticketId);
+    _jsonImportData = null;
+    _pendingMergeData = null;
+    renderFormGroups();
+    _renderJsonPasteState(overlay, `已合併注單 ${ticketId}`);
+  }
+  function _doSeparate() {
+    if (!_pendingMergeData) return;
+    const { overlay, ticketId, eventNames, eventStatuses } = _pendingMergeData;
+    _pendingMergeData = null;
+    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses);
   }
 
   // ── Record CRUD ──
