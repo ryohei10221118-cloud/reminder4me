@@ -771,6 +771,8 @@
       cursor: pointer;
     }
     .btn-popup-sec:hover { background: var(--border); color: var(--text-pri); }
+    .btn-icon-sm { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12px; cursor: pointer; color: var(--text-muted); line-height: 1.4; }
+    .btn-icon-sm:hover { background: var(--surface2); color: var(--text-pri); }
     .msg-textarea {
       width: 100%;
       min-height: 100px;
@@ -1364,6 +1366,7 @@
     const ticketId = ticketMatch ? ticketMatch[1] : String(data.SQLTicketId || '');
     const selections = (data.Selections || []).map(s => ({
       eventName:        s.EventName || '',
+      eventId:          s.EventId || '',
       startDate:        s.StartEventDate || null,
       status:           s.SelectionStatus ?? null,
       lineType:         s.LineTypeName || '',
@@ -1458,6 +1461,7 @@
     const eventNames    = indices.map(i => selections[i].eventName);
     const eventStatuses = indices.map(i => selections[i].status);
     const betInfos      = indices.map(i => ({
+      eventId:          selections[i].eventId,
       lineType:         selections[i].lineType,
       selectionName:    selections[i].selectionName,
       score1:           selections[i].score1,
@@ -2258,11 +2262,18 @@
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
+    const betInfo = r.betInfos && r.betInfos[eventIdx];
+    const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--border)">
         <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info">📝 賽事記錄</div>
         <div class="popup-title">🏆 ${esc(eventName)}</div>
+        ${eventId ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">EventId</span>
+          <span style="font-size:12px;color:var(--text-sec);font-family:monospace;word-break:break-all">${esc(eventId)}</span>
+          <button class="btn-icon-sm" title="複製 EventId" data-copy="${esc(eventId)}" onclick="copyText(this.dataset.copy,this)" style="flex-shrink:0">📋</button>
+        </div>` : ''}
         <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(note)}</textarea>
         <button class="btn-copy-reply" onclick="saveCopyMsg('${id}',${eventIdx},this)">📋 複製記錄</button>
       </div>`;
@@ -2286,7 +2297,12 @@
     const ta = document.getElementById(`msg-textarea-${id}-${eventIdx}`);
     r.eventNotes[eventName] = ta ? ta.value : '';
     save();
-    copyText(`${eventName}\n${r.eventNotes[eventName]}`, btn);
+    const betInfo = r.betInfos && r.betInfos[eventIdx];
+    const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
+    const parts = [eventName];
+    if (eventId) parts.push(`EventId: ${eventId}`);
+    if (r.eventNotes[eventName]) parts.push(r.eventNotes[eventName]);
+    copyText(parts.join('\n'), btn);
   }
 
   function buildSummaryText(groups, requirement, group, additionalInfo) {
