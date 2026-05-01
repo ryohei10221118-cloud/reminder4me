@@ -322,7 +322,7 @@
         <div class="feature-card">
           <div class="fc-icon">📥</div>
           <div class="fc-title">JSON 匯入</div>
-          <div class="fc-desc">從後台貼上注單 JSON，自動解析賽事資訊。</div>
+          <div class="fc-desc">貼上Kraken JSON，自動解析賽事資訊。</div>
         </div>
         <div class="feature-card">
           <div class="fc-icon">📋</div>
@@ -356,7 +356,7 @@
       <h3>主畫面概覽</h3>
       <div class="screenshot-wrap">
         <div class="screenshot-label">
-          截圖提示：請截取工具主畫面（空白狀態，包含頂部表單區和空的卡片區）
+        
           <code>screenshots/01-main.png</code>
         </div>
         <div id="ph-01" class="screenshot-placeholder tall">
@@ -364,15 +364,15 @@
           <div class="ph-hint">主畫面截圖</div>
           <div class="ph-file">screenshots/01-main.png</div>
         </div>
-        <p class="screenshot-caption">工具主畫面，上方為填寫區，下方為計時卡片區。</p>
+        <p class="screenshot-caption">工具主畫面，左方為填寫區，右方為計時卡片區。</p>
       </div>
 
       <h3>畫面區域說明</h3>
       <table>
         <tr><th>區域</th><th>功能</th></tr>
-        <tr><td><strong>頂部表單區</strong></td><td>填寫注單號、賽事名稱、需求類型等資訊，按下「新增計時」建立卡片。</td></tr>
+        <tr><td><strong>頂部表單區</strong></td><td>填寫注單號、賽事名稱、需求類型等資訊，按下「添加計時器」建立卡片。</td></tr>
         <tr><td><strong>計時卡片區</strong></td><td>顯示所有進行中的注單，每張卡片獨立計時，時間到會彈出提醒。</td></tr>
-        <tr><td><strong>JSON 匯入按鈕</strong></td><td>貼上後台注單 JSON，自動解析賽事資訊帶入表單。</td></tr>
+        <tr><td><strong>JSON 匯入按鈕</strong></td><td>貼上Kraken JSON，自動解析賽事資訊帶入表單。</td></tr>
         <tr><td><strong>預設管理</strong></td><td>儲存常用的需求類型，快速帶入表單。</td></tr>
       </table>
     </section>
@@ -385,7 +385,7 @@
 
       <div class="screenshot-wrap">
         <div class="screenshot-label">
-          截圖提示：請截取填寫好資料的表單區（輸入注單號、賽事名稱、選擇需求類型後）
+        
           <code>screenshots/02-form.png</code>
         </div>
         <div id="ph-02" class="screenshot-placeholder">
@@ -400,15 +400,15 @@
         <tr><th>欄位</th><th>說明</th><th>必填</th></tr>
         <tr><td><strong>注單號</strong></td><td>玩家注單的編號，可輸入多個。</td><td><span class="badge red">必填</span></td></tr>
         <tr><td><strong>賽事名稱</strong></td><td>比賽名稱，例如 <code>Man City vs Arsenal</code>。</td><td><span class="badge red">必填</span></td></tr>
-        <tr><td><strong>需求類型</strong></td><td>從預設清單選擇，例如「結算問題」。</td><td><span class="badge orange">建議</span></td></tr>
+        <tr><td><strong>需求類型</strong></td><td>從預設清單選擇或自行填寫，例如「set pls」。</td><td><span class="badge orange">建議</span></td></tr>
         <tr><td><strong>群組</strong></td><td>所屬客服群組，用於快速回覆內容。</td><td><span class="badge orange">建議</span></td></tr>
-        <tr><td><strong>備註</strong></td><td>額外說明，例如玩家訴求。</td><td><span class="badge blue">選填</span></td></tr>
+        <tr><td><strong>備註</strong></td><td>額外說明，例如玩家訴求或是賽事連結。</td><td><span class="badge blue">選填</span></td></tr>
       </table>
 
       <div class="steps">
-        <div class="step"><div class="step-num"></div><div class="step-body">在<strong>注單號</strong>欄位輸入玩家的注單編號。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">在<strong>注單號</strong>欄位輸入玩家的注單編號，若有多張可按<strong>＋</strong> 新增。</div></div>
         <div class="step"><div class="step-num"></div><div class="step-body">在<strong>賽事名稱</strong>欄位輸入比賽名稱，若有多場賽事可按 <strong>＋</strong> 新增。</div></div>
-        <div class="step"><div class="step-num"></div><div class="step-body">從下拉選單選擇<strong>需求類型</strong>（需先在預設管理建立）。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">從下拉選單選擇<strong>需求類型</strong>（需先在預設管理建立或是自行填寫）。</div></div>
         <div class="step"><div class="step-num"></div><div class="step-body">填入<strong>群組</strong>和其他資訊後，按下<strong>「新增計時」</strong>建立卡片。</div></div>
       </div>
 
@@ -426,7 +426,7 @@
 
       <div class="screenshot-wrap">
         <div class="screenshot-label">
-          截圖提示：請截取一張或多張計時卡片（包含計時中的狀態，最好有不同階段的卡片）
+        
           <code>screenshots/03-card.png</code>
         </div>
         <div id="ph-03" class="screenshot-placeholder">
@@ -440,10 +440,10 @@
       <table>
         <tr><th>按鈕</th><th>功能</th></tr>
         <tr><td>📋 賽事名稱旁</td><td>複製賽事名稱到剪貼簿。</td></tr>
-        <tr><td>📝 記錄</td><td>開啟賽事記錄視窗，輸入備註並複製。</td></tr>
+        <tr><td>📝 訊息</td><td>開啟賽事訊息視窗，輸入備註並複製。</td></tr>
         <tr><td>🔄 重新計時</td><td>重置計時器，並開啟快速回覆視窗。</td></tr>
-        <tr><td>✓ 完成</td><td>將此卡片標記為完成並移除。</td></tr>
-        <tr><td>⋯ 更多</td><td>展開更多操作選項。</td></tr>
+        <tr><td>✓ 搞定</td><td>將此卡片標記為完成。</td></tr>
+        <tr><td>✓ 移除</td><td>將此卡片刪除且不列入完成紀錄。</td></tr> 
       </table>
 
       <h3>計時階段</h3>
@@ -469,7 +469,7 @@
 
       <div class="screenshot-wrap">
         <div class="screenshot-label">
-          截圖提示：請截取快速回覆彈窗（按下任一計時卡片的「重新計時」按鈕後出現的視窗）
+         
           <code>screenshots/04-reply.png</code>
         </div>
         <div id="ph-04" class="screenshot-placeholder">
@@ -483,14 +483,14 @@
       <div class="steps">
         <div class="step"><div class="step-num"></div><div class="step-body">計時到達時彈窗自動出現；或手動按下卡片上的<strong>「重新計時」</strong>。</div></div>
         <div class="step"><div class="step-num"></div><div class="step-body">視窗中會顯示依語言和需求類型產生的<strong>標準回覆</strong>。</div></div>
-        <div class="step"><div class="step-num"></div><div class="step-body">點擊回覆內容旁的<strong>📋 複製</strong>按鈕，貼到客服平台。</div></div>
-        <div class="step"><div class="step-num"></div><div class="step-body">確認後按<strong>「重新計時」</strong>重置計時器，等待下一次提醒。</div></div>
-        <div class="step"><div class="step-num"></div><div class="step-body">若已處理完畢，按<strong>「強制推進」</strong>跳到下一階段，或按<strong>「完成」</strong>結束。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">點擊回覆內容旁的<strong>📋 複製</strong>按鈕，即可貼上回覆客戶。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">確認後按<strong>「繼續計時」</strong>重置計時器，等待下一次提醒。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">若已處理完畢，按<strong>「已回覆」</strong>關閉卡片。</div></div>
       </div>
 
       <div class="callout tip">
         <div class="callout-icon">💡</div>
-        <div>快速回覆視窗關掉後計時器仍繼續，下次提醒會再次彈出。若要跳過當前階段，使用「強制推進」按鈕。</div>
+        <div>快速回覆視窗關掉後計時器仍繼續，下次提醒會再次彈出。若要跳過當前階段，使用「重新計時」按鈕。</div>
       </div>
     </section>
 
@@ -498,7 +498,7 @@
     <section class="section" id="json">
       <div class="section-label">06</div>
       <h2>JSON 匯入</h2>
-      <p>從後台工具複製注單的 JSON 資料後，可以直接貼入工具，自動解析賽事名稱、投注內容與賽事狀態。</p>
+      <p>從Kraken複製注單的 JSON 資料後，可以直接貼入工具，自動解析賽事名稱、投注內容與賽事狀態。</p>
 
       <h3>匯入步驟</h3>
       <div class="steps">
@@ -511,7 +511,7 @@
 
       <div class="screenshot-wrap">
         <div class="screenshot-label">
-          截圖提示：請截取 JSON 匯入視窗（貼上 JSON 後顯示賽事選擇的畫面）
+        
           <code>screenshots/05-json.png</code>
         </div>
         <div id="ph-05" class="screenshot-placeholder">
@@ -538,7 +538,7 @@
 
       <div class="callout note">
         <div class="callout-icon">ℹ️</div>
-        <div>單一賽事注單匯入後，核取方塊預設為勾選；多賽事注單則需手動勾選，頂部有「全選」核取方塊可快速全選。</div>
+        <div>單一賽事注單匯入後，核取方塊預設為勾選；多賽事注單則需手動勾選(預設會勾選open狀態的線注)，頂部有「全選」核取方塊可快速全選。</div>
       </div>
     </section>
 
@@ -550,7 +550,7 @@
 
       <div class="screenshot-wrap">
         <div class="screenshot-label">
-          截圖提示：請截取預設管理面板（展開後顯示預設列表的狀態）
+         
           <code>screenshots/06-preset.png</code>
         </div>
         <div id="ph-06" class="screenshot-placeholder">
@@ -563,28 +563,28 @@
       <h3>新增預設</h3>
       <div class="steps">
         <div class="step"><div class="step-num"></div><div class="step-body">點擊<strong>「⚙ 預設管理」</strong>展開面板。</div></div>
-        <div class="step"><div class="step-num"></div><div class="step-body">在輸入框填入需求類型名稱，按<strong>「＋ 新增」</strong>。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">在輸入框填入需求標題及內容，按<strong>「＋ 新增」</strong>。</div></div>
         <div class="step"><div class="step-num"></div><div class="step-body">建立後可<strong>拖曳</strong>調整順序，或按 ✕ 刪除。</div></div>
       </div>
 
       <h3>比分顯示設定</h3>
-      <p>每個預設右側有一個<strong>「比分」</strong>核取方塊。勾選後，使用這個預設建立的卡片會在卡片上顯示從 JSON 匯入的投注內容與比分資訊，方便對照處理。</p>
+      <p>每個預設右側有一個<strong>「比分」</strong>核取方塊。勾選後，使用這個預設建立的卡片會在卡片上顯示從 JSON 匯入的投注內容與比分資訊(包含投注時比分及結算比分)，方便對照處理。</p>
 
       <div class="callout tip">
         <div class="callout-icon">💡</div>
-        <div>針對需要核對賽果的需求類型（如「結算疑問」），建議勾選「比分」，省去每次開後台工具比對的時間。</div>
+        <div>針對需要核對賽果的需求類型（如「結算疑問」），可勾選「比分」，省去每次開Kraken比對的時間。</div>
       </div>
     </section>
 
-    <!-- ── 8. 賽事記錄 ── -->
+    <!-- ── 8. 賽事訊息 ── -->
     <section class="section" id="notes">
       <div class="section-label">08</div>
       <h2>賽事記錄</h2>
-      <p>每張計時卡片的賽事名稱旁有一個「記錄」按鈕，點擊後可為該賽事輸入備註，並複製包含備註的完整資訊。</p>
+      <p>每張計時卡片的賽事名稱旁有一個「訊息」按鈕，點擊後可為該賽事輸入備註，並複製包含備註的完整資訊。</p>
 
       <div class="screenshot-wrap">
         <div class="screenshot-label">
-          截圖提示：請截取賽事記錄彈窗（點擊計時卡片上的記錄按鈕後出現的視窗）
+          
           <code>screenshots/07-notes.png</code>
         </div>
         <div id="ph-07" class="screenshot-placeholder short">
@@ -614,7 +614,7 @@
       <h2>使用技巧</h2>
 
       <h3>處理多注單同場賽事</h3>
-      <p>當兩位玩家下注同一場賽事時：</p>
+      <p>當同一場賽事時有多張注單：</p>
       <div class="steps">
         <div class="step"><div class="step-num"></div><div class="step-body">匯入第二張注單的 JSON 時，工具會偵測到相同賽事並<strong>自動詢問是否合併</strong>。</div></div>
         <div class="step"><div class="step-num"></div><div class="step-body">選擇「合併」後，兩張注單的號碼會合併到同一張計時卡片，方便一起回覆。</div></div>
