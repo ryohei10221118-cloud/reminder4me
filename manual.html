@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客服計時工具 · 使用說明</title>
+<style>
+  :root {
+    --bg:           #f5f0eb;
+    --surface:      #faf7f4;
+    --surface2:     #f0ebe4;
+    --border:       #d9cfc4;
+    --border-light: #e8e0d6;
+    --text-pri:     #4a3f35;
+    --text-sec:     #7a6a5a;
+    --text-muted:   #a8957f;
+    --blue:         #6b8cba;
+    --blue-light:   #e8f0f8;
+    --red:          #c0665a;
+    --orange:       #c8875a;
+    --green:        #6a9e7a;
+    --green-light:  #e8f4ec;
+    --yellow:       #c4a055;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    background: var(--bg);
+    color: var(--text-pri);
+    line-height: 1.7;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 0 24px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 8px rgba(0,0,0,.04);
+  }
+  .site-header h1 { font-size: 22px; font-weight: 700; color: var(--text-pri); letter-spacing: .5px; }
+  .site-header p  { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ── Layout ── */
+  .layout { display: flex; max-width: 1060px; margin: 0 auto; gap: 0; }
+
+  /* ── Sidebar TOC ── */
+  .toc {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 32px 20px 32px 0;
+    position: sticky;
+    top: 85px;
+    height: calc(100vh - 85px);
+    overflow-y: auto;
+  }
+  .toc-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px; }
+  .toc a {
+    display: block;
+    font-size: 13px;
+    color: var(--text-sec);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 5px;
+    margin-bottom: 2px;
+    border-left: 2px solid transparent;
+    transition: all .15s;
+  }
+  .toc a:hover { background: var(--surface2); color: var(--text-pri); }
+  .toc a.active { border-left-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+  .toc .toc-sub { padding-left: 20px; font-size: 12px; }
+
+  /* ── Content ── */
+  .content {
+    flex: 1;
+    min-width: 0;
+    padding: 36px 0 80px 32px;
+    border-left: 1px solid var(--border-light);
+  }
+
+  /* ── Section ── */
+  .section { margin-bottom: 56px; scroll-margin-top: 100px; }
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .section h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-pri);
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-light);
+  }
+  .section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-pri);
+    margin: 28px 0 10px;
+  }
+  .section p { font-size: 14px; color: var(--text-sec); margin-bottom: 12px; }
+  .section ul, .section ol { padding-left: 20px; margin-bottom: 12px; }
+  .section li { font-size: 14px; color: var(--text-sec); margin-bottom: 5px; }
+  .section strong { color: var(--text-pri); }
+
+  /* ── Screenshot placeholder ── */
+  .screenshot-wrap { margin: 20px 0 28px; }
+  .screenshot-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .screenshot-label code {
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--text-sec);
+    font-family: monospace;
+  }
+  .screenshot-placeholder {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px 20px;
+    min-height: 200px;
+    text-align: center;
+  }
+  .screenshot-placeholder.tall { min-height: 320px; }
+  .screenshot-placeholder.short { min-height: 140px; }
+  .screenshot-placeholder .ph-icon { font-size: 28px; opacity: .4; }
+  .screenshot-placeholder .ph-hint { font-size: 13px; color: var(--text-muted); }
+  .screenshot-placeholder .ph-file { font-size: 12px; color: var(--text-muted); font-family: monospace; background: var(--surface2); padding: 3px 10px; border-radius: 4px; }
+  .screenshot-wrap img {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    display: block;
+  }
+  .screenshot-caption {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* ── Callout ── */
+  .callout {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  .callout.tip  { background: var(--green-light); border-left: 3px solid var(--green); color: #3a6a4a; }
+  .callout.note { background: var(--blue-light);  border-left: 3px solid var(--blue);  color: #3a5a8a; }
+  .callout.warn { background: #fdf3e8; border-left: 3px solid var(--orange); color: #7a4a20; }
+  .callout-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+
+  /* ── Steps ── */
+  .steps { counter-reset: step; margin: 14px 0 20px; }
+  .step {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+  .step-num {
+    counter-increment: step;
+    width: 26px;
+    height: 26px;
+    background: var(--blue);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-num::before { content: counter(step); }
+  .step-body { font-size: 14px; color: var(--text-sec); padding-top: 3px; }
+  .step-body strong { color: var(--text-pri); }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .badge.blue   { background: var(--blue-light); color: var(--blue); }
+  .badge.green  { background: var(--green-light); color: var(--green); }
+  .badge.orange { background: #fdf3e8; color: var(--orange); }
+  .badge.red    { background: #fdf0ee; color: var(--red); }
+
+  /* ── Keyboard key ── */
+  kbd {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--text-pri);
+  }
+
+  /* ── Feature grid ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .feature-card .fc-icon { font-size: 20px; margin-bottom: 6px; }
+  .feature-card .fc-title { font-size: 13px; font-weight: 600; color: var(--text-pri); margin-bottom: 4px; }
+  .feature-card .fc-desc  { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0 20px; }
+  th { background: var(--surface2); color: var(--text-sec); font-weight: 600; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border-light); color: var(--text-sec); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── Setup guide banner ── */
+  .setup-banner {
+    background: linear-gradient(135deg, #e8f0f8 0%, #f0e8f4 100%);
+    border: 1px solid #c8d8e8;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 36px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .setup-banner-icon { font-size: 28px; flex-shrink: 0; }
+  .setup-banner h3 { font-size: 15px; font-weight: 700; color: #3a5a8a; margin-bottom: 6px; }
+  .setup-banner p  { font-size: 13px; color: #5a7aaa; }
+
+  @media (max-width: 720px) {
+    .toc { display: none; }
+    .content { padding: 24px 16px 60px; border-left: none; }
+    .layout { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>⏱ 客服計時工具 · 使用說明</h1>
+  <p>Customer Service Reminder Tool · User Guide</p>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar TOC -->
+  <nav class="toc">
+    <div class="toc-title">目錄</div>
+    <a href="#intro">工具簡介</a>
+    <a href="#start">開始使用</a>
+    <a href="#form">填寫表單</a>
+    <a href="#card">計時卡片</a>
+    <a href="#reply">快速回覆</a>
+    <a href="#json">JSON 匯入</a>
+    <a href="#preset">預設管理</a>
+    <a href="#notes">賽事記錄</a>
+    <a href="#tips">使用技巧</a>
+  </nav>
+
+  <!-- Main content -->
+  <main class="content">
+
+    <!-- ── 1. 介紹 ── -->
+    <section class="section" id="intro">
+      <div class="section-label">01</div>
+      <h2>工具簡介</h2>
+      <p>這是一款專為客服人員設計的賽事計時與快速回覆工具，幫助你在處理多場賽事客訴時，快速追蹤每張注單的處理進度，並在正確的時機發送標準化回覆。</p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="fc-icon">⏱</div>
+          <div class="fc-title">多階段計時</div>
+          <div class="fc-desc">自動追蹤每張注單的處理時間，時間到即彈出提醒。</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">💬</div>
+          <div class="fc-title">快速回覆</div>
+          <div class="fc-desc">依注單狀態與語言自動產生標準回覆，一鍵複製。</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📥</div>
+          <div class="fc-title">JSON 匯入</div>
+          <div class="fc-desc">從後台貼上注單 JSON，自動解析賽事資訊。</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📋</div>
+          <div class="fc-title">預設管理</div>
+          <div class="fc-desc">儲存常用需求類型，拖曳排序，快速帶入。</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🔀</div>
+          <div class="fc-title">批量操作</div>
+          <div class="fc-desc">同時管理多張注單，合併同場賽事卡片。</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📝</div>
+          <div class="fc-title">賽事記錄</div>
+          <div class="fc-desc">為每場賽事留下備註，追蹤處理進度。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 2. 開始使用 ── -->
+    <section class="section" id="start">
+      <div class="section-label">02</div>
+      <h2>開始使用</h2>
+      <p>直接用瀏覽器開啟 <code>index.html</code> 即可，無需安裝任何軟體，所有資料儲存於瀏覽器的 LocalStorage。</p>
+
+      <div class="callout note">
+        <div class="callout-icon">ℹ️</div>
+        <div>建議使用 Chrome 或 Edge 開啟以獲得最佳體驗。資料僅存在該瀏覽器，換裝置或清除瀏覽器資料後會遺失。</div>
+      </div>
+
+      <h3>主畫面概覽</h3>
+      <div class="screenshot-wrap">
+        <div class="screenshot-label">
+          截圖提示：請截取工具主畫面（空白狀態，包含頂部表單區和空的卡片區）
+          <code>screenshots/01-main.png</code>
+        </div>
+        <div id="ph-01" class="screenshot-placeholder tall">
+          <div class="ph-icon">🖼</div>
+          <div class="ph-hint">主畫面截圖</div>
+          <div class="ph-file">screenshots/01-main.png</div>
+        </div>
+        <p class="screenshot-caption">工具主畫面，上方為填寫區，下方為計時卡片區。</p>
+      </div>
+
+      <h3>畫面區域說明</h3>
+      <table>
+        <tr><th>區域</th><th>功能</th></tr>
+        <tr><td><strong>頂部表單區</strong></td><td>填寫注單號、賽事名稱、需求類型等資訊，按下「新增計時」建立卡片。</td></tr>
+        <tr><td><strong>計時卡片區</strong></td><td>顯示所有進行中的注單，每張卡片獨立計時，時間到會彈出提醒。</td></tr>
+        <tr><td><strong>JSON 匯入按鈕</strong></td><td>貼上後台注單 JSON，自動解析賽事資訊帶入表單。</td></tr>
+        <tr><td><strong>預設管理</strong></td><td>儲存常用的需求類型，快速帶入表單。</td></tr>
+      </table>
+    </section>
+
+    <!-- ── 3. 填寫表單 ── -->
+    <section class="section" id="form">
+      <div class="section-label">03</div>
+      <h2>填寫表單</h2>
+      <p>在建立計時卡片之前，需要先在頂部表單區填入注單相關資訊。</p>
+
+      <div class="screenshot-wrap">
+        <div class="screenshot-label">
+          截圖提示：請截取填寫好資料的表單區（輸入注單號、賽事名稱、選擇需求類型後）
+          <code>screenshots/02-form.png</code>
+        </div>
+        <div id="ph-02" class="screenshot-placeholder">
+          <div class="ph-icon">🖼</div>
+          <div class="ph-hint">填寫表單截圖</div>
+          <div class="ph-file">screenshots/02-form.png</div>
+        </div>
+      </div>
+
+      <h3>表單欄位說明</h3>
+      <table>
+        <tr><th>欄位</th><th>說明</th><th>必填</th></tr>
+        <tr><td><strong>注單號</strong></td><td>玩家注單的編號，可輸入多個。</td><td><span class="badge red">必填</span></td></tr>
+        <tr><td><strong>賽事名稱</strong></td><td>比賽名稱，例如 <code>Man City vs Arsenal</code>。</td><td><span class="badge red">必填</span></td></tr>
+        <tr><td><strong>需求類型</strong></td><td>從預設清單選擇，例如「結算問題」。</td><td><span class="badge orange">建議</span></td></tr>
+        <tr><td><strong>群組</strong></td><td>所屬客服群組，用於快速回覆內容。</td><td><span class="badge orange">建議</span></td></tr>
+        <tr><td><strong>備註</strong></td><td>額外說明，例如玩家訴求。</td><td><span class="badge blue">選填</span></td></tr>
+      </table>
+
+      <div class="steps">
+        <div class="step"><div class="step-num"></div><div class="step-body">在<strong>注單號</strong>欄位輸入玩家的注單編號。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">在<strong>賽事名稱</strong>欄位輸入比賽名稱，若有多場賽事可按 <strong>＋</strong> 新增。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">從下拉選單選擇<strong>需求類型</strong>（需先在預設管理建立）。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">填入<strong>群組</strong>和其他資訊後，按下<strong>「新增計時」</strong>建立卡片。</div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div>同一注單有多場賽事時，按注單號旁的 <strong>＋</strong> 按鈕可在同一張卡片中新增多個賽事，方便一起管理。</div>
+      </div>
+    </section>
+
+    <!-- ── 4. 計時卡片 ── -->
+    <section class="section" id="card">
+      <div class="section-label">04</div>
+      <h2>計時卡片</h2>
+      <p>建立後，每個注單會顯示為一張計時卡片。卡片會自動計時，並在各階段時間到達時彈出提醒。</p>
+
+      <div class="screenshot-wrap">
+        <div class="screenshot-label">
+          截圖提示：請截取一張或多張計時卡片（包含計時中的狀態，最好有不同階段的卡片）
+          <code>screenshots/03-card.png</code>
+        </div>
+        <div id="ph-03" class="screenshot-placeholder">
+          <div class="ph-icon">🖼</div>
+          <div class="ph-hint">計時卡片截圖</div>
+          <div class="ph-file">screenshots/03-card.png</div>
+        </div>
+      </div>
+
+      <h3>卡片上的功能按鈕</h3>
+      <table>
+        <tr><th>按鈕</th><th>功能</th></tr>
+        <tr><td>📋 賽事名稱旁</td><td>複製賽事名稱到剪貼簿。</td></tr>
+        <tr><td>📝 記錄</td><td>開啟賽事記錄視窗，輸入備註並複製。</td></tr>
+        <tr><td>🔄 重新計時</td><td>重置計時器，並開啟快速回覆視窗。</td></tr>
+        <tr><td>✓ 完成</td><td>將此卡片標記為完成並移除。</td></tr>
+        <tr><td>⋯ 更多</td><td>展開更多操作選項。</td></tr>
+      </table>
+
+      <h3>計時階段</h3>
+      <p>每張卡片依照設定的時間分為多個階段，時間到達時會顯示提醒彈窗：</p>
+      <table>
+        <tr><th>階段</th><th>說明</th></tr>
+        <tr><td><span class="badge green">第一次</span></td><td>初始等待，等待相關部門回覆。</td></tr>
+        <tr><td><span class="badge orange">第二次</span></td><td>第一次超時後，再次提醒跟進。</td></tr>
+        <tr><td><span class="badge red">超時</span></td><td>長時間未處理，需要立即關注。</td></tr>
+      </table>
+
+      <div class="callout note">
+        <div class="callout-icon">ℹ️</div>
+        <div>提醒彈窗會自動排隊，若同時有多張卡片到期，會依序顯示，不會遺漏任何一張。</div>
+      </div>
+    </section>
+
+    <!-- ── 5. 快速回覆 ── -->
+    <section class="section" id="reply">
+      <div class="section-label">05</div>
+      <h2>快速回覆</h2>
+      <p>計時到達或手動按下「重新計時」時，會彈出快速回覆視窗，提供適合當前狀態的標準回覆範本。</p>
+
+      <div class="screenshot-wrap">
+        <div class="screenshot-label">
+          截圖提示：請截取快速回覆彈窗（按下任一計時卡片的「重新計時」按鈕後出現的視窗）
+          <code>screenshots/04-reply.png</code>
+        </div>
+        <div id="ph-04" class="screenshot-placeholder">
+          <div class="ph-icon">🖼</div>
+          <div class="ph-hint">快速回覆彈窗截圖</div>
+          <div class="ph-file">screenshots/04-reply.png</div>
+        </div>
+      </div>
+
+      <h3>使用步驟</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num"></div><div class="step-body">計時到達時彈窗自動出現；或手動按下卡片上的<strong>「重新計時」</strong>。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">視窗中會顯示依語言和需求類型產生的<strong>標準回覆</strong>。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">點擊回覆內容旁的<strong>📋 複製</strong>按鈕，貼到客服平台。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">確認後按<strong>「重新計時」</strong>重置計時器，等待下一次提醒。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">若已處理完畢，按<strong>「強制推進」</strong>跳到下一階段，或按<strong>「完成」</strong>結束。</div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div>快速回覆視窗關掉後計時器仍繼續，下次提醒會再次彈出。若要跳過當前階段，使用「強制推進」按鈕。</div>
+      </div>
+    </section>
+
+    <!-- ── 6. JSON 匯入 ── -->
+    <section class="section" id="json">
+      <div class="section-label">06</div>
+      <h2>JSON 匯入</h2>
+      <p>從後台工具複製注單的 JSON 資料後，可以直接貼入工具，自動解析賽事名稱、投注內容與賽事狀態。</p>
+
+      <h3>匯入步驟</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num"></div><div class="step-body">按下工具右上角的<strong>「📥 JSON」</strong>按鈕，開啟匯入視窗。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">將後台複製的注單 JSON 貼入文字框，工具會<strong>自動解析</strong>（無需另外按按鈕）。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">解析成功後會顯示賽事選擇畫面，勾選要帶入的賽事。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">按下<strong>「✓ 匯入」</strong>，賽事資訊自動帶入表單。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">繼續貼入下一張注單，或按<strong>「完成」</strong>關閉視窗。</div></div>
+      </div>
+
+      <div class="screenshot-wrap">
+        <div class="screenshot-label">
+          截圖提示：請截取 JSON 匯入視窗（貼上 JSON 後顯示賽事選擇的畫面）
+          <code>screenshots/05-json.png</code>
+        </div>
+        <div id="ph-05" class="screenshot-placeholder">
+          <div class="ph-icon">🖼</div>
+          <div class="ph-hint">JSON 匯入 · 賽事選擇截圖</div>
+          <div class="ph-file">screenshots/05-json.png</div>
+        </div>
+      </div>
+
+      <h3>賽事選擇畫面說明</h3>
+      <table>
+        <tr><th>標示</th><th>說明</th></tr>
+        <tr><td><span class="badge blue">Opened</span></td><td>賽事進行中，需要關注。</td></tr>
+        <tr><td><span class="badge green">Settled</span></td><td>已結算。</td></tr>
+        <tr><td><span class="badge orange">Pending</span></td><td>待結算。</td></tr>
+        <tr><td style="color: var(--red);">紅色時間</td><td>尚未開賽，時間顯示為紅色提示。</td></tr>
+        <tr><td style="color: var(--orange);">橘色時間</td><td>Opened 狀態但超過 24 小時，需特別注意。</td></tr>
+      </table>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div>若匯入的賽事和表單中既有的賽事相符，工具會彈出「合併」提示，讓你將兩張注單合併到同一張卡片管理。</div>
+      </div>
+
+      <div class="callout note">
+        <div class="callout-icon">ℹ️</div>
+        <div>單一賽事注單匯入後，核取方塊預設為勾選；多賽事注單則需手動勾選，頂部有「全選」核取方塊可快速全選。</div>
+      </div>
+    </section>
+
+    <!-- ── 7. 預設管理 ── -->
+    <section class="section" id="preset">
+      <div class="section-label">07</div>
+      <h2>預設管理</h2>
+      <p>預設管理讓你儲存常用的需求類型，例如「結算問題」、「賽果疑問」等，建立後可在表單中快速選擇。</p>
+
+      <div class="screenshot-wrap">
+        <div class="screenshot-label">
+          截圖提示：請截取預設管理面板（展開後顯示預設列表的狀態）
+          <code>screenshots/06-preset.png</code>
+        </div>
+        <div id="ph-06" class="screenshot-placeholder">
+          <div class="ph-icon">🖼</div>
+          <div class="ph-hint">預設管理截圖</div>
+          <div class="ph-file">screenshots/06-preset.png</div>
+        </div>
+      </div>
+
+      <h3>新增預設</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num"></div><div class="step-body">點擊<strong>「⚙ 預設管理」</strong>展開面板。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">在輸入框填入需求類型名稱，按<strong>「＋ 新增」</strong>。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">建立後可<strong>拖曳</strong>調整順序，或按 ✕ 刪除。</div></div>
+      </div>
+
+      <h3>比分顯示設定</h3>
+      <p>每個預設右側有一個<strong>「比分」</strong>核取方塊。勾選後，使用這個預設建立的卡片會在卡片上顯示從 JSON 匯入的投注內容與比分資訊，方便對照處理。</p>
+
+      <div class="callout tip">
+        <div class="callout-icon">💡</div>
+        <div>針對需要核對賽果的需求類型（如「結算疑問」），建議勾選「比分」，省去每次開後台工具比對的時間。</div>
+      </div>
+    </section>
+
+    <!-- ── 8. 賽事記錄 ── -->
+    <section class="section" id="notes">
+      <div class="section-label">08</div>
+      <h2>賽事記錄</h2>
+      <p>每張計時卡片的賽事名稱旁有一個「記錄」按鈕，點擊後可為該賽事輸入備註，並複製包含備註的完整資訊。</p>
+
+      <div class="screenshot-wrap">
+        <div class="screenshot-label">
+          截圖提示：請截取賽事記錄彈窗（點擊計時卡片上的記錄按鈕後出現的視窗）
+          <code>screenshots/07-notes.png</code>
+        </div>
+        <div id="ph-07" class="screenshot-placeholder short">
+          <div class="ph-icon">🖼</div>
+          <div class="ph-hint">賽事記錄截圖</div>
+          <div class="ph-file">screenshots/07-notes.png</div>
+        </div>
+      </div>
+
+      <h3>複製記錄的內容格式</h3>
+      <p>按下「📋 複製記錄」後，複製到剪貼簿的內容格式如下：</p>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:monospace;font-size:13px;color:var(--text-sec);line-height:1.8;margin:10px 0 20px;">
+        Manchester City vs Arsenal<br>
+        EventId: 837017040488620032<br>
+        （你在備註框輸入的內容）
+      </div>
+
+      <div class="callout note">
+        <div class="callout-icon">ℹ️</div>
+        <div>EventId 只有在透過 JSON 匯入的賽事才會帶入。手動輸入的賽事沒有 EventId，複製內容不含此行。</div>
+      </div>
+    </section>
+
+    <!-- ── 9. 使用技巧 ── -->
+    <section class="section" id="tips">
+      <div class="section-label">09</div>
+      <h2>使用技巧</h2>
+
+      <h3>處理多注單同場賽事</h3>
+      <p>當兩位玩家下注同一場賽事時：</p>
+      <div class="steps">
+        <div class="step"><div class="step-num"></div><div class="step-body">匯入第二張注單的 JSON 時，工具會偵測到相同賽事並<strong>自動詢問是否合併</strong>。</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">選擇「合併」後，兩張注單的號碼會合併到同一張計時卡片，方便一起回覆。</div></div>
+      </div>
+
+      <h3>快速清空表單</h3>
+      <p>按下表單右側的<strong>「清空」</strong>按鈕，可一次清除所有已填寫的資料，快速準備處理下一張注單。</p>
+
+      <h3>一次管理多張卡片</h3>
+      <p>卡片左上角的核取方塊可多選，選取後可對所有選取的卡片<strong>批量操作</strong>（批量重新計時、批量完成）。</p>
+
+      <h3>資料持久保存</h3>
+      <p>所有計時卡片和預設資料都自動儲存在瀏覽器的 LocalStorage，關閉頁面後重新開啟仍會保留。</p>
+
+      <div class="callout warn">
+        <div class="callout-icon">⚠️</div>
+        <div>資料僅保存在本機瀏覽器，清除瀏覽器快取或換電腦會導致資料遺失。重要資訊請另行備份。</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// Auto-replace placeholders with actual screenshots if they exist
+(function() {
+  const screenshots = [
+    { id: 'ph-01', src: 'screenshots/01-main.png',   caption: '工具主畫面，上方為填寫區，下方為計時卡片區。' },
+    { id: 'ph-02', src: 'screenshots/02-form.png',   caption: '填寫表單後準備建立計時卡片。' },
+    { id: 'ph-03', src: 'screenshots/03-card.png',   caption: '計時卡片顯示注單資訊與剩餘時間。' },
+    { id: 'ph-04', src: 'screenshots/04-reply.png',  caption: '快速回覆視窗，提供標準回覆範本。' },
+    { id: 'ph-05', src: 'screenshots/05-json.png',   caption: 'JSON 匯入後顯示賽事選擇畫面。' },
+    { id: 'ph-06', src: 'screenshots/06-preset.png', caption: '預設管理面板，可新增、排序需求類型。' },
+    { id: 'ph-07', src: 'screenshots/07-notes.png',  caption: '賽事記錄視窗，可輸入備註並複製。' },
+  ];
+
+  screenshots.forEach(({ id, src, caption }) => {
+    const placeholder = document.getElementById(id);
+    if (!placeholder) return;
+    const img = new Image();
+    img.onload = () => {
+      const wrap = placeholder.closest('.screenshot-wrap');
+      placeholder.style.display = 'none';
+      const imgEl = document.createElement('img');
+      imgEl.src = src;
+      imgEl.alt = caption;
+      const label = wrap.querySelector('.screenshot-label');
+      wrap.insertBefore(imgEl, placeholder);
+    };
+    img.src = src;
+  });
+})();
+
+// Highlight active TOC link on scroll
+(function() {
+  const links = document.querySelectorAll('.toc a');
+  const sections = document.querySelectorAll('.section');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const a = document.querySelector(`.toc a[href="#${e.target.id}"]`);
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
+})();
+</script>
+
+</body>
+</html>
