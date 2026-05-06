@@ -2524,19 +2524,22 @@
       </div>`).join('');
 
     overlay.innerHTML = `
-      <div class="popup-card msg-popup" style="border-color:var(--border);max-width:520px;width:92%;max-height:88vh;display:flex;flex-direction:column">
-        <button class="popup-close-btn" onclick="_closeMsgCompose()">×</button>
-        <div class="popup-badge info">📨 賽事訊息</div>
-        <div class="popup-title" style="margin-bottom:10px">賽事訊息產生器</div>
-        <textarea class="msg-textarea" id="msg-compose-ta" placeholder="貼入注單 JSON（可連續貼多張）..." style="height:88px;flex-shrink:0;margin-bottom:4px"></textarea>
-        <div id="msg-parse-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px;padding:6px 10px;background:var(--red-bg);border-radius:6px;flex-shrink:0"></div>
-        ${_msgEvents.length > 0 ? `
-          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;flex-shrink:0">${_msgEvents.length} 場賽事</div>
-          <div id="msg-events-list" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;margin-bottom:14px;flex:1">${eventRows}</div>
-          <button class="btn-copy-reply" style="width:100%;margin:0;flex-shrink:0" onclick="_copyMsgCompose()">📋 複製</button>
-        ` : `
-          <div style="text-align:center;padding:24px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 後賽事會自動出現在這裡</div>
-        `}
+      <div class="popup-card msg-popup" style="border-color:var(--border);max-width:520px;width:92%;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border-light);flex-shrink:0">
+          <div style="font-size:15px;font-weight:700;color:var(--text-pri)">📨 賽事訊息產生器</div>
+          <button onclick="_closeMsgCompose()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;padding:2px 4px;border-radius:5px" onmouseover="this.style.color='var(--text-pri)'" onmouseout="this.style.color='var(--text-muted)'">×</button>
+        </div>
+        <div style="padding:16px 20px 20px;display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+          <textarea class="msg-textarea" id="msg-compose-ta" placeholder="貼入注單 JSON（可連續貼多張）..." style="height:88px;flex-shrink:0;margin-bottom:6px"></textarea>
+          <div id="msg-parse-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px;padding:6px 10px;background:var(--red-bg);border-radius:6px;flex-shrink:0"></div>
+          ${_msgEvents.length > 0 ? `
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;flex-shrink:0">${_msgEvents.length} 場賽事</div>
+            <div id="msg-events-list" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;margin-bottom:14px;flex:1">${eventRows}</div>
+            <button class="btn-copy-reply" style="width:100%;margin:0;flex-shrink:0" onclick="_copyMsgCompose()">📋 複製</button>
+          ` : `
+            <div style="text-align:center;padding:28px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 後賽事會自動出現在這裡</div>
+          `}
+        </div>
       </div>`;
 
     const ta = overlay.querySelector('#msg-compose-ta');
