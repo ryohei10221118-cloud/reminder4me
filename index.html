@@ -789,6 +789,42 @@
     }
     .msg-textarea:focus { border-color: var(--blue); }
 
+    /* ── Event Message Compose ── */
+    .msg-compose-btn {
+      padding: 6px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-sec);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .msg-compose-btn:hover { background: var(--blue-bg); border-color: var(--blue-light); color: var(--blue); }
+    .msg-event-row {
+      background: var(--surface2);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .msg-event-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .msg-event-name { font-size: 13px; font-weight: 700; color: var(--text-pri); flex: 1; min-width: 0; }
+    .msg-event-id { font-size: 11px; color: var(--text-muted); font-family: monospace; white-space: nowrap; padding-top: 2px; }
+    .msg-event-remove { background: none; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 0 2px; flex-shrink: 0; }
+    .msg-event-remove:hover { color: var(--red); }
+    .msg-event-notes {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 7px; padding: 7px 10px; font-size: 13px; color: var(--text-pri);
+      font-family: inherit; resize: vertical; outline: none; min-height: 58px;
+    }
+    .msg-event-notes:focus { border-color: var(--blue); }
+    .msg-event-notes::placeholder { color: var(--text-muted); }
+
     /* ── Responsive ── */
     @media (max-width: 520px) {
       .card-body { flex-wrap: wrap; }
@@ -801,6 +837,7 @@
 <div class="header">
   <h1>回覆提醒</h1>
   <span class="header-badge" id="header-badge">0</span>
+  <button class="msg-compose-btn" onclick="showMsgComposePopup()">📨 賽事訊息</button>
   <button class="settlement-btn" onclick="showSettlementPopup()">📊 每日結算</button>
   <input class="agent-name-input" id="agent-name" type="text" placeholder="你的名字" oninput="saveAgentName()" />
   <button class="notification-btn" id="notif-btn" onclick="requestNotifPermission()">🔔 開啟通知</button>
@@ -2454,6 +2491,119 @@
     const btn = document.getElementById('back-to-top');
     if (btn) btn.classList.toggle('show', window.scrollY > window.innerHeight * 0.8);
   });
+
+  // ── Event Message Compose ──
+  let _msgEvents = [];
+
+  function showMsgComposePopup() {
+    _msgEvents = [];
+    const existing = document.getElementById('msg-compose-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    overlay.id = 'msg-compose-overlay';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('mousedown', e => { if (e.target === overlay) _closeMsgCompose(); });
+    _renderMsgCompose(overlay);
+  }
+
+  function _closeMsgCompose() {
+    const el = document.getElementById('msg-compose-overlay');
+    if (el) el.remove();
+  }
+
+  function _renderMsgCompose(overlay) {
+    const eventRows = _msgEvents.map((ev, i) => `
+      <div class="msg-event-row" id="msg-ev-${i}">
+        <div class="msg-event-header">
+          <span class="msg-event-name">${esc(ev.eventName)}</span>
+          <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
+          <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
+        </div>
+        <textarea class="msg-event-notes" id="msg-notes-${i}" placeholder="備註（留空則不複製此賽事）...">${esc(ev.notes || '')}</textarea>
+      </div>`).join('');
+
+    overlay.innerHTML = `
+      <div class="popup-card msg-popup" style="border-color:var(--border);max-width:520px;width:92%;max-height:88vh;display:flex;flex-direction:column">
+        <button class="popup-close-btn" onclick="_closeMsgCompose()">×</button>
+        <div class="popup-badge info">📨 賽事訊息</div>
+        <div class="popup-title" style="margin-bottom:10px">賽事訊息產生器</div>
+        <textarea class="msg-textarea" id="msg-compose-ta" placeholder="貼入注單 JSON（可連續貼多張）..." style="height:88px;flex-shrink:0;margin-bottom:4px"></textarea>
+        <div id="msg-parse-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px;padding:6px 10px;background:var(--red-bg);border-radius:6px;flex-shrink:0"></div>
+        ${_msgEvents.length > 0 ? `
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;flex-shrink:0">${_msgEvents.length} 場賽事</div>
+          <div id="msg-events-list" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;margin-bottom:14px;flex:1">${eventRows}</div>
+          <button class="btn-copy-reply" style="width:100%;margin:0;flex-shrink:0" onclick="_copyMsgCompose()">📋 複製</button>
+        ` : `
+          <div style="text-align:center;padding:24px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 後賽事會自動出現在這裡</div>
+        `}
+      </div>`;
+
+    const ta = overlay.querySelector('#msg-compose-ta');
+    ta.addEventListener('paste', () => setTimeout(() => _parseMsgJson(overlay), 80));
+    setTimeout(() => ta.focus(), 50);
+  }
+
+  function _parseMsgJson(overlay) {
+    const ta = document.getElementById('msg-compose-ta');
+    if (!ta) return;
+    const raw = ta.value.trim();
+    if (!raw) return;
+    _saveCurrentMsgNotes();
+    const err = document.getElementById('msg-parse-err');
+    let data;
+    try { data = JSON.parse(raw); } catch(e) {
+      if (err) { err.textContent = '⚠ JSON 格式錯誤，請確認後再試'; err.style.display = 'block'; }
+      return;
+    }
+    const selections = (data.Selections || [])
+      .map(s => ({ eventName: s.EventName || '', eventId: String(s.EventId || '') }))
+      .filter(s => s.eventName && s.eventId);
+    if (selections.length === 0) {
+      if (err) { err.textContent = '⚠ 找不到任何賽事 (EventName / EventId)'; err.style.display = 'block'; }
+      return;
+    }
+    const existingIds = new Set(_msgEvents.map(e => String(e.eventId)));
+    selections.forEach(s => {
+      if (!existingIds.has(s.eventId)) _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, notes: '' });
+    });
+    if (err) err.style.display = 'none';
+    ta.value = '';
+    _renderMsgCompose(overlay);
+  }
+
+  function _saveCurrentMsgNotes() {
+    _msgEvents.forEach((ev, i) => {
+      const ta = document.getElementById(`msg-notes-${i}`);
+      if (ta) ev.notes = ta.value;
+    });
+  }
+
+  function _removeMsgEvent(idx) {
+    _saveCurrentMsgNotes();
+    _msgEvents.splice(idx, 1);
+    const overlay = document.getElementById('msg-compose-overlay');
+    if (overlay) _renderMsgCompose(overlay);
+  }
+
+  function _copyMsgCompose() {
+    _saveCurrentMsgNotes();
+    const parts = _msgEvents
+      .filter(ev => ev.notes && ev.notes.trim())
+      .map(ev => `${ev.eventName}\nEventId: ${ev.eventId}\n${ev.notes.trim()}`);
+    if (!parts.length) { alert('請至少填寫一筆備註'); return; }
+    const text = parts.join('\n\n');
+    navigator.clipboard.writeText(text).then(() => _closeMsgCompose()).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      Object.assign(ta.style, { position: 'fixed', opacity: '0', top: '0', left: '0' });
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      _closeMsgCompose();
+    });
+  }
 </script>
 </body>
 </html>
