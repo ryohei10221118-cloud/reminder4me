@@ -2513,15 +2513,31 @@
   }
 
   function _renderMsgCompose(overlay) {
-    const eventRows = _msgEvents.map((ev, i) => `
-      <div class="msg-event-row" id="msg-ev-${i}">
+    const sorted = _msgEvents
+      .map((ev, origIdx) => ({ ...ev, origIdx }))
+      .sort((a, b) => {
+        const aWon = a.status === 2 || a.status === 17;
+        const bWon = b.status === 2 || b.status === 17;
+        if (aWon !== bWon) return aWon ? 1 : -1;
+        return a.origIdx - b.origIdx;
+      });
+    const eventRows = sorted.map((ev) => {
+      const i = ev.origIdx;
+      const isWon = ev.status === 2 || ev.status === 17;
+      const st = _jsonStatusMap[ev.status];
+      const borderStyle = !isWon && st ? `border-left:3px solid ${st.color};` : '';
+      const statusBadge = st ? `<span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>` : '';
+      return `
+      <div class="msg-event-row" id="msg-ev-${i}" style="${borderStyle}">
         <div class="msg-event-header">
           <span class="msg-event-name">${esc(ev.eventName)}</span>
+          ${statusBadge}
           <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
           <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
         </div>
         <textarea class="msg-event-notes" id="msg-notes-${i}" placeholder="備註（留空則不複製此賽事）...">${esc(ev.notes || '')}</textarea>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--border);max-width:520px;width:92%;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
@@ -2560,7 +2576,7 @@
       return;
     }
     const selections = (data.Selections || [])
-      .map(s => ({ eventName: s.EventName || '', eventId: String(s.EventId || '') }))
+      .map(s => ({ eventName: s.EventName || '', eventId: String(s.EventId || ''), status: s.SelectionStatus ?? null }))
       .filter(s => s.eventName && s.eventId);
     if (selections.length === 0) {
       if (err) { err.textContent = '⚠ 找不到任何賽事 (EventName / EventId)'; err.style.display = 'block'; }
@@ -2568,7 +2584,7 @@
     }
     const existingIds = new Set(_msgEvents.map(e => String(e.eventId)));
     selections.forEach(s => {
-      if (!existingIds.has(s.eventId)) _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, notes: '' });
+      if (!existingIds.has(s.eventId)) _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, status: s.status, notes: '' });
     });
     if (err) err.style.display = 'none';
     ta.value = '';
