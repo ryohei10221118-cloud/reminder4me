@@ -2516,14 +2516,14 @@
     const sorted = _msgEvents
       .map((ev, origIdx) => ({ ...ev, origIdx }))
       .sort((a, b) => {
-        const aWon = a.status === 2 || a.status === 17;
-        const bWon = b.status === 2 || b.status === 17;
+        const aWon = a.status === 2;
+        const bWon = b.status === 2;
         if (aWon !== bWon) return aWon ? 1 : -1;
         return a.origIdx - b.origIdx;
       });
     const eventRows = sorted.map((ev) => {
       const i = ev.origIdx;
-      const isWon = ev.status === 2 || ev.status === 17;
+      const isWon = ev.status === 2;
       const st = _jsonStatusMap[ev.status];
       const borderStyle = !isWon && st ? `border-left:3px solid ${st.color};` : '';
       const statusBadge = st ? `<span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>` : '';
