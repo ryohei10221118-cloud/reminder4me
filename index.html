@@ -1468,6 +1468,7 @@
                   <span class="json-event-name">${esc(s.eventName)}</span>
                   ${_jsonStatusBadge(s.status)}
                   <span class="json-event-time"${timeColor ? ` style="color:${timeColor}"` : ''}>${_jsonToUtc8(s.startDate)}${timeNote}</span>
+                  <button onclick="event.preventDefault();navigator.clipboard.writeText(${JSON.stringify(s.eventName)}).catch(()=>{})" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1" title="複製賽事名稱" onmouseover="this.style.color='var(--text-pri)'" onmouseout="this.style.color='var(--text-muted)'">📋</button>
                 </div>
                 ${betLine ? `<div class="json-bet-line">${esc(betLine)}</div>` : ''}
                 ${scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : ''}
