@@ -2478,10 +2478,25 @@
   }
 
   // ── Init ──
+  const AUTO_CLEAR_KEY = 'reminder4me_auto_clear_date';
+
+  function checkAutoClear() {
+    const now = new Date();
+    if (now.getHours() < 8) return;
+    const today = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+    if (localStorage.getItem(AUTO_CLEAR_KEY) === today) return;
+    const before = records.length;
+    records = records.filter(r => !r.completedAt);
+    localStorage.setItem(AUTO_CLEAR_KEY, today);
+    if (records.length !== before) { save(); fullRender(); }
+  }
+
   function init() {
     load(); loadAgentName(); scheduleAll(); fullRender(); updateNotifBtn();
     initFormGroups();
     setInterval(tickTimers, 1000);
+    checkAutoClear();
+    setInterval(checkAutoClear, 60000);
   }
   document.addEventListener('DOMContentLoaded', init);
 
