@@ -2582,24 +2582,10 @@
   }
 
   // ── Init ──
-  const AUTO_CLEAR_KEY = 'reminder4me_auto_clear_date';
-
-  function checkAutoClear() {
-    const now = Date.now();
-    const last = Number(localStorage.getItem(AUTO_CLEAR_KEY) || 0);
-    if (now - last < 7 * 24 * 60 * 60 * 1000) return;
-    const before = records.length;
-    records = records.filter(r => !r.completedAt);
-    localStorage.setItem(AUTO_CLEAR_KEY, String(now));
-    if (records.length !== before) { save(); fullRender(); }
-  }
-
   function init() {
     load(); loadAgentName(); scheduleAll(); fullRender(); updateNotifBtn();
     initFormGroups();
     setInterval(tickTimers, 1000);
-    checkAutoClear();
-    setInterval(checkAutoClear, 60000);
   }
   document.addEventListener('DOMContentLoaded', init);
 
