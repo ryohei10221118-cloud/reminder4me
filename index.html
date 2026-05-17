@@ -2316,6 +2316,9 @@
     if (done.length === 0) { el.innerHTML = '<div class="empty-state">沒有已完成的記錄</div>'; return; }
     el.innerHTML = done.slice(0,30).map(r => {
       const dur = fmtDuration(r.completedAt - r.createdAt);
+      const orderTagsHtml = r.orderNos && r.orderNos.filter(Boolean).length
+        ? r.orderNos.filter(Boolean).map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
+        : '';
       return `
         <div class="record-card done">
           <div class="card-header">
@@ -2327,6 +2330,7 @@
               <span class="t-stage" style="color:var(--text-muted)">完成</span>
             </div>
             <div class="record-info">
+              ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
               <div class="record-req">${esc(r.requirement)}</div>
               <div class="record-meta">群組：<b>${esc(r.group)}</b></div>
             </div>
@@ -2581,13 +2585,12 @@
   const AUTO_CLEAR_KEY = 'reminder4me_auto_clear_date';
 
   function checkAutoClear() {
-    const now = new Date();
-    if (now.getHours() < 8) return;
-    const today = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
-    if (localStorage.getItem(AUTO_CLEAR_KEY) === today) return;
+    const now = Date.now();
+    const last = Number(localStorage.getItem(AUTO_CLEAR_KEY) || 0);
+    if (now - last < 7 * 24 * 60 * 60 * 1000) return;
     const before = records.length;
     records = records.filter(r => !r.completedAt);
-    localStorage.setItem(AUTO_CLEAR_KEY, today);
+    localStorage.setItem(AUTO_CLEAR_KEY, String(now));
     if (records.length !== before) { save(); fullRender(); }
   }
 
