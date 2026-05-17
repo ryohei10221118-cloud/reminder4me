@@ -1452,9 +1452,11 @@
         <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info">📌 歷史記錄</div>
         <div class="popup-title" style="font-size:13px">🏆 ${esc(eventName)}</div>
-        <div class="note-hint-text" style="margin-top:8px;padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
+        <div style="position:relative;margin-top:8px">
+          <div class="note-hint-text" style="padding:10px 36px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
+          <button class="btn-copy-inline" style="position:absolute;top:6px;right:6px;font-size:13px" onclick="copyText(${JSON.stringify(hint.note)},this)" title="複製">📋</button>
+        </div>
         ${hint.timeStr ? `<div class="note-hint-time" style="margin-top:6px;font-size:11px;color:var(--text-muted)">${esc(hint.timeStr)}</div>` : ''}
-        <button class="btn-copy-reply" style="width:100%;margin-top:10px" onclick="copyText(${JSON.stringify(hint.note)},this)">📋 複製</button>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
