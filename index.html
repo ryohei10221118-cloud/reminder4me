@@ -1455,10 +1455,9 @@
         <div class="note-hint-text" style="margin-top:8px;padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
         ${hint.timeStr ? `<div class="note-hint-time" style="margin-top:6px;font-size:11px;color:var(--text-muted)">${esc(hint.timeStr)}</div>` : ''}
         <button class="btn-copy-reply" style="width:100%;margin-top:10px" onclick="copyText(${JSON.stringify(hint.note)},this)">📋 複製</button>
-        <button class="btn-popup-sec" style="width:100%;margin-top:6px" onclick="closeMsgPopup()">關閉</button>
       </div>`;
     document.body.appendChild(overlay);
-    attachOverlayClose(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
   }
   function _jsonIsUpcoming(iso) {
     if (!iso) return false;
