@@ -1454,10 +1454,8 @@
         <div class="popup-title" style="font-size:13px">🏆 ${esc(eventName)}</div>
         <div class="note-hint-text" style="margin-top:8px;padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
         ${hint.timeStr ? `<div class="note-hint-time" style="margin-top:6px;font-size:11px;color:var(--text-muted)">${esc(hint.timeStr)}</div>` : ''}
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn-copy-reply" style="flex:1" onclick="copyText(${JSON.stringify(hint.note)},this)">📋 複製</button>
-          <button class="btn-popup-sec" style="flex:0 0 auto;padding:6px 14px;font-size:12px" onclick="closeMsgPopup()">關閉</button>
-        </div>
+        <button class="btn-copy-reply" style="width:100%;margin-top:10px" onclick="copyText(${JSON.stringify(hint.note)},this)">📋 複製</button>
+        <button class="btn-popup-sec" style="width:100%;margin-top:6px" onclick="closeMsgPopup()">關閉</button>
       </div>`;
     document.body.appendChild(overlay);
     attachOverlayClose(overlay);
