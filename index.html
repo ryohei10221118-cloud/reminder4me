@@ -555,6 +555,7 @@
     }
     .bet-status-badge { font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; padding-top: 2px; }
     .bet-score-line { font-size: 12px; color: var(--text-sec); margin-top: 1px; }
+    .bet-time-line  { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
     .header-search-wrap { display: flex; align-items: center; gap: 3px; }
     .header-search-input { width: 150px; padding: 6px 10px; font-size: 12px; line-height: 1.5; box-sizing: border-box; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text-pri); outline: none; transition: width 0.2s, border-color 0.15s; }
     .header-search-input:focus { border-color: var(--blue); background: var(--surface); width: 200px; }
@@ -1114,9 +1115,19 @@
                       : scorePart ? scorePart
                       : settlePart ? settlePart
                       : null;
+      let timePart = '';
+      if (b.startDate) {
+        const upcoming = _jsonIsUpcoming(b.startDate);
+        const stale    = b.status === 0 && _jsonIsStale(b.startDate);
+        const timeStr  = _jsonToUtc8(b.startDate);
+        if (upcoming)   timePart = `<div class="bet-time-line" style="color:var(--red)">⏰ 尚未開賽 · ${esc(timeStr)}</div>`;
+        else if (stale) timePart = `<div class="bet-time-line" style="color:var(--orange)">⚠ &gt;24h · ${esc(timeStr)}</div>`;
+        else            timePart = `<div class="bet-time-line">${esc(timeStr)}</div>`;
+      }
       return leaguePart
            + `<div class="bet-info-row"><span class="bet-info-line" title="${esc(line1)}">${esc(line1)}</span>${statusBadge}</div>`
-           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '');
+           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '')
+           + timePart;
     }).filter(Boolean).join('');
     return rows ? `<div class="bet-info-block">${rows}</div>` : '';
   }
@@ -1598,6 +1609,7 @@
       eventId:          selections[i].eventId,
       leagueName:       selections[i].leagueName,
       status:           selections[i].status,
+      startDate:        selections[i].startDate,
       lineType:         selections[i].lineType,
       selectionName:    selections[i].selectionName,
       score1:           selections[i].score1,
