@@ -1454,7 +1454,7 @@
         <div class="popup-title" style="font-size:13px">🏆 ${esc(eventName)}</div>
         <div style="position:relative;margin-top:8px">
           <div class="note-hint-text" style="padding:10px 36px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
-          <button class="btn-copy-inline" style="position:absolute;top:6px;right:6px;font-size:13px" onclick="copyText(${JSON.stringify(hint.note)},this)" title="複製">📋</button>
+          <button class="btn-copy-inline" style="position:absolute;top:6px;right:6px;font-size:13px" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)" title="複製">📋</button>
         </div>
         ${hint.timeStr ? `<div class="note-hint-time" style="margin-top:6px;font-size:11px;color:var(--text-muted)">${esc(hint.timeStr)}</div>` : ''}
       </div>`;
