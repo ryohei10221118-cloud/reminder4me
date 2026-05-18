@@ -37,8 +37,9 @@
     .header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
+      padding: 10px 16px;
       display: flex;
+      flex-wrap: nowrap;
       align-items: center;
       gap: 12px;
       position: sticky;
@@ -66,6 +67,8 @@
       color: var(--text-sec);
       font-size: 12px;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .notification-btn.granted { color: var(--green); border-color: var(--green-border); }
     .settlement-btn {
@@ -76,6 +79,8 @@
       color: var(--text-sec);
       font-size: 12px;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .settlement-btn:hover { background: var(--orange-bg); border-color: var(--orange); color: var(--orange); }
     .agent-name-input {
@@ -87,6 +92,7 @@
       font-size: 12px;
       width: 100px;
       outline: none;
+      flex-shrink: 0;
     }
     .agent-name-input:focus { border-color: var(--blue-light); background: var(--surface); }
     .agent-name-input::placeholder { color: var(--text-muted); }
@@ -556,7 +562,7 @@
     .bet-status-badge { font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; padding-top: 2px; }
     .bet-score-line { font-size: 12px; color: var(--text-sec); margin-top: 1px; }
     .bet-time-line  { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-    .header-search-wrap { display: flex; align-items: center; gap: 3px; }
+    .header-search-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 1; min-width: 0; }
     .header-search-input { width: 180px; padding: 6px 10px; font-size: 12px; line-height: 1.5; box-sizing: border-box; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text-pri); outline: none; }
     .header-search-input:focus { border-color: var(--blue); background: var(--surface); }
     .header-search-input::placeholder { color: var(--text-muted); }
@@ -813,6 +819,8 @@
       color: var(--text-sec);
       font-size: 12px;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .msg-compose-btn:hover { background: var(--blue-bg); border-color: var(--blue-light); color: var(--blue); }
     .msg-event-row {
