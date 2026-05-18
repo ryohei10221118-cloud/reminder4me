@@ -2612,8 +2612,15 @@
   }
 
   // ── Init ──
+  function pruneOldCompleted() {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const before = records.length;
+    records = records.filter(r => !r.completedAt || r.completedAt >= cutoff);
+    if (records.length !== before) { save(); fullRender(); }
+  }
+
   function init() {
-    load(); loadAgentName(); scheduleAll(); fullRender(); updateNotifBtn();
+    load(); loadAgentName(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
     initFormGroups();
     setInterval(tickTimers, 1000);
   }
