@@ -853,6 +853,7 @@
   <h1>回覆提醒</h1>
   <span class="header-badge" id="header-badge">0</span>
   <button class="msg-compose-btn" onclick="showMsgComposePopup()">📨 賽事訊息</button>
+  <button class="msg-compose-btn" onclick="showNotepadPopup()">📝 記事本</button>
   <div class="header-search-wrap">
     <input id="records-search" type="text" class="header-search-input" placeholder="搜尋 ID 或賽事…" oninput="onSearchInput()">
     <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" style="display:none">×</button>
@@ -1254,6 +1255,31 @@
     const btn = document.getElementById('search-clear-btn');
     if (btn) btn.style.display = 'none';
     fullRender();
+  }
+
+  // ── Notepad ──
+  const NOTEPAD_KEY = 'reminder4me_notepad';
+  function showNotepadPopup() {
+    const existing = document.getElementById('notepad-overlay');
+    if (existing) { existing.remove(); return; }
+    const content = localStorage.getItem(NOTEPAD_KEY) || '';
+    const overlay = document.createElement('div');
+    overlay.id = 'notepad-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="max-width:500px;width:92%;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text-pri)">📝 記事本</span>
+          <button class="popup-close-btn" style="position:static" onclick="document.getElementById('notepad-overlay').remove()">×</button>
+        </div>
+        <textarea id="notepad-ta" style="flex:1;min-height:280px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text-pri);font-family:inherit;line-height:1.7;outline:none" placeholder="在此輸入筆記...">${esc(content)}</textarea>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    const ta = overlay.querySelector('#notepad-ta');
+    ta.addEventListener('input', () => localStorage.setItem(NOTEPAD_KEY, ta.value));
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
   }
 
   // ── Copy util ──
