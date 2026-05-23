@@ -37,8 +37,9 @@
     .header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
+      padding: 10px 16px;
       display: flex;
+      flex-wrap: nowrap;
       align-items: center;
       gap: 12px;
       position: sticky;
@@ -59,27 +60,21 @@
     }
     .header-badge.show { display: inline-block; }
     .notification-btn {
-      padding: 6px 12px;
+      padding: 0 12px;
+      height: 30px;
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text-sec);
       font-size: 12px;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .notification-btn.granted { color: var(--green); border-color: var(--green-border); }
-    .settlement-btn {
-      padding: 6px 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text-sec);
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .settlement-btn:hover { background: var(--orange-bg); border-color: var(--orange); color: var(--orange); }
     .agent-name-input {
-      padding: 6px 12px;
+      padding: 0 12px;
+      height: 30px;
       border: 1px solid var(--border);
       border-radius: 6px;
       background: var(--surface2);
@@ -87,6 +82,8 @@
       font-size: 12px;
       width: 100px;
       outline: none;
+      box-sizing: border-box;
+      flex-shrink: 0;
     }
     .agent-name-input:focus { border-color: var(--blue-light); background: var(--surface); }
     .agent-name-input::placeholder { color: var(--text-muted); }
@@ -555,9 +552,10 @@
     }
     .bet-status-badge { font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; padding-top: 2px; }
     .bet-score-line { font-size: 12px; color: var(--text-sec); margin-top: 1px; }
-    .header-search-wrap { display: flex; align-items: center; gap: 3px; }
-    .header-search-input { width: 150px; padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text-pri); outline: none; transition: width 0.2s, border-color 0.15s; }
-    .header-search-input:focus { border-color: var(--blue); background: var(--surface); width: 200px; }
+    .bet-time-line  { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .header-search-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 1; min-width: 0; }
+    .header-search-input { width: 180px; padding: 0 10px; font-size: 12px; height: 30px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text-pri); outline: none; }
+    .header-search-input:focus { border-color: var(--blue); background: var(--surface); }
     .header-search-input::placeholder { color: var(--text-muted); }
     .search-clear-btn { background: none; border: none; font-size: 15px; color: var(--text-muted); cursor: pointer; padding: 0 3px; line-height: 1; }
     .search-clear-btn:hover { color: var(--text-pri); }
@@ -805,13 +803,16 @@
 
     /* ── Event Message Compose ── */
     .msg-compose-btn {
-      padding: 6px 12px;
+      padding: 0 12px;
+      height: 30px;
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text-sec);
       font-size: 12px;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .msg-compose-btn:hover { background: var(--blue-bg); border-color: var(--blue-light); color: var(--blue); }
     .msg-event-row {
@@ -852,7 +853,7 @@
   <h1>回覆提醒</h1>
   <span class="header-badge" id="header-badge">0</span>
   <button class="msg-compose-btn" onclick="showMsgComposePopup()">📨 賽事訊息</button>
-  <button class="settlement-btn" onclick="showSettlementPopup()">📊 每日結算</button>
+  <button class="msg-compose-btn" onclick="showNotepadPopup()">📝 記事本</button>
   <div class="header-search-wrap">
     <input id="records-search" type="text" class="header-search-input" placeholder="搜尋 ID 或賽事…" oninput="onSearchInput()">
     <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" style="display:none">×</button>
@@ -1114,9 +1115,19 @@
                       : scorePart ? scorePart
                       : settlePart ? settlePart
                       : null;
+      let timePart = '';
+      if (b.startDate) {
+        const upcoming = _jsonIsUpcoming(b.startDate);
+        const stale    = b.status === 0 && _jsonIsStale(b.startDate);
+        const timeStr  = _jsonToUtc8(b.startDate);
+        if (upcoming)   timePart = `<div class="bet-time-line" style="color:var(--red)">⏰ 尚未開賽 · ${esc(timeStr)}</div>`;
+        else if (stale) timePart = `<div class="bet-time-line" style="color:var(--orange)">⚠ &gt;24h · ${esc(timeStr)}</div>`;
+        else            timePart = `<div class="bet-time-line">${esc(timeStr)}</div>`;
+      }
       return leaguePart
            + `<div class="bet-info-row"><span class="bet-info-line" title="${esc(line1)}">${esc(line1)}</span>${statusBadge}</div>`
-           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '');
+           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '')
+           + timePart;
     }).filter(Boolean).join('');
     return rows ? `<div class="bet-info-block">${rows}</div>` : '';
   }
@@ -1228,6 +1239,14 @@
     const btn = document.getElementById('search-clear-btn');
     if (btn) btn.style.display = _searchQuery ? '' : 'none';
     fullRender();
+    if (_searchQuery && sortedDone().length > 0) {
+      const list    = document.getElementById('completed-list');
+      const chevron = document.getElementById('chevron');
+      if (list && list.style.display === 'none') {
+        list.style.display = 'block';
+        if (chevron) chevron.classList.add('open');
+      }
+    }
   }
   function clearSearch() {
     const input = document.getElementById('records-search');
@@ -1236,6 +1255,52 @@
     const btn = document.getElementById('search-clear-btn');
     if (btn) btn.style.display = 'none';
     fullRender();
+  }
+
+  // ── Notepad ──
+  const NOTEPAD_KEY = 'reminder4me_notepad';
+  function _cleanPasteText(clipData) {
+    const html = clipData.getData('text/html');
+    let text;
+    if (html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      text = doc.body.innerText;
+    } else {
+      text = clipData.getData('text/plain');
+    }
+    // strip URLs and leftover empty parens
+    return text.replace(/https?:\/\/[^\s)>\]]+/g, '').replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+  }
+  function showNotepadPopup() {
+    const existing = document.getElementById('notepad-overlay');
+    if (existing) { existing.remove(); return; }
+    const content = localStorage.getItem(NOTEPAD_KEY) || '';
+    const overlay = document.createElement('div');
+    overlay.id = 'notepad-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="max-width:500px;width:92%;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text-pri)">📝 記事本</span>
+          <span style="font-size:11px;color:var(--text-muted)">貼上自動去除連結</span>
+          <button class="popup-close-btn" style="position:static" onclick="document.getElementById('notepad-overlay').remove()">×</button>
+        </div>
+        <textarea id="notepad-ta" style="flex:1;min-height:280px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text-pri);font-family:inherit;line-height:1.7;outline:none" placeholder="在此輸入或貼上文字，連結會自動移除...">${esc(content)}</textarea>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    const ta = overlay.querySelector('#notepad-ta');
+    ta.addEventListener('input', () => localStorage.setItem(NOTEPAD_KEY, ta.value));
+    ta.addEventListener('paste', e => {
+      e.preventDefault();
+      const cleaned = _cleanPasteText(e.clipboardData);
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.substring(0, start) + cleaned + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = start + cleaned.length;
+      localStorage.setItem(NOTEPAD_KEY, ta.value);
+    });
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
   }
 
   // ── Copy util ──
@@ -1433,12 +1498,14 @@
         <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info">📌 歷史記錄</div>
         <div class="popup-title" style="font-size:13px">🏆 ${esc(eventName)}</div>
-        <div class="note-hint-text" style="margin-top:8px;padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
+        <div style="position:relative;margin-top:8px">
+          <div class="note-hint-text" style="padding:10px 36px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
+          <button class="btn-copy-inline" style="position:absolute;top:6px;right:6px;font-size:13px" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)" title="複製">📋</button>
+        </div>
         ${hint.timeStr ? `<div class="note-hint-time" style="margin-top:6px;font-size:11px;color:var(--text-muted)">${esc(hint.timeStr)}</div>` : ''}
-        <button class="btn-popup-sec" style="margin-top:10px;width:100%" onclick="closeMsgPopup()">關閉</button>
       </div>`;
     document.body.appendChild(overlay);
-    attachOverlayClose(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
   }
   function _jsonIsUpcoming(iso) {
     if (!iso) return false;
@@ -1598,6 +1665,7 @@
       eventId:          selections[i].eventId,
       leagueName:       selections[i].leagueName,
       status:           selections[i].status,
+      startDate:        selections[i].startDate,
       lineType:         selections[i].lineType,
       selectionName:    selections[i].selectionName,
       score1:           selections[i].score1,
@@ -2123,55 +2191,6 @@
   }
 
   // ── Daily Settlement ──
-  function showSettlementPopup() {
-    const done = sortedDone();
-    if (done.length === 0) { alert('目前沒有已完成的記錄可以結算'); return; }
-
-    const today = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    const lines = [`📊 每日結算 ${today}`, `共完成 ${done.length} 筆`, ''];
-    done.forEach((r, i) => {
-      const names = getEventNames(r).join(' / ');
-      const dur = fmtDuration(r.completedAt - r.createdAt);
-      const nos = r.orderNos.filter(Boolean).join(', ');
-      lines.push(`${i + 1}. ${names}`);
-      if (nos) lines.push(`   注單：${nos}`);
-      lines.push(`   項目：${r.requirement}`);
-      lines.push(`   群組：${r.group}`);
-      if (r.additionalInfo) lines.push(`   備註：${r.additionalInfo}`);
-      lines.push(`   耗時：${dur}`);
-      lines.push('');
-    });
-    const summary = lines.join('\n').trim();
-    _pendingCopy = summary;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'popup-overlay';
-    overlay.id = 'popup-overlay';
-    overlay.innerHTML = `
-      <div class="popup-card" style="max-width:480px;width:92%">
-        <div class="popup-title">📊 每日結算</div>
-        <div style="font-size:13px;color:var(--text-sec);margin-bottom:8px">${today} · 共 ${done.length} 筆完成記錄</div>
-        <textarea readonly style="width:100%;height:220px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text-pri);font-family:inherit;line-height:1.6">${esc(summary)}</textarea>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button style="flex:1;padding:9px;background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:8px;font-size:13px;font-weight:600;color:var(--blue);cursor:pointer" onclick="copyText(_pendingCopy,this)">📋 複製結算內容</button>
-          <button style="flex:1;padding:9px;background:var(--orange-bg);border:1px solid rgba(196,149,106,0.4);border-radius:8px;font-size:13px;font-weight:600;color:var(--orange);cursor:pointer" onclick="confirmSettlement()">✅ 結算並清除</button>
-        </div>
-        <button class="btn-popup-sec" style="width:100%;margin-top:6px" onclick="dismissPopup()">取消</button>
-      </div>`;
-    document.body.appendChild(overlay);
-    attachOverlayClose(overlay);
-  }
-
-  function confirmSettlement() {
-    const done = sortedDone();
-    if (done.length === 0) { dismissPopup(); return; }
-    if (!confirm(`確定要結算並清除 ${done.length} 筆完成記錄嗎？此操作不可復原。`)) return;
-    const doneIds = new Set(done.map(r => r.id));
-    records = records.filter(r => !doneIds.has(r.id));
-    save();
-    fullRender();
-    dismissPopup();
-  }
 
   // ── Notifications ──
   async function requestNotifPermission() {
@@ -2316,6 +2335,9 @@
     if (done.length === 0) { el.innerHTML = '<div class="empty-state">沒有已完成的記錄</div>'; return; }
     el.innerHTML = done.slice(0,30).map(r => {
       const dur = fmtDuration(r.completedAt - r.createdAt);
+      const orderTagsHtml = r.orderNos && r.orderNos.filter(Boolean).length
+        ? r.orderNos.filter(Boolean).map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
+        : '';
       return `
         <div class="record-card done">
           <div class="card-header">
@@ -2327,6 +2349,7 @@
               <span class="t-stage" style="color:var(--text-muted)">完成</span>
             </div>
             <div class="record-info">
+              ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
               <div class="record-req">${esc(r.requirement)}</div>
               <div class="record-meta">群組：<b>${esc(r.group)}</b></div>
             </div>
@@ -2578,25 +2601,17 @@
   }
 
   // ── Init ──
-  const AUTO_CLEAR_KEY = 'reminder4me_auto_clear_date';
-
-  function checkAutoClear() {
-    const now = new Date();
-    if (now.getHours() < 8) return;
-    const today = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
-    if (localStorage.getItem(AUTO_CLEAR_KEY) === today) return;
+  function pruneOldCompleted() {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const before = records.length;
-    records = records.filter(r => !r.completedAt);
-    localStorage.setItem(AUTO_CLEAR_KEY, today);
+    records = records.filter(r => !r.completedAt || r.completedAt >= cutoff);
     if (records.length !== before) { save(); fullRender(); }
   }
 
   function init() {
-    load(); loadAgentName(); scheduleAll(); fullRender(); updateNotifBtn();
+    load(); loadAgentName(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
     initFormGroups();
     setInterval(tickTimers, 1000);
-    checkAutoClear();
-    setInterval(checkAutoClear, 60000);
   }
   document.addEventListener('DOMContentLoaded', init);
 
