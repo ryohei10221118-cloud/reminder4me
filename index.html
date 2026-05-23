@@ -1261,15 +1261,19 @@
   const NOTEPAD_KEY = 'reminder4me_notepad';
   function _cleanPasteText(clipData) {
     const html = clipData.getData('text/html');
-    let text;
     if (html) {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      text = doc.body.innerText;
-    } else {
-      text = clipData.getData('text/plain');
+      // Parse HTML: innerText keeps display text of links (not href)
+      // So pure URL links stay as URLs, non-URL link text is preserved
+      let text = new DOMParser().parseFromString(html, 'text/html').body.innerText;
+      // Remove (https://...) that appear as plain text alongside other content
+      text = text.replace(/\s*\(https?:\/\/[^\s)]+\)/g, '');
+      const cleaned = text.replace(/\s{2,}/g, ' ').trim();
+      return cleaned || clipData.getData('text/plain').trim();
     }
-    // strip URLs and leftover empty parens
-    return text.replace(/https?:\/\/[^\s)>\]]+/g, '').replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+    // Plain text: only remove parenthesised URLs
+    return clipData.getData('text/plain').trim()
+      .replace(/\s*\(https?:\/\/[^\s)]+\)/g, '')
+      .replace(/\s{2,}/g, ' ').trim();
   }
   function showNotepadPopup() {
     const existing = document.getElementById('notepad-overlay');
@@ -1280,9 +1284,10 @@
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card" style="max-width:500px;width:92%;display:flex;flex-direction:column">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           <span style="font-size:13px;font-weight:700;color:var(--text-pri)">📝 記事本</span>
-          <span style="font-size:11px;color:var(--text-muted)">貼上自動去除連結</span>
+          <span style="font-size:11px;color:var(--text-muted);flex:1">貼上自動去除連結</span>
+          <button class="btn-popup-sec" style="padding:3px 10px;font-size:11px" onclick="document.getElementById('notepad-ta').value='';localStorage.removeItem('${NOTEPAD_KEY}')">清空</button>
           <button class="popup-close-btn" style="position:static" onclick="document.getElementById('notepad-overlay').remove()">×</button>
         </div>
         <textarea id="notepad-ta" style="flex:1;min-height:280px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text-pri);font-family:inherit;line-height:1.7;outline:none" placeholder="在此輸入或貼上文字，連結會自動移除...">${esc(content)}</textarea>
