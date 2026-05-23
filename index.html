@@ -1259,6 +1259,18 @@
 
   // ── Notepad ──
   const NOTEPAD_KEY = 'reminder4me_notepad';
+  function _cleanPasteText(clipData) {
+    const html = clipData.getData('text/html');
+    let text;
+    if (html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      text = doc.body.innerText;
+    } else {
+      text = clipData.getData('text/plain');
+    }
+    // strip URLs and leftover empty parens
+    return text.replace(/https?:\/\/[^\s)>\]]+/g, '').replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+  }
   function showNotepadPopup() {
     const existing = document.getElementById('notepad-overlay');
     if (existing) { existing.remove(); return; }
@@ -1270,14 +1282,23 @@
       <div class="popup-card" style="max-width:500px;width:92%;display:flex;flex-direction:column">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:13px;font-weight:700;color:var(--text-pri)">📝 記事本</span>
+          <span style="font-size:11px;color:var(--text-muted)">貼上自動去除連結</span>
           <button class="popup-close-btn" style="position:static" onclick="document.getElementById('notepad-overlay').remove()">×</button>
         </div>
-        <textarea id="notepad-ta" style="flex:1;min-height:280px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text-pri);font-family:inherit;line-height:1.7;outline:none" placeholder="在此輸入筆記...">${esc(content)}</textarea>
+        <textarea id="notepad-ta" style="flex:1;min-height:280px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text-pri);font-family:inherit;line-height:1.7;outline:none" placeholder="在此輸入或貼上文字，連結會自動移除...">${esc(content)}</textarea>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
     const ta = overlay.querySelector('#notepad-ta');
     ta.addEventListener('input', () => localStorage.setItem(NOTEPAD_KEY, ta.value));
+    ta.addEventListener('paste', e => {
+      e.preventDefault();
+      const cleaned = _cleanPasteText(e.clipboardData);
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.substring(0, start) + cleaned + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = start + cleaned.length;
+      localStorage.setItem(NOTEPAD_KEY, ta.value);
+    });
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
   }
