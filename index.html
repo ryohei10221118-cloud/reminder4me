@@ -2608,8 +2608,15 @@
   }
 
   // ── Init ──
+  const PRUNE_CHECK_KEY = 'reminder4me_last_prune';
+  const PRUNE_INTERVAL  = 60 * 60 * 1000; // 1 hour
+
   function pruneOldCompleted() {
-    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const last = Number(localStorage.getItem(PRUNE_CHECK_KEY) || 0);
+    if (now - last < PRUNE_INTERVAL) return;
+    localStorage.setItem(PRUNE_CHECK_KEY, String(now));
+    const cutoff = now - 7 * 24 * 60 * 60 * 1000;
     const before = records.length;
     records = records.filter(r => !r.completedAt || r.completedAt >= cutoff);
     if (records.length !== before) { save(); fullRender(); }
@@ -2619,6 +2626,9 @@
     load(); loadAgentName(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
     initFormGroups();
     setInterval(tickTimers, 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') pruneOldCompleted();
+    });
   }
   document.addEventListener('DOMContentLoaded', init);
 
