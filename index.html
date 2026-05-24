@@ -1262,18 +1262,20 @@
   function _cleanPasteText(clipData) {
     const html = clipData.getData('text/html');
     if (html) {
-      // Parse HTML: innerText keeps display text of links (not href)
-      // So pure URL links stay as URLs, non-URL link text is preserved
-      let text = new DOMParser().parseFromString(html, 'text/html').body.innerText;
-      // Remove (https://...) that appear as plain text alongside other content
+      // Ensure block elements and <br> produce newlines
+      const processed = html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(div|p|li|tr|td|h[1-6])[^>]*>/gi, '\n');
+      const doc = new DOMParser().parseFromString(processed, 'text/html');
+      let text = doc.body.innerText;
       text = text.replace(/\s*\(https?:\/\/[^\s)]+\)/g, '');
-      const cleaned = text.replace(/\s{2,}/g, ' ').trim();
-      return cleaned || clipData.getData('text/plain').trim();
+      // Collapse spaces within lines only, preserve newlines
+      return text.replace(/ {2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+        || clipData.getData('text/plain').trim();
     }
-    // Plain text: only remove parenthesised URLs
     return clipData.getData('text/plain').trim()
       .replace(/\s*\(https?:\/\/[^\s)]+\)/g, '')
-      .replace(/\s{2,}/g, ' ').trim();
+      .replace(/ {2,}/g, ' ').trim();
   }
   function showNotepadPopup() {
     const existing = document.getElementById('notepad-overlay');
