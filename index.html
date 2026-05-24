@@ -1482,15 +1482,25 @@
     _noteHintsMap = {};
     for (const name of eventNames) {
       if (!name) continue;
+      let best = null;
       for (const rec of records) {
         if (!rec.eventNotes) continue;
         const note = rec.eventNotes[name];
-        if (!note || _noteHintsMap[name]) continue;
-        const ts = rec.eventNoteTimes && rec.eventNoteTimes[name];
-        _noteHintsMap[name] = { note, timeStr: ts ? _tsToUtc8(ts) : '' };
+        if (!note) continue;
+        const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || 0;
+        if (!best || ts > best.ts) best = { note, ts };
       }
+      if (best) _noteHintsMap[name] = { note: best.note, timeStr: best.ts ? _tsToUtc8(best.ts) : '' };
     }
     renderFormGroups();
+  }
+
+  function _refreshNoteHints() {
+    const names = new Set();
+    for (const rec of records) {
+      if (rec.eventNotes) Object.keys(rec.eventNotes).forEach(n => names.add(n));
+    }
+    _renderNoteHints([...names]);
   }
   function showNoteHintPopup(eventName) {
     const hint = _noteHintsMap[eventName];
@@ -2049,6 +2059,7 @@
       lines.push(`${names.join('\n')}${msg ? '\n' + msg : ''}`);
     });
     save();
+    _refreshNoteHints();
     copyText(lines.join('\n\n'), btn);
     if (markAllDone) {
       setTimeout(() => {
@@ -2469,6 +2480,7 @@
     r.eventNotes[eventName] = ta ? ta.value : '';
     if (r.eventNotes[eventName]) r.eventNoteTimes[eventName] = Date.now();
     save();
+    _refreshNoteHints();
     const betInfo = r.betInfos && r.betInfos[eventIdx];
     const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
     const parts = [eventName];
