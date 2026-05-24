@@ -1270,7 +1270,7 @@
       let text = doc.body.innerText;
       text = text.replace(/\s*\(https?:\/\/[^\s)]+\)/g, '');
       // Collapse spaces within lines only, preserve newlines
-      return text.replace(/ {2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+      return text.replace(/ {2,}/g, ' ').replace(/\n{2,}/g, '\n').trim()
         || clipData.getData('text/plain').trim();
     }
     return clipData.getData('text/plain').trim()
