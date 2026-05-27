@@ -615,6 +615,28 @@
     }
     .btn-del:hover { color: var(--red); border-color: var(--red); }
 
+    /* ── Quick Reply popup ── */
+    .qr-list { display: flex; flex-direction: column; }
+    .qr-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border-light); gap: 10px; }
+    .qr-row:last-child { border-bottom: none; }
+    .qr-row-label { font-size: 13px; font-weight: 600; color: var(--text-pri); flex: 1; min-width: 0; }
+    .qr-lang-btns { display: flex; gap: 5px; flex-shrink: 0; }
+    .btn-qr-lang {
+      padding: 0 10px; height: 26px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface2); color: var(--text-sec); cursor: pointer;
+    }
+    .btn-qr-lang:hover { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-light); }
+    .qr-edit-list { display: flex; flex-direction: column; gap: 10px; }
+    .qr-edit-row { display: flex; align-items: flex-start; gap: 6px; }
+    .qr-edit-fields { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+    .qr-edit-input {
+      width: 100%; padding: 4px 8px; height: 28px; box-sizing: border-box;
+      font-size: 12px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--surface); color: var(--text-pri);
+    }
+    .qr-edit-input:focus { outline: none; border-color: var(--blue-light); }
+
     /* ── Empty state ── */
     .empty-state { text-align: center; padding: 36px; color: var(--text-muted); font-size: 14px; }
 
@@ -960,6 +982,96 @@
   let groupCounter = 0;
   let formGroups   = []; // [{id, eventName, orderNos:[]}]
   let formLang     = null; // 'en'|'zh'|'kr'|null
+
+  // ── Quick Replies ──
+  const QR_KEY = 'reminder4me_quick_replies';
+  const _defaultQuickReplies = [
+    { id: 'qr_settled', label: '已結算', zh: '已結算', en: 'Settled', kr: '정산됨' },
+    { id: 'qr_noinfo',  label: 'NoInfo',  zh: '暫無相關資訊', en: 'No info available', kr: '현재 관련 정보가 없습니다' },
+    { id: 'qr_cancel',  label: '取消等24h', zh: '取消，需等待24小時', en: 'Cancelled, please wait 24 hours', kr: '취소됨, 24시간 대기 필요' },
+  ];
+  let _quickReplies = [];
+  function loadQuickReplies() {
+    try { const s = localStorage.getItem(QR_KEY); _quickReplies = s ? JSON.parse(s) : _defaultQuickReplies.map(x => ({...x})); }
+    catch(e) { _quickReplies = _defaultQuickReplies.map(x => ({...x})); }
+  }
+  function saveQuickReplies() { localStorage.setItem(QR_KEY, JSON.stringify(_quickReplies)); }
+
+  function showMarkDonePopup(id) {
+    const r = records.find(x => x.id === id);
+    if (!r || r.completedAt) return;
+    const names = getEventNames(r);
+    const eventName = names[0] || '';
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+    const rowsHtml = _quickReplies.map((qr, i) => `
+      <div class="qr-row">
+        <span class="qr-row-label">${esc(qr.label)}</span>
+        <div class="qr-lang-btns">
+          <button class="btn-qr-lang" onclick="copyAndDone('${id}',${i},'zh',this)">中</button>
+          <button class="btn-qr-lang" onclick="copyAndDone('${id}',${i},'en',this)">EN</button>
+          <button class="btn-qr-lang" onclick="copyAndDone('${id}',${i},'kr',this)">한</button>
+        </div>
+      </div>`).join('');
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="min-width:280px;max-width:420px;width:92%">
+        <div class="popup-badge info">✓ 快速回覆</div>
+        ${eventName ? `<div class="popup-title" style="font-size:13px;margin-bottom:10px">🏆 ${esc(eventName)}</div>` : ''}
+        <div class="qr-list">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
+        <div class="popup-btns" style="margin-top:12px">
+          <button class="btn-popup-sec" onclick="showQrEditor()">⚙ 範本</button>
+          <button class="btn-popup-done" onclick="markDone('${id}')">✓ 直接搞定</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  function copyAndDone(id, qrIdx, lang, btn) {
+    const qr = _quickReplies[qrIdx];
+    if (!qr) return;
+    copyText(qr[lang] || '', btn);
+    setTimeout(() => markDone(id), 400);
+  }
+
+  function showQrEditor() {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+    function rowHtml(qr, i) {
+      return `<div class="qr-edit-row">
+        <div class="qr-edit-fields">
+          <input class="qr-edit-input" placeholder="標籤" value="${esc(qr.label)}" oninput="_qrSet(${i},'label',this.value)">
+          <input class="qr-edit-input" placeholder="中文內容" value="${esc(qr.zh)}" oninput="_qrSet(${i},'zh',this.value)">
+          <input class="qr-edit-input" placeholder="English content" value="${esc(qr.en)}" oninput="_qrSet(${i},'en',this.value)">
+          <input class="qr-edit-input" placeholder="한국어 내용" value="${esc(qr.kr)}" oninput="_qrSet(${i},'kr',this.value)">
+        </div>
+        <button class="btn-del" style="flex-shrink:0;margin-top:2px" onclick="_qrRemove(${i})">移除</button>
+      </div>`;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="min-width:300px;max-width:480px;width:95%;overflow-y:auto;max-height:85vh">
+        <button class="popup-close-btn" onclick="document.getElementById('popup-overlay').remove()">×</button>
+        <div class="popup-badge info">⚙ 快速回覆範本</div>
+        <div id="qr-edit-list" class="qr-edit-list" style="margin-top:14px">${_quickReplies.map(rowHtml).join('')}</div>
+        <button class="btn-summary" style="width:100%;margin-top:10px" onclick="_qrAdd()">+ 新增情況</button>
+        <div class="popup-btns" style="margin-top:12px">
+          <button class="btn-popup-done" onclick="_qrSave()">儲存</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  function _qrSet(i, field, val) { if (_quickReplies[i]) _quickReplies[i][field] = val; }
+  function _qrRemove(i) { _quickReplies.splice(i, 1); showQrEditor(); }
+  function _qrAdd() { _quickReplies.push({ id: 'qr_' + Date.now(), label: '', zh: '', en: '', kr: '' }); showQrEditor(); }
+  function _qrSave() { saveQuickReplies(); document.getElementById('popup-overlay').remove(); }
 
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
   function load() {
@@ -2279,7 +2391,7 @@
             ${_buildBetInfoHtml(r)}
           </div>
           <div class="record-actions">
-            <button class="btn-done"    onclick="markDone('${r.id}')">✓ 搞定</button>
+            <button class="btn-done"    onclick="showMarkDonePopup('${r.id}')">✓ 搞定</button>
             <button class="btn-summary" onclick="showSummaryPopup('${r.id}')">📋 概要</button>
             <button class="btn-restart" onclick="restartTimer('${r.id}')">↺ 重新計時</button>
             <button class="btn-del"     onclick="deleteRecord('${r.id}')">移除</button>
@@ -2635,7 +2747,7 @@
   }
 
   function init() {
-    load(); loadAgentName(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
+    load(); loadAgentName(); loadQuickReplies(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
     initFormGroups();
     setInterval(tickTimers, 1000);
     document.addEventListener('visibilitychange', () => {
