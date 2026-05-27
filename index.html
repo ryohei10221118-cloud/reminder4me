@@ -1177,6 +1177,7 @@
     if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
     if (qr.hasUrl && url) text = text + '\n\n' + url;
     copyText(text, btn);
+    setTimeout(() => document.getElementById('popup-overlay')?.remove(), 350);
   }
 
   // ── Quick Reply manager ──
@@ -1652,19 +1653,16 @@
 
   // ── Copy util ──
   function copyText(text, btn) {
-    navigator.clipboard.writeText(text).then(() => {
-      if (btn) {
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1800);
-      }
-    }).catch(() => {
+    // Show feedback immediately — don't wait for async clipboard
+    if (btn) {
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1500);
+    }
+    navigator.clipboard.writeText(text).catch(() => {
       const ta = document.createElement('textarea');
-      ta.value = text; document.body.appendChild(ta); ta.select();
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
       document.execCommand('copy'); document.body.removeChild(ta);
-      if (btn) {
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1800);
-      }
     });
   }
   function copyReply(lang, btn) { copyText(_replyTexts[lang] || '', btn); }
