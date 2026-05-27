@@ -654,9 +654,10 @@
     .qrm-del { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px; padding: 0 2px; flex-shrink: 0; }
     .qrm-del:hover { color: var(--red); }
     .qrm-chevron { color: var(--text-muted); font-size: 10px; transition: transform 0.15s; flex-shrink: 0; }
-    .qrm-chevron.open { transform: rotate(180deg); }
     .qrm-body { display: none; padding: 0 10px 10px; border-top: 1px solid var(--border-light); }
-    .qrm-body.open { display: block; }
+    .qrm-item.open .qrm-body    { display: block; }
+    .qrm-item.open .qrm-chevron { transform: rotate(180deg); }
+    .qrm-item.open .qrm-preview { display: none; }
     .qrm-field-row { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; }
     .qrm-field-lbl { font-size: 11px; color: var(--text-muted); width: 28px; flex-shrink: 0; padding-top: 6px; }
     .qrm-textarea {
@@ -1176,16 +1177,16 @@
           <span class="qrm-handle" onclick="event.stopPropagation()" draggable="false">⠿</span>
           <div class="qrm-label-preview">
             <div class="qrm-label">${esc(qr.label) || '<span style="color:var(--text-muted)">（未命名）</span>'}</div>
-            ${!isOpen ? `<div class="qrm-preview">${esc(preview)}</div>` : ''}
+            <div class="qrm-preview">${esc(preview)}</div>
           </div>
           <div class="qrm-badges">
             ${qr.attachName ? '<span class="qrm-badge name">附名</span>' : ''}
             ${qr.hasUrl     ? '<span class="qrm-badge url">+URL</span>'  : ''}
           </div>
-          <span class="qrm-chevron${isOpen ? ' open' : ''}">▼</span>
+          <span class="qrm-chevron">▼</span>
           <button class="qrm-del" onclick="event.stopPropagation();_qrMgrRemove(${i})" title="移除">×</button>
         </div>
-        <div class="qrm-body${isOpen ? ' open' : ''}">
+        <div class="qrm-body">
           <div class="qrm-field-row">
             <span class="qrm-field-lbl" style="width:36px;color:var(--text-sec);font-weight:600">標題</span>
             <input class="qrm-label-input" value="${esc(qr.label)}" placeholder="情況名稱" oninput="_qrMgrSet(${i},'label',this.value)">
@@ -1239,8 +1240,12 @@
   }
 
   function _qrToggle(i) {
-    _qrExpandedIdx = (_qrExpandedIdx === i) ? -1 : i;
-    _renderQrManager();
+    const item = document.getElementById('qrm-item-' + i);
+    if (!item) return;
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('#qrm-list .qrm-item.open').forEach(el => el.classList.remove('open'));
+    _qrExpandedIdx = -1;
+    if (!wasOpen) { item.classList.add('open'); _qrExpandedIdx = i; }
   }
   function _qrMgrSet(i, field, val) { if (_quickReplies[i]) _quickReplies[i][field] = val; }
   function _qrMgrRemove(i) { _quickReplies.splice(i, 1); _qrExpandedIdx = -1; _renderQrManager(); }
