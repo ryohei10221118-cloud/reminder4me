@@ -704,7 +704,7 @@
       align-items: flex-start;
       justify-content: center;
       overflow-y: auto;
-      padding: 40px 0 24px;
+      padding: 20px 0;
       animation: overlayIn 0.2s ease;
     }
     @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
@@ -718,6 +718,7 @@
       box-shadow: 0 16px 60px rgba(74,66,56,0.2);
       animation: cardUp 0.28s cubic-bezier(0.16,1,0.3,1);
       position: relative;
+      margin: auto;
     }
     .popup-card.stage1 { border-color: var(--orange); }
     .popup-card.stage2 { border-color: var(--red); }
@@ -1086,13 +1087,27 @@
     localStorage.setItem(QR_VER_KEY, String(QR_VER));
   }
 
+  function _extractUrl(text) {
+    if (!text) return '';
+    const m = text.match(/https?:\/\/[^\s]+/);
+    return m ? m[0] : '';
+  }
+
   // ── Quick Reply use popup ──
   function showMarkDonePopup(id) {
     const r = records.find(x => x.id === id);
     if (!r || r.completedAt) return;
     const eventName = (getEventNames(r)[0] || '').trim();
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
-    const cardLang = r.lang || null; // 'zh'|'en'|'kr'|null
+    const cardLang = r.lang || null;
+    // auto-detect URL from additionalInfo then eventNotes
+    let autoUrl = _extractUrl(r.additionalInfo);
+    if (!autoUrl && r.eventNotes) {
+      for (const key of Object.keys(r.eventNotes)) {
+        autoUrl = _extractUrl(r.eventNotes[key]);
+        if (autoUrl) break;
+      }
+    }
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
@@ -1115,7 +1130,7 @@
     const urlSection = hasUrlTemplate ? `
       <div class="qr-url-wrap" style="flex-shrink:0">
         <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
-        <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://...">
+        <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
       </div>` : '';
 
     const overlay = document.createElement('div');
