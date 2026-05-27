@@ -1060,19 +1060,27 @@
   let _qrExpandedIdx = -1;
   let _qrDragSrcIdx  = -1;
 
+  const QR_VER_KEY = 'reminder4me_qr_ver';
+  const QR_VER     = 2; // bump when defaults change
   function loadQuickReplies() {
     try {
-      const s = localStorage.getItem(QR_KEY);
-      if (s) {
+      const s   = localStorage.getItem(QR_KEY);
+      const ver = Number(localStorage.getItem(QR_VER_KEY) || 0);
+      if (s && ver >= QR_VER) {
         const parsed = JSON.parse(s);
-        // migrate old entries that lack attachName/hasUrl
         _quickReplies = parsed.map(x => ({ attachName: false, hasUrl: false, ...x }));
       } else {
+        // first run or old defaults — load fresh defaults and save version
         _quickReplies = _defaultQuickReplies.map(x => ({ ...x }));
+        localStorage.setItem(QR_KEY, JSON.stringify(_quickReplies));
+        localStorage.setItem(QR_VER_KEY, String(QR_VER));
       }
     } catch(e) { _quickReplies = _defaultQuickReplies.map(x => ({ ...x })); }
   }
-  function saveQuickReplies() { localStorage.setItem(QR_KEY, JSON.stringify(_quickReplies)); }
+  function saveQuickReplies() {
+    localStorage.setItem(QR_KEY, JSON.stringify(_quickReplies));
+    localStorage.setItem(QR_VER_KEY, String(QR_VER));
+  }
 
   // ── Quick Reply use popup ──
   function showMarkDonePopup(id) {
@@ -1150,7 +1158,7 @@
 
     const itemsHtml = _quickReplies.map((qr, i) => {
       const isOpen = _qrExpandedIdx === i;
-      const preview = qr.zh ? qr.zh.slice(0, 35) + (qr.zh.length > 35 ? '…' : '') : '（未填內容）';
+      const preview = qr.zh ? qr.zh.slice(0, 18) + (qr.zh.length > 18 ? '…' : '') : '（未填內容）';
       return `<div class="qrm-item${isOpen ? ' open' : ''}" id="qrm-item-${i}"
           draggable="true"
           ondragstart="_qrDragStart(${i})"
