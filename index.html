@@ -1220,11 +1220,11 @@
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
-      <div class="popup-card" style="min-width:300px;max-width:500px;width:95%;max-height:84vh;display:flex;flex-direction:column;padding-bottom:0">
-        <button class="popup-close-btn" style="flex-shrink:0" onclick="document.getElementById('popup-overlay').remove()">×</button>
-        <div class="popup-badge info" style="flex-shrink:0">⚙ 管理快速回覆範本</div>
-        <div class="qrm-list" id="qrm-list" style="margin-top:14px;overflow-y:auto;flex:1;min-height:0">${itemsHtml}</div>
-        <div style="flex-shrink:0;padding-top:8px;padding-bottom:16px">
+      <div class="popup-card" style="min-width:300px;max-width:500px;width:95%">
+        <button class="popup-close-btn" onclick="document.getElementById('popup-overlay').remove()">×</button>
+        <div class="popup-badge info">⚙ 管理快速回覆範本</div>
+        <div class="qrm-list" id="qrm-list" style="margin-top:14px">${itemsHtml}</div>
+        <div style="padding-top:8px;padding-bottom:4px">
           <div class="qrm-add-row">
             <input id="qrm-new-label" class="qrm-add-input" placeholder="新情況名稱" onkeydown="if(event.key==='Enter')_qrMgrAdd()">
             <button class="btn-summary" style="flex-shrink:0" onclick="_qrMgrAdd()">+ 新增</button>
