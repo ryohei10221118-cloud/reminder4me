@@ -1031,6 +1031,19 @@
 
   // ── Quick Replies ──
   const QR_KEY = 'reminder4me_quick_replies';
+
+  // ── Standalone event notes store (from 賽事訊息產生器, not tied to cards) ──
+  const ENS_KEY = 'reminder4me_ens';
+  let _ensStore = {}; // { eventName: { note, ts } }
+  function _ensLoad() {
+    try { _ensStore = JSON.parse(localStorage.getItem(ENS_KEY) || '{}'); } catch(e) { _ensStore = {}; }
+  }
+  function _ensSave() { localStorage.setItem(ENS_KEY, JSON.stringify(_ensStore)); }
+  function _ensSet(eventName, note) {
+    if (!note || !note.trim()) return;
+    _ensStore[eventName] = { note: note.trim(), ts: Date.now() };
+    _ensSave();
+  }
   const _defaultQuickReplies = [
     { id: 'qr1', label: '已结算',  attachName: false, hasUrl: false,
       zh: '注单已结算，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。- Sunny',
@@ -1828,6 +1841,9 @@
         const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || 0;
         if (!best || ts > best.ts) best = { note, ts };
       }
+      // also check standalone store from 賽事訊息產生器
+      const ens = _ensStore[name];
+      if (ens && (!best || ens.ts > best.ts)) best = { note: ens.note, ts: ens.ts };
       if (best) _noteHintsMap[name] = { note: best.note, timeStr: best.ts ? _tsToUtc8(best.ts) : '' };
     }
     renderFormGroups();
@@ -3000,7 +3016,7 @@
   }
 
   function init() {
-    load(); loadAgentName(); loadQuickReplies(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
+    load(); loadAgentName(); loadQuickReplies(); _ensLoad(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
     initFormGroups();
     setInterval(tickTimers, 1000);
     document.addEventListener('visibilitychange', () => {
@@ -3141,6 +3157,8 @@
       .filter(ev => ev.notes && ev.notes.trim())
       .map(ev => `${ev.eventName}\nEventId: ${ev.eventId}\n${ev.notes.trim()}`);
     if (!parts.length) { alert('請至少填寫一筆備註'); return; }
+    // save notes (including links) to standalone store so 📌 works later
+    _msgEvents.forEach(ev => { if (ev.notes && ev.notes.trim()) _ensSet(ev.eventName, ev.notes); });
     const text = parts.join('\n\n');
     navigator.clipboard.writeText(text).then(() => _closeMsgCompose()).catch(() => {
       const ta = document.createElement('textarea');
