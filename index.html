@@ -627,6 +627,7 @@
       background: var(--surface2); color: var(--text-sec); cursor: pointer;
     }
     .btn-qr-lang:hover { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-light); }
+    .btn-qr-lang.hl { background: var(--green-bg); color: var(--green); border-color: var(--green-border); font-weight: 700; }
     .qr-url-wrap { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light); }
     .qr-url-input {
       width: 100%; padding: 5px 9px; height: 30px; box-sizing: border-box;
@@ -1088,24 +1089,28 @@
     if (!r || r.completedAt) return;
     const eventName = (getEventNames(r)[0] || '').trim();
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
+    const cardLang = r.lang || null; // 'zh'|'en'|'kr'|null
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
     const rowsHtml = _quickReplies.map((qr, i) => {
       const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
       const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>' : '';
+      const hlZh = cardLang === 'zh' ? ' hl' : '';
+      const hlEn = cardLang === 'en' ? ' hl' : '';
+      const hlKr = cardLang === 'kr' ? ' hl' : '';
       return `<div class="qr-row">
         <span class="qr-row-label">${esc(qr.label)}${nameTag}${urlTag}</span>
         <div class="qr-lang-btns">
-          <button class="btn-qr-lang" onclick="_qrCopyDone('${id}',${i},'zh',this)">中</button>
-          <button class="btn-qr-lang" onclick="_qrCopyDone('${id}',${i},'en',this)">EN</button>
-          <button class="btn-qr-lang" onclick="_qrCopyDone('${id}',${i},'kr',this)">한</button>
+          <button class="btn-qr-lang${hlZh}" onclick="_qrCopyDone('${id}',${i},'zh',this)">中</button>
+          <button class="btn-qr-lang${hlEn}" onclick="_qrCopyDone('${id}',${i},'en',this)">EN</button>
+          <button class="btn-qr-lang${hlKr}" onclick="_qrCopyDone('${id}',${i},'kr',this)">한</button>
         </div>
       </div>`;
     }).join('');
 
     const urlSection = hasUrlTemplate ? `
-      <div class="qr-url-wrap">
+      <div class="qr-url-wrap" style="flex-shrink:0">
         <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
         <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://...">
       </div>` : '';
@@ -1114,12 +1119,12 @@
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
-      <div class="popup-card" style="min-width:290px;max-width:440px;width:93%">
-        <div class="popup-badge info">✓ 快速回覆</div>
-        ${eventName ? `<div class="popup-title" style="font-size:13px;margin-bottom:10px">🏆 ${esc(eventName)}</div>` : ''}
-        <div class="qr-list">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
+      <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
+        <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
+        ${eventName ? `<div class="popup-title" style="font-size:13px;margin-bottom:10px;flex-shrink:0">🏆 ${esc(eventName)}</div>` : ''}
+        <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
         ${urlSection}
-        <div class="popup-btns" style="margin-top:12px">
+        <div class="popup-btns" style="margin-top:12px;flex-shrink:0">
           <button class="btn-popup-sec" onclick="showQrManager()">⚙ 管理範本</button>
           <button class="btn-popup-done" onclick="document.getElementById('popup-overlay')?.remove();markDone('${id}')">✓ 直接搞定</button>
         </div>
