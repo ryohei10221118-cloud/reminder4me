@@ -1062,8 +1062,9 @@
       kr: '올바르게 정산되었습니다, 참조용 링크로만 사용해 주세요, 감사합니다. - Sunny' },
   ];
   let _quickReplies = [];
-  let _qrExpandedIdx = -1;
-  let _qrDragSrcIdx  = -1;
+  let _qrExpandedIdx    = -1;
+  let _qrDragSrcIdx     = -1;
+  let _hintPopupEvent   = '';
 
   const QR_VER_KEY = 'reminder4me_qr_ver';
   const QR_VER     = 2; // bump when defaults change
@@ -1165,6 +1166,17 @@
 
     copyText(text, btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
+  }
+
+  function _qrCopyHint(qrIdx, lang, btn) {
+    const qr = _quickReplies[qrIdx];
+    if (!qr) return;
+    const urlInput = document.getElementById('qr-url-input');
+    const url = urlInput ? urlInput.value.trim() : '';
+    let text = qr[lang] || '';
+    if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
+    if (qr.hasUrl && url) text = text + '\n\n' + url;
+    copyText(text, btn);
   }
 
   // ── Quick Reply manager ──
@@ -1833,21 +1845,48 @@
   function showNoteHintPopup(eventName) {
     const hint = _noteHintsMap[eventName];
     if (!hint) return;
+    _hintPopupEvent = eventName;
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
+
+    const autoUrl = _extractUrl(hint.note);
+    const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
+    const rowsHtml = _quickReplies.map((qr, i) => {
+      const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
+      const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>'  : '';
+      return `<div class="qr-row">
+        <span class="qr-row-label">${esc(qr.label)}${nameTag}${urlTag}</span>
+        <div class="qr-lang-btns">
+          <button class="btn-qr-lang" onclick="_qrCopyHint(${i},'zh',this)">中</button>
+          <button class="btn-qr-lang" onclick="_qrCopyHint(${i},'en',this)">EN</button>
+          <button class="btn-qr-lang" onclick="_qrCopyHint(${i},'kr',this)">한</button>
+        </div>
+      </div>`;
+    }).join('');
+    const urlSection = hasUrlTemplate ? `
+      <div class="qr-url-wrap">
+        <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
+        <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
+      </div>` : '';
+
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
-      <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:420px;width:92%">
-        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
-        <div class="popup-badge info">📌 歷史記錄</div>
-        <div class="popup-title" style="font-size:13px">🏆 ${esc(eventName)}</div>
-        <div style="position:relative;margin-top:8px">
-          <div class="note-hint-text" style="padding:10px 36px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
+      <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
+        <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
+        <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
+        <div style="position:relative;margin-top:8px;flex-shrink:0">
+          <div class="note-hint-text" style="padding:10px 36px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto">${esc(hint.note)}</div>
           <button class="btn-copy-inline" style="position:absolute;top:6px;right:6px;font-size:13px" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)" title="複製">📋</button>
         </div>
-        ${hint.timeStr ? `<div class="note-hint-time" style="margin-top:6px;font-size:11px;color:var(--text-muted)">${esc(hint.timeStr)}</div>` : ''}
+        ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;flex-shrink:0">✓ 快速回覆</div>
+          <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:12px">尚未設定快速回覆範本</div>'}</div>
+          ${urlSection}
+        </div>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
