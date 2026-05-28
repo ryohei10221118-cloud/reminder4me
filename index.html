@@ -3096,8 +3096,17 @@
     if (records.length !== before) { save(); fullRender(); }
   }
 
+  function _grpMigrateFromRecords() {
+    if (localStorage.getItem(GRP_HIST_KEY)) return; // already exists, skip
+    const freq = {};
+    records.forEach(r => { if (r.group) freq[r.group] = (freq[r.group] || 0) + 1; });
+    const sorted = Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
+    if (sorted.length) localStorage.setItem(GRP_HIST_KEY, JSON.stringify(sorted));
+  }
+
   function init() {
     load(); loadAgentName(); loadQuickReplies(); _ensLoad(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
+    _grpMigrateFromRecords();
     initFormGroups();
     setInterval(tickTimers, 1000);
     document.addEventListener('visibilitychange', () => {
