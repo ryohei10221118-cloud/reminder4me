@@ -257,6 +257,12 @@
       border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       z-index: 50; overflow: hidden; max-height: 200px; overflow-y: auto;
     }
+    .grp-dropdown {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      z-index: 50; overflow: hidden; max-height: 200px; overflow-y: auto;
+    }
     .req-option {
       padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text-pri);
     }
@@ -961,7 +967,11 @@
             </div>
             <div class="form-group">
               <label>群組名稱 *</label>
-              <input id="f-group" placeholder="群組名稱" autocomplete="off" required>
+              <div style="position:relative">
+                <input id="f-group" placeholder="群組名稱" autocomplete="off" required
+                  oninput="_grpOnInput(this)" onkeydown="_grpOnKey(event)" onfocus="_grpOnInput(this)" onblur="_grpOnBlur()">
+                <div class="grp-dropdown" id="grp-dropdown" style="display:none"></div>
+              </div>
             </div>
             <div class="form-group">
               <label>附加資訊</label>
@@ -2982,6 +2992,7 @@
 
     const batchId = recordsToAdd.length > 1 ? `b${Date.now()}` : null;
     recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info, formLang, batchId, g.betInfos));
+    _grpHistSave(grp);
 
     showSubmitPopup(recordsToAdd, req, grp, info);
 
@@ -3003,6 +3014,74 @@
   }
 
   // ── Init ──
+  // ── Group name autocomplete ──
+  const GRP_HIST_KEY = 'reminder4me_grp_hist';
+  const GRP_MAX      = 200;
+  let _grpHiIdx      = -1;
+
+  function _grpHistLoad() {
+    try { return JSON.parse(localStorage.getItem(GRP_HIST_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function _grpHistSave(name) {
+    if (!name) return;
+    let list = _grpHistLoad().filter(x => x !== name);
+    list.unshift(name);
+    if (list.length > GRP_MAX) list = list.slice(0, GRP_MAX);
+    localStorage.setItem(GRP_HIST_KEY, JSON.stringify(list));
+  }
+  function _grpOnInput(inp) {
+    const q = inp.value.trim().toLowerCase();
+    const list = _grpHistLoad();
+    const matches = q
+      ? list.filter(x => x.toLowerCase().includes(q)).slice(0, 8)
+      : list.slice(0, 8);
+    _grpHiIdx = -1;
+    _grpShowDrop(matches, inp);
+  }
+  function _grpShowDrop(matches, inp) {
+    const drop = document.getElementById('grp-dropdown');
+    if (!drop) return;
+    if (!matches.length) { drop.style.display = 'none'; return; }
+    drop.innerHTML = matches.map((m, i) =>
+      `<div class="req-option" data-i="${i}" onmousedown="_grpPick('${m.replace(/'/g,"\\'")}')">
+        ${esc(m)}
+      </div>`).join('');
+    drop.style.display = 'block';
+  }
+  function _grpPick(name) {
+    const inp = document.getElementById('f-group');
+    if (inp) inp.value = name;
+    const drop = document.getElementById('grp-dropdown');
+    if (drop) drop.style.display = 'none';
+    _grpHiIdx = -1;
+  }
+  function _grpOnKey(e) {
+    const drop = document.getElementById('grp-dropdown');
+    if (!drop || drop.style.display === 'none') return;
+    const items = drop.querySelectorAll('.req-option');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _grpHiIdx = Math.min(_grpHiIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('highlighted', i === _grpHiIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _grpHiIdx = Math.max(_grpHiIdx - 1, -1);
+      items.forEach((el, i) => el.classList.toggle('highlighted', i === _grpHiIdx));
+    } else if (e.key === 'Enter' && _grpHiIdx >= 0) {
+      e.preventDefault();
+      items[_grpHiIdx]?.dispatchEvent(new MouseEvent('mousedown'));
+    } else if (e.key === 'Escape') {
+      drop.style.display = 'none'; _grpHiIdx = -1;
+    }
+  }
+  function _grpOnBlur() {
+    setTimeout(() => {
+      const drop = document.getElementById('grp-dropdown');
+      if (drop) drop.style.display = 'none';
+      _grpHiIdx = -1;
+    }, 150);
+  }
+
   const PRUNE_CHECK_KEY = 'reminder4me_last_prune';
   const PRUNE_INTERVAL  = 60 * 60 * 1000; // 1 hour
 
