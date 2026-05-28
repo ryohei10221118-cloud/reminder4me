@@ -3104,9 +3104,25 @@
     if (sorted.length) localStorage.setItem(GRP_HIST_KEY, JSON.stringify(sorted));
   }
 
+  function _grpDedupCase() {
+    const DEDUP_KEY = 'reminder4me_grp_dedup_v1';
+    if (localStorage.getItem(DEDUP_KEY)) return;
+    const list = _grpHistLoad();
+    const seen = new Set();
+    const deduped = list.filter(x => {
+      const lc = x.toLowerCase();
+      if (seen.has(lc)) return false;
+      seen.add(lc);
+      return true;
+    });
+    localStorage.setItem(GRP_HIST_KEY, JSON.stringify(deduped));
+    localStorage.setItem(DEDUP_KEY, '1');
+  }
+
   function init() {
     load(); loadAgentName(); loadQuickReplies(); _ensLoad(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
     _grpMigrateFromRecords();
+    _grpDedupCase();
     initFormGroups();
     setInterval(tickTimers, 1000);
     document.addEventListener('visibilitychange', () => {
