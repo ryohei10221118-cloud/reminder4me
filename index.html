@@ -452,7 +452,10 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      cursor: pointer;
     }
+    .card-event-name:hover { color: var(--blue); }
+    .card-event-name.copied { color: var(--green); }
     .btn-msg {
       padding: 4px 10px;
       background: var(--surface2);
@@ -513,7 +516,6 @@
     .order-tag {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
       background: var(--blue-bg);
       border: 1px solid var(--blue-light);
       border-radius: 5px;
@@ -521,19 +523,11 @@
       font-size: 12px;
       color: var(--blue);
       font-weight: 600;
-    }
-    .btn-copy-tag {
-      background: none;
-      border: none;
       cursor: pointer;
-      color: var(--text-muted);
-      font-size: 12px;
-      padding: 0;
-      line-height: 1;
-      transition: transform 0.2s ease, color 0.2s ease;
+      transition: background 0.15s;
     }
-    .btn-copy-tag:hover { color: var(--blue); }
-    .btn-copy-tag.copied { color: var(--green); transform: scale(1.4); transition: transform 0.12s ease, color 0.12s ease; }
+    .order-tag:hover { background: rgba(143,172,200,0.22); }
+    .order-tag.copied { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
     .record-req {
       font-size: 12px;
       color: var(--text-pri);
@@ -1903,9 +1897,8 @@
         <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
         <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
-        <div style="position:relative;margin-top:8px;flex-shrink:0">
-          <div class="note-hint-text" style="padding:10px 36px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto">${esc(hint.note)}</div>
-          <button class="btn-copy-inline" style="position:absolute;top:6px;right:6px;font-size:13px" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)" title="複製">📋</button>
+        <div style="margin-top:8px;flex-shrink:0">
+          <div class="note-hint-text" style="padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto;cursor:pointer" title="點擊複製" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)">${esc(hint.note)}</div>
         </div>
         ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
@@ -2642,13 +2635,12 @@
     const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
     const stageLabel = r.stage === 1 ? '第1次' : r.stage === 2 ? '第2次' : '待定';
     const orderTagsHtml = r.orderNos.length
-      ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
+      ? r.orderNos.map(o => `<span class="order-tag" title="點擊複製" onclick="copyText('${o.replace(/'/g,"\\'")}',this)">${esc(o)}</span>`).join('')
       : '';
     const eventNames = getEventNames(r);
     const eventRowsHtml = eventNames.map((name, ei) => `
       <div class="card-event-row">
-        <span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(name)}</span>
-        <button class="btn-copy-inline" data-copy="${esc(name)}" onclick="copyText(this.dataset.copy,this)" title="複製賽事名稱">⎘</button>
+        <span class="card-event-name" title="點擊複製" onclick="copyText('${name.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(name)}</span>
         <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
       </div>`).join('');
     const checkboxHtml = inBatch
@@ -2747,12 +2739,12 @@
     el.innerHTML = done.slice(0,30).map(r => {
       const dur = fmtDuration(r.completedAt - r.createdAt);
       const orderTagsHtml = r.orderNos && r.orderNos.filter(Boolean).length
-        ? r.orderNos.filter(Boolean).map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
+        ? r.orderNos.filter(Boolean).map(o => `<span class="order-tag" title="點擊複製" onclick="copyText('${o.replace(/'/g,"\\'")}',this)">${esc(o)}</span>`).join('')
         : '';
       return `
         <div class="record-card done">
           <div class="card-header">
-            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(n)}</span><button class="btn-copy-inline" data-copy="${esc(n)}" onclick="copyText(this.dataset.copy,this)" title="複製賽事名稱">⎘</button></div>`).join('')}</div>
+            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name" title="點擊複製" onclick="copyText('${n.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(n)}</span></div>`).join('')}</div>
           </div>
           <div class="card-body">
             <div class="timer-box" style="border-color:var(--border)">
