@@ -456,6 +456,9 @@
     }
     .card-event-name:hover { color: var(--blue); }
     .card-event-name.copied { color: var(--green); }
+    .card-event-name.dup { background: #fef3c7; color: #b45309; border-radius: 3px; padding: 0 3px; }
+    .card-event-name.dup:hover { color: #92400e; }
+    .card-event-name.dup.copied { background: var(--green-bg); color: var(--green); }
     .btn-msg {
       padding: 4px 10px;
       background: var(--surface2);
@@ -2631,18 +2634,21 @@
     }
   }
 
-  function renderCardHtml(r, inBatch = false) {
+  function renderCardHtml(r, inBatch = false, dupSet = null) {
     const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
     const stageLabel = r.stage === 1 ? '第1次' : r.stage === 2 ? '第2次' : '待定';
     const orderTagsHtml = r.orderNos.length
       ? r.orderNos.map(o => `<span class="order-tag" title="點擊複製" onclick="copyText('${o.replace(/'/g,"\\'")}',this)">${esc(o)}</span>`).join('')
       : '';
     const eventNames = getEventNames(r);
-    const eventRowsHtml = eventNames.map((name, ei) => `
+    const eventRowsHtml = eventNames.map((name, ei) => {
+      const isDup = dupSet && dupSet.has(name);
+      return `
       <div class="card-event-row">
-        <span class="card-event-name" title="點擊複製" onclick="copyText('${name.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(name)}</span>
+        <span class="card-event-name${isDup ? ' dup' : ''}" title="${isDup ? '此賽事出現在其他待處理卡片，點擊複製' : '點擊複製'}" onclick="copyText('${name.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(name)}</span>
         <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     const checkboxHtml = inBatch
       ? `<input type="checkbox" class="batch-cb" id="cb-${r.id}" ${selectedIds.has(r.id) ? 'checked' : ''} onchange="toggleSelect('${r.id}')">`
       : '';
@@ -2681,6 +2687,11 @@
     badge.style.display = active.length ? 'inline-flex' : 'none';
     if (active.length === 0) { el.innerHTML = '<div class="empty-state">目前沒有待處理的記錄</div>'; return; }
 
+    // build duplicate event name set across all active records
+    const _nameCount = {};
+    active.forEach(r => getEventNames(r).forEach(n => { if (n) _nameCount[n] = (_nameCount[n] || 0) + 1; }));
+    const dupSet = new Set(Object.keys(_nameCount).filter(n => _nameCount[n] > 1));
+
     // separate batch vs solo records
     const batches = {};
     const solos = [];
@@ -2705,7 +2716,7 @@
 
     const parts = [];
     items.forEach(item => {
-      if (item.type === 'solo') { parts.push(renderCardHtml(item.r, false)); return; }
+      if (item.type === 'solo') { parts.push(renderCardHtml(item.r, false, dupSet)); return; }
       const bid = item.bid;
       const group = batches[bid];
       const selCount = group.filter(r => selectedIds.has(r.id)).length;
@@ -2724,7 +2735,7 @@
               <button class="batch-bar-btn batch-bar-msg"     ${selCount === 0 ? 'disabled' : ''} onclick="showBatchMsgPopup('${bid}')">📝 批量訊息</button>
             </div>
           </div>
-          ${group.map(r => renderCardHtml(r, true)).join('')}
+          ${group.map(r => renderCardHtml(r, true, dupSet)).join('')}
         </div>`);
     });
 
