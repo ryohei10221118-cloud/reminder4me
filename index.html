@@ -1121,6 +1121,8 @@
     const r = records.find(x => x.id === id);
     if (!r || r.completedAt) return;
     const eventName = (getEventNames(r)[0] || '').trim();
+    const reqText   = r.requirement || '';
+    const grpText   = r.group || '';
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
     const cardLang = r.lang || null;
     // auto-detect URL from additionalInfo then eventNotes
@@ -1162,7 +1164,8 @@
     overlay.innerHTML = `
       <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
         <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
-        ${eventName ? `<div class="popup-title" style="font-size:13px;margin-bottom:10px;flex-shrink:0">🏆 ${esc(eventName)}</div>` : ''}
+        ${eventName ? `<div class="popup-title" style="font-size:13px;margin-bottom:6px;flex-shrink:0">🏆 ${esc(eventName)}</div>` : ''}
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
         <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
         ${urlSection}
         <div class="popup-btns" style="margin-top:12px;flex-shrink:0">
