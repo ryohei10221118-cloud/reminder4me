@@ -187,6 +187,7 @@
     .order-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
     .order-row { display: flex; gap: 6px; align-items: center; }
     .order-row input { flex: 1; }
+    .event-bet-hint { font-size: 11px; color: var(--text-muted); padding: 2px 2px 3px; line-height: 1.4; }
     .btn-remove-order {
       background: transparent;
       border: none;
@@ -1743,12 +1744,28 @@
               const hintKey = e.trim();
               const hasHint = hintKey && _noteHintsMap && _noteHintsMap[hintKey];
               const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
+              const bi = (g.betInfos || [])[ei] ?? null;
+              let betHintHtml = '';
+              if (bi && (bi.lineType || bi.selectionName)) {
+                const _na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
+                const isSettled = bi.status !== null && bi.status !== undefined && bi.status !== 0;
+                const hasScore  = bi.score1 !== null && bi.score1 !== undefined;
+                let hint = `${_na(bi.lineType)} / ${_na(bi.selectionName)}`;
+                if (isSettled && hasScore) {
+                  hint += `　${_na(bi.score1)}-${_na(bi.score2)}`;
+                  if (bi.settlementResult) hint += ` / ${_na(bi.settlementResult)}`;
+                }
+                betHintHtml = `<div class="event-bet-hint">${esc(hint)}</div>`;
+              }
               return `
-              <div class="order-row">
-                <input class="event-input" value="${esc(e)}" placeholder="賽事名稱" autocomplete="off" required>
-                ${badge}${hintIcon}
-                ${ei === g.eventNames.length - 1 ? `<button type="button" class="btn-add-inline" onclick="addEventName('${g.id}')" title="新增賽事名稱">+</button>` : ''}
-                ${g.eventNames.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeEventName('${g.id}',${ei})">×</button>` : ''}
+              <div>
+                <div class="order-row">
+                  <input class="event-input" value="${esc(e)}" placeholder="賽事名稱" autocomplete="off" required>
+                  ${badge}${hintIcon}
+                  ${ei === g.eventNames.length - 1 ? `<button type="button" class="btn-add-inline" onclick="addEventName('${g.id}')" title="新增賽事名稱">+</button>` : ''}
+                  ${g.eventNames.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeEventName('${g.id}',${ei})">×</button>` : ''}
+                </div>
+                ${betHintHtml}
               </div>`;
             }).join('')}
           </div>
