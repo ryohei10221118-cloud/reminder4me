@@ -1998,7 +1998,7 @@
       leagueName:       s.LeagueName || s.League || s.CompetitionName || '',
       startDate:        s.StartEventDate || null,
       status:           s.SelectionStatus ?? null,
-      lineType:         s.LineTypeName || '',
+      lineType:         s.MarketTypeName || s.MarketName || s.LineTypeName || '',
       selectionName:    s.SelectionName || '',
       score1:           s.Score1 ?? null,
       score2:           s.Score2 ?? null,
