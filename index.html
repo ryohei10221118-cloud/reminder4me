@@ -1468,20 +1468,26 @@
   function _buildBetInfoHtml(r) {
     if (!r.betInfos) return '';
     const na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
+    const _betLineRow = bl => {
+      const st = bl.status !== null && bl.status !== undefined ? _jsonStatusMap[bl.status] : null;
+      const statusBadge = st ? `<span class="bet-status-badge" style="color:${st.color}">${st.label}</span>` : '';
+      const line1 = `${na(bl.lineType)} / ${na(bl.selectionName)}`;
+      const hasScore = bl.score1 !== null && bl.score1 !== undefined;
+      const hasSettlement = bl.settlementResult !== null && bl.settlementResult !== '';
+      const scorePart = hasScore ? `${na(bl.score1)}-${na(bl.score2)}` : null;
+      const settlePart = hasSettlement ? na(bl.settlementResult) : null;
+      const scoreLine = (scorePart && settlePart) ? `${scorePart} / ${settlePart}`
+                      : scorePart ? scorePart : settlePart ? settlePart : null;
+      return `<div class="bet-info-row"><span class="bet-info-line" title="${esc(line1)}">${esc(line1)}</span>${statusBadge}</div>`
+           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '');
+    };
     const rows = r.betInfos.map(b => {
       if (!b) return '';
       const leaguePart = b.leagueName ? `<div class="bet-league-line">${esc(b.leagueName)}</div>` : '';
-      const st = b.status !== null && b.status !== undefined ? _jsonStatusMap[b.status] : null;
-      const statusBadge = st ? `<span class="bet-status-badge" style="color:${st.color}">${st.label}</span>` : '';
-      const line1 = `${na(b.lineType)} / ${na(b.selectionName)}`;
-      const hasScore = b.score1 !== null || b.score2 !== null;
-      const hasSettlement = b.settlementResult !== null && b.settlementResult !== '';
-      const scorePart = hasScore ? `${na(b.score1)}-${na(b.score2)}` : null;
-      const settlePart = hasSettlement ? na(b.settlementResult) : null;
-      const scoreLine = (scorePart && settlePart) ? `${scorePart} / ${settlePart}`
-                      : scorePart ? scorePart
-                      : settlePart ? settlePart
-                      : null;
+      const betLinesPart = (b.betLines && b.betLines.length)
+        ? b.betLines.map(_betLineRow).join('')
+        : _betLineRow({ lineType: b.lineType, selectionName: b.selectionName,
+                        status: b.status, score1: b.score1, score2: b.score2, settlementResult: b.settlementResult });
       let timePart = '';
       if (b.startDate) {
         const upcoming = _jsonIsUpcoming(b.startDate);
@@ -1491,10 +1497,7 @@
         else if (stale) timePart = `<div class="bet-time-line" style="color:var(--orange)">⚠ &gt;24h · ${esc(timeStr)}</div>`;
         else            timePart = `<div class="bet-time-line">${esc(timeStr)}</div>`;
       }
-      return leaguePart
-           + `<div class="bet-info-row"><span class="bet-info-line" title="${esc(line1)}">${esc(line1)}</span>${statusBadge}</div>`
-           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '')
-           + timePart;
+      return leaguePart + betLinesPart + timePart;
     }).filter(Boolean).join('');
     return rows ? `<div class="bet-info-block">${rows}</div>` : '';
   }
@@ -1746,16 +1749,21 @@
               const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
               const bi = (g.betInfos || [])[ei] ?? null;
               let betHintHtml = '';
-              if (bi && (bi.lineType || bi.selectionName)) {
+              if (bi) {
                 const _na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
-                const isSettled = bi.status !== null && bi.status !== undefined && bi.status !== 0;
-                const hasScore  = bi.score1 !== null && bi.score1 !== undefined;
-                let hint = `${_na(bi.lineType)} / ${_na(bi.selectionName)}`;
-                if (isSettled && hasScore) {
-                  hint += `　${_na(bi.score1)}-${_na(bi.score2)}`;
-                  if (bi.settlementResult) hint += ` / ${_na(bi.settlementResult)}`;
-                }
-                betHintHtml = `<div class="event-bet-hint">${esc(hint)}</div>`;
+                const lines = (bi.betLines && bi.betLines.length)
+                  ? bi.betLines
+                  : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName, status: bi.status, score1: bi.score1, score2: bi.score2, settlementResult: bi.settlementResult }] : [];
+                betHintHtml = lines.map(bl => {
+                  const isSettled = bl.status !== null && bl.status !== undefined && bl.status !== 0;
+                  const hasScore  = bl.score1 !== null && bl.score1 !== undefined;
+                  let hint = `${_na(bl.lineType)} / ${_na(bl.selectionName)}`;
+                  if (isSettled && hasScore) {
+                    hint += `　${_na(bl.score1)}-${_na(bl.score2)}`;
+                    if (bl.settlementResult) hint += ` / ${_na(bl.settlementResult)}`;
+                  }
+                  return `<div class="event-bet-hint">${esc(hint)}</div>`;
+                }).join('');
               }
               return `
               <div>
@@ -1984,7 +1992,7 @@
 
     const ticketMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
     const ticketId = ticketMatch ? ticketMatch[1] : String(data.SQLTicketId || '');
-    const selections = (data.Selections || []).map(s => ({
+    const rawSelections = (data.Selections || []).map(s => ({
       eventName:        s.EventName || '',
       eventId:          s.EventId || '',
       leagueName:       s.LeagueName || s.League || s.CompetitionName || '',
@@ -1995,7 +2003,24 @@
       score1:           s.Score1 ?? null,
       score2:           s.Score2 ?? null,
       settlementResult: s.SettlementResult || '',
-    })).filter(s => s.eventName);
+      rowTypeId:        s.RowTypeId ?? 1,
+      lineTypeId:       s.LineTypeId ?? 1,
+    })).filter(s => s.eventName && !(s.rowTypeId === 0 && s.lineTypeId === 0));
+
+    // group by EventId so multi-line bets on same event become one entry
+    const _evtMap = {}, _evtOrder = [];
+    rawSelections.forEach(s => {
+      const key = s.eventId || s.eventName;
+      if (!_evtMap[key]) {
+        _evtMap[key] = { ...s, betLines: [] };
+        _evtOrder.push(key);
+      }
+      _evtMap[key].betLines.push({
+        lineType: s.lineType, selectionName: s.selectionName,
+        status: s.status, score1: s.score1, score2: s.score2, settlementResult: s.settlementResult,
+      });
+    });
+    const selections = _evtOrder.map(k => _evtMap[k]);
 
     const err = document.getElementById('json-parse-err');
     if (!ticketId) {
@@ -2037,13 +2062,16 @@
             const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : '';
             const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
             const na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
-            const betLine = s.lineType || s.selectionName
-              ? `${na(s.lineType)} / ${na(s.selectionName)}` : null;
-            const hasScore = s.score1 !== null && s.score1 !== undefined;
-            const hasSettle = s.settlementResult !== null && s.settlementResult !== '' && s.settlementResult !== undefined;
-            const scoreLine = hasScore && hasSettle ? `${na(s.score1)}-${na(s.score2)} / ${na(s.settlementResult)}`
-                            : hasScore ? `${na(s.score1)}-${na(s.score2)}` : null;
             const defaultChecked = sorted.length === 1 ? true : s.status === 0;
+            const betLinesHtml = (s.betLines || []).map(bl => {
+              const blLine = (bl.lineType || bl.selectionName) ? `${na(bl.lineType)} / ${na(bl.selectionName)}` : null;
+              const hasScore  = bl.score1 !== null && bl.score1 !== undefined;
+              const hasSettle = bl.settlementResult !== null && bl.settlementResult !== '' && bl.settlementResult !== undefined;
+              const scoreLine = hasScore && hasSettle ? `${na(bl.score1)}-${na(bl.score2)} / ${na(bl.settlementResult)}`
+                              : hasScore ? `${na(bl.score1)}-${na(bl.score2)}` : null;
+              return (blLine ? `<div class="json-bet-line">${esc(blLine)}</div>` : '')
+                   + (scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : '');
+            }).join('');
             return `
             <label class="json-event-item${s.status === 0 ? ' is-opened' : ''}">
               <input type="checkbox" id="json-cb-${s.origIdx}" ${defaultChecked ? 'checked' : ''}>
@@ -2054,8 +2082,7 @@
                   <span class="json-event-time"${timeColor ? ` style="color:${timeColor}"` : ''}>${_jsonToUtc8(s.startDate)}${timeNote}</span>
                   <button onclick="event.preventDefault();_copyJsonEventName(${s.origIdx})" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1" title="複製賽事名稱" onmouseover="this.style.color='var(--text-pri)'" onmouseout="this.style.color='var(--text-muted)'">📋</button>
                 </div>
-                ${betLine ? `<div class="json-bet-line">${esc(betLine)}</div>` : ''}
-                ${scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : ''}
+                ${betLinesHtml}
               </div>
             </label>`;
           }).join('')}
@@ -2092,6 +2119,8 @@
       leagueName:       selections[i].leagueName,
       status:           selections[i].status,
       startDate:        selections[i].startDate,
+      betLines:         selections[i].betLines || [],
+      // keep flat fields for backward compat
       lineType:         selections[i].lineType,
       selectionName:    selections[i].selectionName,
       score1:           selections[i].score1,
