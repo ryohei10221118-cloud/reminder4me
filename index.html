@@ -1215,7 +1215,10 @@
     if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
     if (qr.hasUrl && url) text = text + '\n\n' + url;
     copyText(text, btn);
-    setTimeout(() => document.getElementById('popup-overlay')?.remove(), 350);
+    setTimeout(() => {
+      document.getElementById('popup-overlay')?.remove();
+      clearForm();
+    }, 350);
   }
 
   // ── Quick Reply manager ──
