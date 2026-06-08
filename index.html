@@ -460,6 +460,15 @@
     .card-event-name.dup { background: #fef3c7; color: #b45309; border-radius: 3px; padding: 0 3px; }
     .card-event-name.dup:hover { color: #92400e; }
     .card-event-name.dup.copied { background: var(--green-bg); color: var(--green); }
+    .card-event-name.settled { color: var(--text-muted); text-decoration: line-through; }
+    .card-event-name.settled:hover { color: var(--text-muted); }
+    .btn-event-settle {
+      background: none; border: 1px solid var(--border); border-radius: 4px;
+      font-size: 11px; padding: 2px 5px; cursor: pointer; color: var(--text-muted);
+      flex-shrink: 0; line-height: 1; transition: all 0.15s;
+    }
+    .btn-event-settle:hover { border-color: var(--green); color: var(--green); }
+    .btn-event-settle.settled { border-color: var(--green); color: var(--green); background: var(--green-bg); }
     .btn-msg {
       padding: 4px 10px;
       background: var(--surface2);
@@ -1121,7 +1130,10 @@
   function showMarkDonePopup(id) {
     const r = records.find(x => x.id === id);
     if (!r || r.completedAt) return;
-    const eventName = (getEventNames(r)[0] || '').trim();
+    const allEventNames = getEventNames(r);
+    const settledSet = new Set(r.settledEventIndices || []);
+    const pendingNames = allEventNames.filter((_, i) => !settledSet.has(i));
+    const eventName = ((pendingNames[0] || allEventNames[0]) || '').trim();
     const reqText   = r.requirement || '';
     const grpText   = r.group || '';
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
@@ -2236,6 +2248,25 @@
     return r;
   }
 
+  function markEventSettled(id, ei) {
+    const r = records.find(x => x.id === id);
+    if (!r || r.completedAt) return;
+    if (!r.settledEventIndices) r.settledEventIndices = [];
+    const pos = r.settledEventIndices.indexOf(ei);
+    if (pos >= 0) {
+      r.settledEventIndices.splice(pos, 1); // toggle off
+    } else {
+      r.settledEventIndices.push(ei);
+    }
+    const totalEvents = getEventNames(r).length;
+    if (r.settledEventIndices.length >= totalEvents) {
+      markDone(id);
+      return;
+    }
+    save();
+    renderActive();
+  }
+
   function markDone(id) {
     const r = records.find(x => x.id === id);
     if (!r || r.completedAt) return;
@@ -2690,11 +2721,20 @@
       ? r.orderNos.map(o => `<span class="order-tag" title="點擊複製" onclick="copyText('${o.replace(/'/g,"\\'")}',this)">${esc(o)}</span>`).join('')
       : '';
     const eventNames = getEventNames(r);
+    const settledSet = new Set(r.settledEventIndices || []);
+    const isMulti = eventNames.length > 1;
     const eventRowsHtml = eventNames.map((name, ei) => {
       const isDup = dupSet && dupSet.has(name);
+      const isSettled = settledSet.has(ei);
+      const nameClass = ['card-event-name', isDup ? 'dup' : '', isSettled ? 'settled' : ''].filter(Boolean).join(' ');
+      const titleTxt = isDup ? '此賽事出現在其他待處理卡片，點擊複製' : '點擊複製';
+      const settleBtn = isMulti
+        ? `<button class="btn-event-settle${isSettled ? ' settled' : ''}" onclick="markEventSettled('${r.id}',${ei})" title="${isSettled ? '取消標記' : '標記此賽事已完成'}">✓</button>`
+        : '';
       return `
       <div class="card-event-row">
-        <span class="card-event-name${isDup ? ' dup' : ''}" title="${isDup ? '此賽事出現在其他待處理卡片，點擊複製' : '點擊複製'}" onclick="copyText('${name.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(name)}</span>
+        <span class="${nameClass}" title="${titleTxt}" onclick="copyText('${name.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(name)}</span>
+        ${settleBtn}
         <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
       </div>`;
     }).join('');
