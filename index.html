@@ -2017,7 +2017,9 @@
       settlementResult: s.SettlementResult || '',
       rowTypeId:        s.RowTypeId ?? 1,
       lineTypeId:       s.LineTypeId ?? 1,
-    })).filter(s => s.eventName && !(s.rowTypeId === 0 && s.lineTypeId === 0));
+    })).filter(s => s.eventName && !(
+      (s.selectionName || '').includes('|') && (s.lineType || '').includes('|')
+    ));
 
     // group by EventId so multi-line bets on same event become one entry
     const _evtMap = {}, _evtOrder = [];
