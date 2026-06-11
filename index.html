@@ -266,12 +266,12 @@
     }
     .req-option {
       padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text-pri);
-      display: flex; align-items: center; gap: 6px;
     }
     .req-option:hover, .req-option.highlighted { background: var(--blue-bg); color: var(--blue); }
+    .grp-dropdown .req-option { display: flex; align-items: center; gap: 6px; }
     .grp-drop-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .grp-drop-del { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text-muted); padding: 0 2px; line-height: 1; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
-    .req-option:hover .grp-drop-del, .req-option.highlighted .grp-drop-del { opacity: 1; }
+    .grp-dropdown .req-option:hover .grp-drop-del, .grp-dropdown .req-option.highlighted .grp-drop-del { opacity: 1; }
     .grp-drop-del:hover { color: var(--red) !important; }
     .req-option-hint { font-size: 11px; color: var(--text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .gear-btn { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text-muted); padding: 0; line-height: 1; }
