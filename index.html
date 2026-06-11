@@ -3351,7 +3351,7 @@
       return;
     }
     const selections = (data.Selections || [])
-      .map(s => ({ eventName: s.EventName || '', eventId: String(s.EventId || ''), status: s.SelectionStatus ?? null }))
+      .map(s => ({ eventName: s.EventName || '', eventId: String(s.EventId || ''), status: s.SelectionStatus ?? null, startDate: s.StartEventDate || null }))
       .filter(s => s.eventName && s.eventId);
     if (selections.length === 0) {
       if (err) { err.textContent = '⚠ 找不到任何賽事 (EventName / EventId)'; err.style.display = 'block'; }
