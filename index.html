@@ -3291,12 +3291,18 @@
       const hintKey = ev.eventName.trim();
       const hasHint = hintKey && (_noteHintsMap[hintKey] || _ensStore[hintKey]);
       const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
+      const upcoming = ev.startDate && _jsonIsUpcoming(ev.startDate);
+      const stale    = ev.startDate && ev.status === 0 && _jsonIsStale(ev.startDate);
+      const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : 'var(--text-muted)';
+      const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
+      const timeHtml  = ev.startDate ? `<span style="font-size:11px;color:${timeColor};white-space:nowrap">${_jsonToUtc8(ev.startDate)}${timeNote}</span>` : '';
       return `
       <div class="msg-event-row" id="msg-ev-${i}" style="${borderStyle}">
         <div class="msg-event-header">
           <span class="msg-event-name">${esc(ev.eventName)}</span>
           ${statusBadge}
           ${hintIcon}
+          ${timeHtml}
           <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
           <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
         </div>
@@ -3353,7 +3359,7 @@
     }
     const existingIds = new Set(_msgEvents.map(e => String(e.eventId)));
     selections.forEach(s => {
-      if (!existingIds.has(s.eventId)) _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, status: s.status, notes: '' });
+      if (!existingIds.has(s.eventId)) _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, status: s.status, startDate: s.startDate || null, notes: '' });
     });
     if (err) err.style.display = 'none';
     ta.value = '';
