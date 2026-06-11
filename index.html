@@ -1221,7 +1221,9 @@
     copyText(text, btn);
     setTimeout(() => {
       document.getElementById('popup-overlay')?.remove();
-      clearForm();
+      // only auto-clear if there's just one event in the form; keep the rest if multi-event
+      const filledCount = formGroups.reduce((n, g) => n + g.eventNames.filter(e => e.trim()).length, 0);
+      if (filledCount <= 1) clearForm();
     }, 350);
   }
 
