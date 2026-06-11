@@ -2025,6 +2025,7 @@
     ));
 
     // group by EventId so multi-line bets on same event become one entry
+    const overallBetStatus = data.Bets?.[0]?.BetStatus ?? null;
     const _evtMap = {}, _evtOrder = [];
     rawSelections.forEach(s => {
       const key = s.eventId || s.eventName;
@@ -2032,11 +2033,15 @@
         _evtMap[key] = { ...s, betLines: [] };
         _evtOrder.push(key);
       }
+      // if any sub-selection is Opened, mark the whole event as Opened
+      if (s.status === 0) _evtMap[key].status = 0;
       _evtMap[key].betLines.push({
         lineType: s.lineType, selectionName: s.selectionName,
         status: s.status, score1: s.score1, score2: s.score2, settlementResult: s.settlementResult,
       });
     });
+    // if overall bet is re-opened, override all event group statuses
+    if (overallBetStatus === 0) _evtOrder.forEach(k => { _evtMap[k].status = 0; });
     const selections = _evtOrder.map(k => _evtMap[k]);
 
     const err = document.getElementById('json-parse-err');
