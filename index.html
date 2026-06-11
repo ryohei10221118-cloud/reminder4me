@@ -901,15 +901,11 @@
       border-radius: 10px;
       padding: 12px 14px;
     }
-    .msg-event-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 6px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
+    .msg-event-header { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+    .msg-event-name-row { display: flex; align-items: flex-start; gap: 4px; }
+    .msg-event-meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .msg-event-name { font-size: 13px; font-weight: 700; color: var(--text-pri); flex: 1; min-width: 0; }
-    .msg-event-id { font-size: 11px; color: var(--text-muted); font-family: monospace; white-space: nowrap; padding-top: 2px; }
+    .msg-event-id { font-size: 11px; color: var(--text-muted); font-family: monospace; white-space: nowrap; }
     .msg-event-remove { background: none; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 0 2px; flex-shrink: 0; }
     .msg-event-remove:hover { color: var(--red); }
     .msg-event-notes {
@@ -3299,12 +3295,14 @@
       return `
       <div class="msg-event-row" id="msg-ev-${i}" style="${borderStyle}">
         <div class="msg-event-header">
-          <span class="msg-event-name">${esc(ev.eventName)}</span>
-          ${statusBadge}
-          ${hintIcon}
-          ${timeHtml}
-          <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
-          <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
+          <div class="msg-event-name-row">
+            <span class="msg-event-name">${esc(ev.eventName)}</span>
+            <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
+          </div>
+          <div class="msg-event-meta-row">
+            ${statusBadge}${hintIcon}${timeHtml}
+            <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
+          </div>
         </div>
         <textarea class="msg-event-notes" id="msg-notes-${i}" placeholder="備註（留空則不複製此賽事）...">${esc(ev.notes || '')}</textarea>
       </div>`;
