@@ -1915,7 +1915,11 @@
     _renderNoteHints([...names]);
   }
   function showNoteHintPopup(eventName) {
-    const hint = _noteHintsMap[eventName];
+    let hint = _noteHintsMap[eventName];
+    if (!hint) {
+      const ens = _ensStore[eventName];
+      if (ens) hint = { note: ens.note, timeStr: ens.ts ? _tsToUtc8(ens.ts) : '' };
+    }
     if (!hint) return;
     _hintPopupEvent = eventName;
     const existing = document.getElementById('popup-overlay');
