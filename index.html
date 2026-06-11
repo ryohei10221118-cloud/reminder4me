@@ -1201,6 +1201,8 @@
     let text = qr[lang] || '';
     if (qr.attachName && eventName) text = eventName + '\n' + text;
     if (qr.hasUrl && url) text = text + '\n\n' + url;
+    const agentName = getAgentName();
+    if (agentName && !text.trimEnd().endsWith(`- ${agentName}`)) text = text.trimEnd() + ` - ${agentName}`;
 
     copyText(text, btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
@@ -1214,6 +1216,8 @@
     let text = qr[lang] || '';
     if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
     if (qr.hasUrl && url) text = text + '\n\n' + url;
+    const agentName = getAgentName();
+    if (agentName && !text.trimEnd().endsWith(`- ${agentName}`)) text = text.trimEnd() + ` - ${agentName}`;
     copyText(text, btn);
     setTimeout(() => {
       document.getElementById('popup-overlay')?.remove();
