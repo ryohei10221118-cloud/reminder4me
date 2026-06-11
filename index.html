@@ -3284,11 +3284,15 @@
       const st = _jsonStatusMap[ev.status];
       const borderStyle = !isWon && st ? `border-left:3px solid ${st.color};` : '';
       const statusBadge = st ? `<span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>` : '';
+      const hintKey = ev.eventName.trim();
+      const hasHint = hintKey && (_noteHintsMap[hintKey] || _ensStore[hintKey]);
+      const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
       return `
       <div class="msg-event-row" id="msg-ev-${i}" style="${borderStyle}">
         <div class="msg-event-header">
           <span class="msg-event-name">${esc(ev.eventName)}</span>
           ${statusBadge}
+          ${hintIcon}
           <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
           <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
         </div>
