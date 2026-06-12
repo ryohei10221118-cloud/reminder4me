@@ -1201,9 +1201,15 @@
 
     let text = qr[lang] || '';
     if (qr.attachName && eventName) text = eventName + '\n' + text;
-    if (qr.hasUrl && url) text = text + '\n\n' + url;
     const agentName = getAgentName();
-    if (agentName && !text.trimEnd().endsWith(`- ${agentName}`)) text = text.trimEnd() + ` - ${agentName}`;
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
+      if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+      text = text.trimEnd() + suffix;
+    } else if (qr.hasUrl && url) {
+      text = text.trimEnd() + '\n\n' + url;
+    }
 
     copyText(text, btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
@@ -1216,9 +1222,15 @@
     const url = urlInput ? urlInput.value.trim() : '';
     let text = qr[lang] || '';
     if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
-    if (qr.hasUrl && url) text = text + '\n\n' + url;
     const agentName = getAgentName();
-    if (agentName && !text.trimEnd().endsWith(`- ${agentName}`)) text = text.trimEnd() + ` - ${agentName}`;
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
+      if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+      text = text.trimEnd() + suffix;
+    } else if (qr.hasUrl && url) {
+      text = text.trimEnd() + '\n\n' + url;
+    }
     copyText(text, btn);
     setTimeout(() => {
       document.getElementById('popup-overlay')?.remove();
