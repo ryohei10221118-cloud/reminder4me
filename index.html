@@ -1779,7 +1779,7 @@
               const stColor = {0:'var(--blue)',1:'var(--red)',2:'var(--green)',3:'var(--text-muted)',4:'var(--text-muted)',15:'var(--text-muted)',16:'var(--orange)',17:'var(--green)',32:'var(--orange)'};
               const badge = st !== null && stInfo[st] ? `<span style="font-size:11px;font-weight:600;color:${stColor[st]};white-space:nowrap;flex-shrink:0">${stInfo[st]}</span>` : '';
               const hintKey = e.trim();
-              const hasHint = hintKey && _noteHintsMap && _noteHintsMap[hintKey];
+              const hasHint = hintKey && !!_getHint(hintKey);
               const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
               const bi = (g.betInfos || [])[ei] ?? null;
               let betHintHtml = '';
@@ -1927,12 +1927,23 @@
     }
     _renderNoteHints([...names]);
   }
-  function showNoteHintPopup(eventName) {
-    let hint = _noteHintsMap[eventName];
-    if (!hint) {
-      const ens = _ensStore[eventName];
-      if (ens) hint = { note: ens.note, timeStr: ens.ts ? _tsToUtc8(ens.ts) : '' };
+  function _getHint(name) {
+    if (!name) return null;
+    if (_noteHintsMap[name]) return _noteHintsMap[name];
+    const ens = _ensStore[name];
+    if (ens) return { note: ens.note, timeStr: ens.ts ? _tsToUtc8(ens.ts) : '' };
+    let best = null;
+    for (const rec of records) {
+      if (!rec.eventNotes) continue;
+      const note = rec.eventNotes[name];
+      if (!note) continue;
+      const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || 0;
+      if (!best || ts > best.ts) best = { note, ts };
     }
+    return best ? { note: best.note, timeStr: best.ts ? _tsToUtc8(best.ts) : '' } : null;
+  }
+  function showNoteHintPopup(eventName) {
+    const hint = _getHint(eventName);
     if (!hint) return;
     _hintPopupEvent = eventName;
     const existing = document.getElementById('popup-overlay');
@@ -3312,7 +3323,7 @@
       const borderStyle = !isWon && st ? `border-left:3px solid ${st.color};` : '';
       const statusBadge = st ? `<span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>` : '';
       const hintKey = ev.eventName.trim();
-      const hasHint = hintKey && (_noteHintsMap[hintKey] || _ensStore[hintKey]);
+      const hasHint = hintKey && !!_getHint(hintKey);
       const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
       const upcoming = ev.startDate && _jsonIsUpcoming(ev.startDate);
       const stale    = ev.startDate && ev.status === 0 && _jsonIsStale(ev.startDate);
