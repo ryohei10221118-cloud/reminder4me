@@ -2038,6 +2038,90 @@
     setTimeout(() => ta.focus(), 50);
   }
 
+  function _apiStatusStrToNum(str) {
+    return { Opened:0, Lost:1, Won:2, Draw:3, Canceled:4, Cancelled:4,
+             HalfLost:16, HalfWon:17, Cashout:32 }[str] ?? null;
+  }
+
+  function _parseApiRequestsJson(data) {
+    const reserve = (data.reserves || [])[0];
+    const ticketId = reserve ? String(reserve.purchaseid || '') : '';
+
+    const dp = new DOMParser();
+
+    // Find the debit_reserve record — it has the full Bet XML
+    const debitRec = (data.apiRequests || []).find(r => r.operationType === 'debit_reserve');
+    if (!debitRec) return null;
+    const debitXml = dp.parseFromString(debitRec.reqparams, 'text/xml');
+
+    // Each <Bet> element = one selection
+    const betEls = [...debitXml.querySelectorAll('Bet')];
+    if (!betEls.length) return null;
+
+    // Get final status per BetID from the latest credit_customer settlement
+    const creditRecs = (data.apiRequests || [])
+      .filter(r => r.operationType === 'credit_customer')
+      .sort((a, b) => new Date(b.creationdate) - new Date(a.creationdate));
+    const betFinalStatus = {};  // betId → { statusNum, statusStr }
+    creditRecs.forEach(cr => {
+      const cx = dp.parseFromString(cr.reqparams, 'text/xml');
+      cx.querySelectorAll('Change').forEach(chg => {
+        chg.querySelectorAll('Bet').forEach(b => {
+          const bid = b.getAttribute('ID');
+          if (bid && !(bid in betFinalStatus)) {
+            const ns = chg.getAttribute('NewStatus') || b.getAttribute('NewStatus') || '';
+            betFinalStatus[bid] = { statusNum: _apiStatusStrToNum(ns), statusStr: ns };
+          }
+        });
+      });
+    });
+
+    // Build one selection per Bet element
+    const selections = betEls.map(bet => {
+      const a = name => bet.getAttribute(name) || '';
+      const eventName     = a('EventName');
+      const lineType      = a('LineTypeName');
+      const yourBet       = a('YourBet');
+      const scoreStr      = a('Score');          // "3:2"
+      const betId         = a('BetID');
+      const eventDate     = a('EventDate');      // UTC
+
+      const scoreParts = scoreStr ? scoreStr.split(':') : [];
+      const score1 = scoreParts.length >= 2 ? Number(scoreParts[0]) : null;
+      const score2 = scoreParts.length >= 2 ? Number(scoreParts[1]) : null;
+
+      const settled    = betFinalStatus[betId];
+      const statusNum  = settled ? settled.statusNum : _apiStatusStrToNum(a('Status'));
+      const statusStr  = settled ? settled.statusStr : (a('Status') || '');
+
+      return {
+        eventName,
+        eventId:          a('NewEventID') || a('EventID') || '',
+        leagueName:       a('LeagueName') || '',
+        startDate:        eventDate ? eventDate + (eventDate.endsWith('Z') ? '' : 'Z') : null,
+        status:           statusNum,
+        lineType,
+        selectionName:    yourBet,
+        score1, score2,
+        settlementResult: statusStr,
+        betLines: [{ lineType, selectionName: yourBet, status: statusNum, score1, score2, settlementResult: statusStr }],
+      };
+    }).filter(s => s.eventName);
+
+    if (!selections.length || !ticketId) return null;
+
+    // Group by eventId (same-event multi-line)
+    const evtMap = {}, evtOrder = [];
+    selections.forEach(s => {
+      const key = s.eventId || s.eventName;
+      if (!evtMap[key]) { evtMap[key] = { ...s, betLines: [] }; evtOrder.push(key); }
+      if (s.status === 0) evtMap[key].status = 0;
+      evtMap[key].betLines.push(...s.betLines);
+    });
+
+    return { ticketId, selections: evtOrder.map(k => evtMap[k]) };
+  }
+
   function _autoParseJson(overlay) {
     const ta = document.getElementById('json-import-ta');
     if (!ta) return;
@@ -2051,6 +2135,20 @@
       return;
     }
 
+    // ── apiRequests format (wallet API log) ──
+    if (data.apiRequests && data.reserves) {
+      const parsed = _parseApiRequestsJson(data);
+      const err = document.getElementById('json-parse-err');
+      if (!parsed) {
+        if (err) { err.textContent = '⚠ 找不到 Bet 資料 (reqparams XML)'; err.style.display = 'block'; }
+        return;
+      }
+      _jsonImportData = parsed;
+      _renderJsonSelectionState(overlay);
+      return;
+    }
+
+    // ── existing Selections format ──
     const ticketMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
     const ticketId = ticketMatch ? ticketMatch[1] : String(data.SQLTicketId || '');
     const rawSelections = (data.Selections || []).map(s => ({
