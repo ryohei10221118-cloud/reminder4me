@@ -1205,11 +1205,9 @@
     if (agentName) {
       const suffix = ` - ${agentName}`;
       if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
-      if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
       text = text.trimEnd() + suffix;
-    } else if (qr.hasUrl && url) {
-      text = text.trimEnd() + '\n\n' + url;
     }
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
 
     copyText(text, btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
@@ -1226,11 +1224,9 @@
     if (agentName) {
       const suffix = ` - ${agentName}`;
       if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
-      if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
       text = text.trimEnd() + suffix;
-    } else if (qr.hasUrl && url) {
-      text = text.trimEnd() + '\n\n' + url;
     }
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
     copyText(text, btn);
     setTimeout(() => {
       document.getElementById('popup-overlay')?.remove();
