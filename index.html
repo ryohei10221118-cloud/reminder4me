@@ -1902,11 +1902,19 @@
       if (!name) continue;
       let best = null;
       for (const rec of records) {
-        if (!rec.eventNotes) continue;
-        const note = rec.eventNotes[name];
-        if (!note) continue;
-        const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || 0;
-        if (!best || ts > best.ts) best = { note, ts };
+        // check per-event notes
+        if (rec.eventNotes) {
+          const note = rec.eventNotes[name];
+          if (note) {
+            const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || rec.createdAt || 0;
+            if (!best || ts > best.ts) best = { note, ts };
+          }
+        }
+        // check additionalInfo on records that include this event
+        if (rec.additionalInfo && (rec.eventNames || []).some(n => n.trim() === name)) {
+          const ts = rec.createdAt || 0;
+          if (!best || ts > best.ts) best = { note: rec.additionalInfo, ts };
+        }
       }
       // also check standalone store from 賽事訊息產生器
       const ens = _ensStore[name];
@@ -1920,6 +1928,7 @@
     const names = new Set();
     for (const rec of records) {
       if (rec.eventNotes) Object.keys(rec.eventNotes).forEach(n => names.add(n));
+      if (rec.additionalInfo) (rec.eventNames || []).forEach(n => { if (n.trim()) names.add(n.trim()); });
     }
     _renderNoteHints([...names]);
   }
@@ -1930,11 +1939,17 @@
     if (ens) return { note: ens.note, timeStr: ens.ts ? _tsToUtc8(ens.ts) : '' };
     let best = null;
     for (const rec of records) {
-      if (!rec.eventNotes) continue;
-      const note = rec.eventNotes[name];
-      if (!note) continue;
-      const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || 0;
-      if (!best || ts > best.ts) best = { note, ts };
+      if (rec.eventNotes) {
+        const note = rec.eventNotes[name];
+        if (note) {
+          const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || rec.createdAt || 0;
+          if (!best || ts > best.ts) best = { note, ts };
+        }
+      }
+      if (rec.additionalInfo && (rec.eventNames || []).some(n => n.trim() === name)) {
+        const ts = rec.createdAt || 0;
+        if (!best || ts > best.ts) best = { note: rec.additionalInfo, ts };
+      }
     }
     return best ? { note: best.note, timeStr: best.ts ? _tsToUtc8(best.ts) : '' } : null;
   }
