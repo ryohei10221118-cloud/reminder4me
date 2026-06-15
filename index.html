@@ -582,6 +582,7 @@
     .note-hint-card { background: var(--blue-bg); border: 1px solid var(--blue-light); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
     .note-hint-event { font-size: 12px; font-weight: 700; color: var(--text-pri); margin-bottom: 3px; }
     .note-hint-text { font-size: 12px; color: var(--text-sec); white-space: pre-wrap; word-break: break-word; }
+    .note-hint-text.copied { background: var(--green-bg) !important; color: var(--green) !important; }
     .note-hint-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
     /* ── Record actions ── */
@@ -1987,10 +1988,7 @@
       <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
         <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
-        <div class="popup-title" style="font-size:13px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <span>🏆 ${esc(eventName)}</span>
-          <button onclick="copyText(document.querySelector('.note-hint-text').dataset.note,this)" style="background:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--text-muted);white-space:nowrap;flex-shrink:0" title="複製備註">複製</button>
-        </div>
+        <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
         <div style="margin-top:8px;flex-shrink:0">
           <div class="note-hint-text" style="padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto;cursor:pointer" title="點擊複製" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)">${esc(hint.note)}</div>
         </div>
