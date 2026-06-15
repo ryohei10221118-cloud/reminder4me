@@ -2218,22 +2218,7 @@
     _jsonImportData = null;
     renderFormGroups();
     _renderNoteHints(eventNames);
-    _autoFillInfoFromHistory(eventNames);
     _renderJsonPasteState(overlay, `已新增注單 ${ticketId}`);
-  }
-
-  function _autoFillInfoFromHistory(eventNames) {
-    const infoEl = document.getElementById('f-info');
-    if (!infoEl || infoEl.value.trim()) return;
-    const nameSet = new Set(eventNames.map(n => n.trim()).filter(Boolean));
-    for (let i = records.length - 1; i >= 0; i--) {
-      const rec = records[i];
-      if (!rec.additionalInfo) continue;
-      if ((rec.eventNames || []).some(n => nameSet.has(n.trim()))) {
-        infoEl.value = rec.additionalInfo;
-        return;
-      }
-    }
   }
 
   function _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses) {
