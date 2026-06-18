@@ -3129,7 +3129,18 @@
     const groupLines = groups.map(g => {
       const lines = [];
       g.orderNos.filter(Boolean).forEach(o => lines.push(o));
-      (g.eventNames || []).filter(Boolean).forEach(e => lines.push(e));
+      (g.eventNames || []).filter(Boolean).forEach((e, ei) => {
+        lines.push(e);
+        const bi = (g.betInfos || [])[ei];
+        if (bi) {
+          const bls = bi.betLines && bi.betLines.length ? bi.betLines
+                    : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName }] : [];
+          bls.forEach(bl => {
+            const p = [bl.lineType, bl.selectionName].filter(Boolean).join(' / ');
+            if (p) lines.push(p);
+          });
+        }
+      });
       return lines.join('\n');
     }).filter(Boolean);
     const tail = [requirement, group, additionalInfo].filter(Boolean).join('\n');
@@ -3141,9 +3152,23 @@
   function getRecordSummary(id) {
     const r = records.find(x => x.id === id);
     if (!r) return '';
-    const parts = [...r.orderNos.filter(Boolean), ...getEventNames(r), r.requirement, r.group];
+    const parts = [...r.orderNos.filter(Boolean)];
+    getEventNames(r).forEach((name, ei) => {
+      if (!name) return;
+      parts.push(name);
+      const bi = (r.betInfos || [])[ei];
+      if (bi) {
+        const bls = bi.betLines && bi.betLines.length ? bi.betLines
+                  : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName }] : [];
+        bls.forEach(bl => {
+          const p = [bl.lineType, bl.selectionName].filter(Boolean).join(' / ');
+          if (p) parts.push(p);
+        });
+      }
+    });
+    parts.push(r.requirement, r.group);
     if (r.additionalInfo) parts.push(r.additionalInfo);
-    return parts.join('\n');
+    return parts.filter(Boolean).join('\n');
   }
 
   function showSummaryPopup(id) {
