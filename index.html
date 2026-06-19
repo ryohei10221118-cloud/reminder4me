@@ -2343,7 +2343,8 @@
     }
     _jsonImportData = null;
     renderFormGroups();
-    _renderNoteHints(eventNames);
+    const allNames = formGroups.flatMap(g => g.eventNames.filter(Boolean));
+    _renderNoteHints(allNames);
     _renderJsonPasteState(overlay, `已新增注單 ${ticketId}`);
   }
 
@@ -2385,6 +2386,7 @@
     _jsonImportData = null;
     _pendingMergeData = null;
     renderFormGroups();
+    _renderNoteHints(formGroups.flatMap(g => g.eventNames.filter(Boolean)));
     _renderJsonPasteState(overlay, `已合併注單 ${ticketId}`);
   }
   function _doSeparate() {
