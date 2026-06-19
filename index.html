@@ -1135,12 +1135,10 @@
     const allEventNames = getEventNames(r);
     const settledSet = new Set(r.settledEventIndices || []);
     const pendingNames = allEventNames.filter((_, i) => !settledSet.has(i));
-    const eventName = ((pendingNames[0] || allEventNames[0]) || '').trim();
     const reqText   = r.requirement || '';
     const grpText   = r.group || '';
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
     const cardLang = r.lang || null;
-    // auto-detect URL from additionalInfo then eventNotes
     let autoUrl = _extractUrl(r.additionalInfo);
     if (!autoUrl && r.eventNotes) {
       for (const key of Object.keys(r.eventNotes)) {
@@ -1173,13 +1171,31 @@
         <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
       </div>` : '';
 
+    // Event selector: single name as title, multiple as checkboxes
+    const displayNames = pendingNames.length ? pendingNames : allEventNames;
+    let eventSection = '';
+    if (displayNames.length === 1) {
+      eventSection = `<div class="popup-title" style="font-size:13px;margin-bottom:6px;flex-shrink:0">🏆 ${esc(displayNames[0])}</div>`;
+    } else if (displayNames.length > 1) {
+      const cbItems = displayNames.map(n =>
+        `<label style="display:flex;align-items:flex-start;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--text-pri)">
+          <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" checked style="margin-top:2px;flex-shrink:0">
+          <span style="line-height:1.4">${esc(n)}</span>
+        </label>`).join('');
+      eventSection = `
+        <div style="margin-bottom:8px;flex-shrink:0">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">🏆 選擇帶入的賽事</div>
+          <div style="background:var(--surface2);border-radius:6px;padding:6px 10px">${cbItems}</div>
+        </div>`;
+    }
+
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
         <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
-        ${eventName ? `<div class="popup-title" style="font-size:13px;margin-bottom:6px;flex-shrink:0">🏆 ${esc(eventName)}</div>` : ''}
+        ${eventSection}
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
         <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
         ${urlSection}
@@ -1192,11 +1208,22 @@
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   }
 
+  function _getSelectedQrEventNames(r) {
+    const cbs = document.querySelectorAll('.qr-event-cb');
+    if (cbs.length > 0) return [...cbs].filter(cb => cb.checked).map(cb => cb.dataset.name).filter(Boolean);
+    // fallback: first pending event
+    const allNames = getEventNames(r);
+    const settledSet = new Set(r.settledEventIndices || []);
+    const pending = allNames.filter((_, i) => !settledSet.has(i));
+    return [(pending[0] || allNames[0] || '').trim()].filter(Boolean);
+  }
+
   function _qrCopyDone(id, qrIdx, lang, btn) {
     const qr = _quickReplies[qrIdx];
     if (!qr) return;
     const r = records.find(x => x.id === id);
-    const eventName = r ? (getEventNames(r)[0] || '').trim() : '';
+    const selectedNames = r ? _getSelectedQrEventNames(r) : [];
+    const eventName = selectedNames.join('\n');
     const urlInput  = document.getElementById('qr-url-input');
     const url       = urlInput ? urlInput.value.trim() : '';
 
