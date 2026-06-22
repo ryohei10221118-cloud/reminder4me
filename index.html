@@ -3560,16 +3560,37 @@
       if (err) { err.textContent = '⚠ JSON 格式錯誤，請確認後再試'; err.style.display = 'block'; }
       return;
     }
-    const selections = (data.Selections || [])
-      .map(s => ({ eventName: s.EventName || '', eventId: String(s.EventId || ''), status: s.SelectionStatus ?? null, startDate: s.StartEventDate || null }))
-      .filter(s => s.eventName && s.eventId);
-    if (selections.length === 0) {
+
+    // Group by EventId, filter virtual composite selections
+    const evtMap = {}, evtOrder = [];
+    (data.Selections || []).forEach(s => {
+      if (!s.EventName || !s.EventId) return;
+      // skip virtual composite selections
+      if ((s.SelectionName || '').includes('|') && (s.LineTypeName || '').includes('|')) return;
+      const key = String(s.EventId);
+      if (!evtMap[key]) {
+        evtMap[key] = { eventName: s.EventName, eventId: key, status: s.SelectionStatus ?? null, startDate: s.StartEventDate || null };
+        evtOrder.push(key);
+      } else {
+        // if any sub-selection is Opened, mark event as Opened
+        if (s.SelectionStatus === 0) evtMap[key].status = 0;
+        // if current is not Opened and any sub is Lost, mark Lost
+        else if (evtMap[key].status !== 0 && s.SelectionStatus === 1) evtMap[key].status = 1;
+      }
+    });
+
+    if (evtOrder.length === 0) {
       if (err) { err.textContent = '⚠ 找不到任何賽事 (EventName / EventId)'; err.style.display = 'block'; }
       return;
     }
+
     const existingIds = new Set(_msgEvents.map(e => String(e.eventId)));
-    selections.forEach(s => {
-      if (!existingIds.has(s.eventId)) _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, status: s.status, startDate: s.startDate || null, notes: '' });
+    evtOrder.forEach(key => {
+      if (!existingIds.has(key)) {
+        const s = evtMap[key];
+        _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, status: s.status, startDate: s.startDate, notes: '' });
+        existingIds.add(key);
+      }
     });
     if (err) err.style.display = 'none';
     ta.value = '';
