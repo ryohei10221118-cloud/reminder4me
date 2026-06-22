@@ -2263,15 +2263,29 @@
             const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
             const na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
             const defaultChecked = sorted.length === 1 ? true : s.status === 0;
-            const betLinesHtml = (s.betLines || []).map(bl => {
-              const blLine = (bl.lineType || bl.selectionName) ? `${na(bl.lineType)} / ${na(bl.selectionName)}` : null;
-              const hasScore  = bl.score1 !== null && bl.score1 !== undefined;
-              const hasSettle = bl.settlementResult !== null && bl.settlementResult !== '' && bl.settlementResult !== undefined;
-              const scoreLine = hasScore && hasSettle ? `${na(bl.score1)}-${na(bl.score2)} / ${na(bl.settlementResult)}`
-                              : hasScore ? `${na(bl.score1)}-${na(bl.score2)}` : null;
-              return (blLine ? `<div class="json-bet-line">${esc(blLine)}</div>` : '')
-                   + (scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : '');
-            }).join('');
+            const betLinesHtml = (() => {
+              const bls = s.betLines || [];
+              const multi = bls.length > 1;
+              return bls.map((bl, bli) => {
+                const blLine = (bl.lineType || bl.selectionName) ? `${na(bl.lineType)} / ${na(bl.selectionName)}` : null;
+                const hasScore  = bl.score1 !== null && bl.score1 !== undefined;
+                const hasSettle = bl.settlementResult !== null && bl.settlementResult !== '' && bl.settlementResult !== undefined;
+                const scoreLine = hasScore && hasSettle ? `${na(bl.score1)}-${na(bl.score2)} / ${na(bl.settlementResult)}`
+                                : hasScore ? `${na(bl.score1)}-${na(bl.score2)}` : null;
+                const blStatus = _jsonStatusBadge(bl.status);
+                if (multi) {
+                  return `<label style="display:flex;align-items:flex-start;gap:5px;padding:2px 0;cursor:pointer;user-select:none" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="json-bl-cb" data-ei="${s.origIdx}" data-bli="${bli}" checked style="margin-top:2px;flex-shrink:0">
+                    <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                      <span style="display:flex;align-items:center;gap:4px">${blStatus}<span class="json-bet-line" style="margin:0">${blLine ? esc(blLine) : ''}</span></span>
+                      ${scoreLine ? `<span class="json-score-line" style="margin:0">${esc(scoreLine)}</span>` : ''}
+                    </span>
+                  </label>`;
+                }
+                return (blLine ? `<div class="json-bet-line">${esc(blLine)}</div>` : '')
+                     + (scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : '');
+              }).join('');
+            })();
             return `
             <label class="json-event-item${s.status === 0 ? ' is-opened' : ''}">
               <input type="checkbox" id="json-cb-${s.origIdx}" ${defaultChecked ? 'checked' : ''}>
@@ -2314,19 +2328,28 @@
     const { ticketId, selections } = _jsonImportData;
     const eventNames    = indices.map(i => selections[i].eventName);
     const eventStatuses = indices.map(i => selections[i].status);
-    const betInfos      = indices.map(i => ({
+    const betInfos      = indices.map(i => {
+      const allBls = selections[i].betLines || [];
+      const checkedBls = allBls.length > 1
+        ? allBls.filter((_, bli) => {
+            const cb = document.querySelector(`.json-bl-cb[data-ei="${i}"][data-bli="${bli}"]`);
+            return !cb || cb.checked;
+          })
+        : allBls;
+      return {
       eventId:          selections[i].eventId,
       leagueName:       selections[i].leagueName,
       status:           selections[i].status,
       startDate:        selections[i].startDate,
-      betLines:         selections[i].betLines || [],
+      betLines:         checkedBls,
       // keep flat fields for backward compat
       lineType:         selections[i].lineType,
       selectionName:    selections[i].selectionName,
       score1:           selections[i].score1,
       score2:           selections[i].score2,
       settlementResult: selections[i].settlementResult,
-    }));
+      };
+    });
 
     syncGroupValues();
 
