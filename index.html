@@ -2072,8 +2072,37 @@
       <div class="qr-url-wrap">
         <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
         <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
-        ${_urlChipsHtml(allUrls, 'qr-url-input')}
       </div>` : '';
+
+    // Render note text: URLs become clickable links (open new tab + fill URL input)
+    const noteHtml = hint.note.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+      if (i % 2 === 1) {
+        const safeHref = esc(part);
+        const safeJs   = part.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer"
+          style="color:var(--blue);word-break:break-all;text-decoration:underline"
+          onclick="event.stopPropagation();var inp=document.getElementById('qr-url-input');if(inp)inp.value='${safeJs}'"
+          >${safeHref}</a>`;
+      }
+      return esc(part);
+    }).join('');
+
+    // Extra URL chips: from other records not already surfaced in the note
+    const noteUrlSet = new Set(_extractAllUrls(hint.note));
+    const extraUrls  = allUrls.filter(({url}) => !noteUrlSet.has(url));
+    const extraChipsHtml = extraUrls.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${
+      extraUrls.map(({url, label}) => {
+        const safeHref = esc(url);
+        const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+        const domainShort = domain.slice(0,30) + (domain.length>30?'…':'');
+        const labelLine = label ? `<span style="display:block;font-size:9px;color:var(--text-muted);margin-top:1px">${esc(label)}</span>` : '';
+        return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer"
+          style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--blue);cursor:pointer;text-align:left;max-width:200px;line-height:1.3;text-decoration:none;display:inline-block"
+          onclick="var inp=document.getElementById('qr-url-input');if(inp)inp.value='${safeJs}'"
+          ><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}</span>${labelLine}</a>`;
+      }).join('')
+    }</div>` : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
@@ -2083,8 +2112,10 @@
         <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
         <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
-        <div style="margin-top:8px;flex-shrink:0">
-          <div class="note-hint-text" style="padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto;cursor:pointer" title="點擊複製" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)">${esc(hint.note)}</div>
+        <div style="margin-top:8px;flex-shrink:0;position:relative">
+          <div class="note-hint-text" style="padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto" data-note="${esc(hint.note)}">${noteHtml}</div>
+          <button style="position:absolute;top:6px;right:6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:10px;color:var(--text-muted);cursor:pointer;padding:2px 6px;line-height:1.4" title="複製備註" onclick="copyText(this.closest('[data-note]').dataset.note,this)">複製</button>
+          ${extraChipsHtml}
         </div>
         ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
