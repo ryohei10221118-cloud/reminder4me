@@ -1106,6 +1106,7 @@
   let _qrExpandedIdx    = -1;
   let _qrDragSrcIdx     = -1;
   let _hintPopupEvent   = '';
+  let _hintPopupUrl     = '';
 
   const QR_VER_KEY = 'reminder4me_qr_ver';
   const QR_VER     = 2; // bump when defaults change
@@ -1299,8 +1300,7 @@
   function _qrCopyHint(qrIdx, lang, btn) {
     const qr = _quickReplies[qrIdx];
     if (!qr) return;
-    const urlInput = document.getElementById('qr-url-input');
-    const url = urlInput ? urlInput.value.trim() : '';
+    const url = _hintPopupUrl;
     let text = qr[lang] || '';
     if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
     const agentName = getAgentName();
@@ -2054,8 +2054,8 @@
     if (existing) existing.remove();
 
     const allUrls = _collectUrls([eventName]);
-    const autoUrl = allUrls[0]?.url || '';
-    const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
+    _hintPopupUrl = allUrls[0]?.url || '';
+
     const rowsHtml = _quickReplies.map((qr, i) => {
       const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
       const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>'  : '';
@@ -2068,26 +2068,21 @@
         </div>
       </div>`;
     }).join('');
-    const urlSection = hasUrlTemplate ? `
-      <div class="qr-url-wrap">
-        <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
-        <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
-      </div>` : '';
 
-    // Render note text: URLs become clickable links (open new tab + fill URL input)
+    // Render note text: URLs become clickable links (open new tab + set _hintPopupUrl)
     const noteHtml = hint.note.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
       if (i % 2 === 1) {
         const safeHref = esc(part);
         const safeJs   = part.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer"
           style="color:var(--blue);word-break:break-all;text-decoration:underline"
-          onclick="event.stopPropagation();var inp=document.getElementById('qr-url-input');if(inp)inp.value='${safeJs}'"
+          onclick="event.stopPropagation();_hintPopupUrl='${safeJs}'"
           >${safeHref}</a>`;
       }
       return esc(part);
     }).join('');
 
-    // Extra URL chips: from other records not already surfaced in the note
+    // Extra URL chips: from other records not already in the note text
     const noteUrlSet = new Set(_extractAllUrls(hint.note));
     const extraUrls  = allUrls.filter(({url}) => !noteUrlSet.has(url));
     const extraChipsHtml = extraUrls.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${
@@ -2098,8 +2093,8 @@
         const domainShort = domain.slice(0,30) + (domain.length>30?'…':'');
         const labelLine = label ? `<span style="display:block;font-size:9px;color:var(--text-muted);margin-top:1px">${esc(label)}</span>` : '';
         return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer"
-          style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--blue);cursor:pointer;text-align:left;max-width:200px;line-height:1.3;text-decoration:none;display:inline-block"
-          onclick="var inp=document.getElementById('qr-url-input');if(inp)inp.value='${safeJs}'"
+          style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--blue);text-align:left;max-width:200px;line-height:1.3;text-decoration:none;display:inline-block"
+          onclick="_hintPopupUrl='${safeJs}'"
           ><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}</span>${labelLine}</a>`;
       }).join('')
     }</div>` : '';
@@ -2113,15 +2108,14 @@
         <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
         <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
         <div style="margin-top:8px;flex-shrink:0;position:relative">
-          <div class="note-hint-text" style="padding:10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto" data-note="${esc(hint.note)}">${noteHtml}</div>
-          <button style="position:absolute;top:6px;right:6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:10px;color:var(--text-muted);cursor:pointer;padding:2px 6px;line-height:1.4" title="複製備註" onclick="copyText(this.closest('[data-note]').dataset.note,this)">複製</button>
+          <div class="note-hint-text" style="padding:10px 12px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto;padding-right:32px" data-note="${esc(hint.note)}">${noteHtml}</div>
+          <button style="position:absolute;top:6px;right:6px;background:none;border:none;font-size:14px;color:var(--text-muted);cursor:pointer;padding:3px;border-radius:4px;line-height:1" title="複製備註" onclick="copyText(this.closest('[data-note]').dataset.note,this)">📋</button>
           ${extraChipsHtml}
         </div>
         ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;flex-shrink:0">✓ 快速回覆</div>
           <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:12px">尚未設定快速回覆範本</div>'}</div>
-          ${urlSection}
         </div>
       </div>`;
     document.body.appendChild(overlay);
