@@ -1140,28 +1140,49 @@
     return (text.match(/https?:\/\/[^\s]+/g) || []);
   }
 
-  // Gather all unique URLs for given event names from every source
+  // Gather all unique URLs for given event names, with associated bet line label
   function _collectUrls(eventNames) {
     const seen = new Set(), result = [];
-    const add = url => { if (url && !seen.has(url)) { seen.add(url); result.push(url); } };
+    const addUrl = (url, betLabel) => {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      result.push({ url, label: betLabel || '' });
+    };
     for (const name of eventNames) {
-      _extractAllUrls((_ensStore[name] || {}).note).forEach(add);
+      // Check records first so URLs found here get their bet line label
       for (const rec of records) {
-        if (rec.additionalInfo && (rec.eventNames || []).some(n => n.trim() === name))
-          _extractAllUrls(rec.additionalInfo).forEach(add);
+        const nameIdx = (rec.eventNames || []).findIndex(n => n.trim() === name);
+        let betLabel = '';
+        if (nameIdx >= 0 && rec.betInfos && rec.betInfos[nameIdx]) {
+          const bi = rec.betInfos[nameIdx];
+          const lines = (bi.betLines && bi.betLines.length)
+            ? bi.betLines
+            : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName }] : [];
+          betLabel = lines.map(bl => [bl.lineType, bl.selectionName].filter(Boolean).join(' / ')).filter(Boolean).join(', ');
+        }
+        if (nameIdx >= 0 && rec.additionalInfo)
+          _extractAllUrls(rec.additionalInfo).forEach(u => addUrl(u, betLabel));
         if (rec.eventNotes && rec.eventNotes[name])
-          _extractAllUrls(rec.eventNotes[name]).forEach(add);
+          _extractAllUrls(rec.eventNotes[name]).forEach(u => addUrl(u, betLabel));
       }
+      // Standalone notes store (no bet context)
+      _extractAllUrls((_ensStore[name] || {}).note).forEach(u => addUrl(u, ''));
     }
     return result;
   }
 
-  function _urlChipsHtml(urls, inputId) {
-    if (urls.length < 2) return '';
-    return `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${
-      urls.map(u => {
-        const label = u.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 40) + (u.length > 50 ? '…' : '');
-        return `<button type="button" style="font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text-sec);cursor:pointer;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(u)}" onclick="document.getElementById('${inputId}').value='${u.replace(/'/g,"\\'")}'">${esc(label)}</button>`;
+  function _urlChipsHtml(items, inputId) {
+    if (items.length < 2) return '';
+    return `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${
+      items.map(({url, label}) => {
+        const safe = url.replace(/'/g, "\\'");
+        const domain = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const domainShort = domain.slice(0, 32) + (domain.length > 32 ? '…' : '');
+        const labelLine = label ? `<span style="display:block;font-size:9px;color:var(--text-muted);margin-top:1px;line-height:1.2;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>` : '';
+        return `<button type="button" title="${esc(url)}" onclick="document.getElementById('${inputId}').value='${safe}'"
+          style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text-sec);cursor:pointer;text-align:left;max-width:200px;line-height:1.3">
+          <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}</span>${labelLine}
+        </button>`;
       }).join('')
     }</div>`;
   }
@@ -1178,7 +1199,7 @@
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
     const cardLang = r.lang || null;
     const allUrls = _collectUrls(allEventNames);
-    const autoUrl = allUrls[0] || '';
+    const autoUrl = allUrls[0]?.url || '';
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
@@ -2033,7 +2054,7 @@
     if (existing) existing.remove();
 
     const allUrls = _collectUrls([eventName]);
-    const autoUrl = allUrls[0] || '';
+    const autoUrl = allUrls[0]?.url || '';
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
     const rowsHtml = _quickReplies.map((qr, i) => {
       const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
