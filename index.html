@@ -2323,16 +2323,18 @@
             const betLinesHtml = (() => {
               const bls = s.betLines || [];
               const multi = bls.length > 1;
-              return bls.map((bl, bli) => {
+              const blRows = bls.map((bl, bli) => {
                 const blLine = (bl.lineType || bl.selectionName) ? `${na(bl.lineType)} / ${na(bl.selectionName)}` : null;
                 const hasScore  = bl.score1 !== null && bl.score1 !== undefined;
                 const hasSettle = bl.settlementResult !== null && bl.settlementResult !== '' && bl.settlementResult !== undefined;
                 const scoreLine = hasScore && hasSettle ? `${na(bl.score1)}-${na(bl.score2)} / ${na(bl.settlementResult)}`
                                 : hasScore ? `${na(bl.score1)}-${na(bl.score2)}` : null;
                 const blStatus = _jsonStatusBadge(bl.status);
+                // Default check: Opened (0), Lost (1), or unknown; uncheck Won/Draw/Canceled/Cashout
+                const blChecked = bl.status === 0 || bl.status === 1 || bl.status === null || bl.status === undefined;
                 if (multi) {
                   return `<label style="display:flex;align-items:flex-start;gap:5px;padding:2px 0;cursor:pointer;user-select:none" onclick="event.stopPropagation()">
-                    <input type="checkbox" class="json-bl-cb" data-ei="${s.origIdx}" data-bli="${bli}" checked style="margin-top:2px;flex-shrink:0">
+                    <input type="checkbox" class="json-bl-cb" data-ei="${s.origIdx}" data-bli="${bli}" ${blChecked ? 'checked' : ''} style="margin-top:2px;flex-shrink:0">
                     <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
                       <span style="display:flex;align-items:center;gap:4px">${blStatus}<span class="json-bet-line" style="margin:0">${blLine ? esc(blLine) : ''}</span></span>
                       ${scoreLine ? `<span class="json-score-line" style="margin:0">${esc(scoreLine)}</span>` : ''}
@@ -2342,6 +2344,17 @@
                 return (blLine ? `<div class="json-bet-line">${esc(blLine)}</div>` : '')
                      + (scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : '');
               }).join('');
+              if (multi) {
+                const selAllId = `json-bl-all-${s.origIdx}`;
+                const allChecked = bls.every(bl => bl.status === 0 || bl.status === 1 || bl.status === null || bl.status === undefined);
+                return `<div style="margin-bottom:2px;padding-bottom:2px;border-bottom:1px solid var(--border-light)" onclick="event.stopPropagation()">
+                  <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);cursor:pointer">
+                    <input type="checkbox" id="${selAllId}" ${allChecked ? 'checked' : ''} onchange="this.closest('.json-event-item').querySelectorAll('.json-bl-cb').forEach(cb=>{cb.checked=this.checked})">
+                    全選
+                  </label>
+                </div>${blRows}`;
+              }
+              return blRows;
             })();
             return `
             <label class="json-event-item${s.status === 0 ? ' is-opened' : ''}">
