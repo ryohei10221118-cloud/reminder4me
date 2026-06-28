@@ -2069,35 +2069,34 @@
       </div>`;
     }).join('');
 
-    // Render note text: URLs become clickable links (open new tab + set _hintPopupUrl)
+    // Note text: URLs are links (open new tab only, selection handled by radio below)
     const noteHtml = hint.note.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
       if (i % 2 === 1) {
-        const safeHref = esc(part);
-        const safeJs   = part.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer"
+        return `<a href="${esc(part)}" target="_blank" rel="noopener noreferrer"
           style="color:var(--blue);word-break:break-all;text-decoration:underline"
-          onclick="event.stopPropagation();_hintPopupUrl='${safeJs}'"
-          >${safeHref}</a>`;
+          onclick="event.stopPropagation()">${esc(part)}</a>`;
       }
       return esc(part);
     }).join('');
 
-    // Extra URL chips: from other records not already in the note text
-    const noteUrlSet = new Set(_extractAllUrls(hint.note));
-    const extraUrls  = allUrls.filter(({url}) => !noteUrlSet.has(url));
-    const extraChipsHtml = extraUrls.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${
-      extraUrls.map(({url, label}) => {
-        const safeHref = esc(url);
-        const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-        const domainShort = domain.slice(0,30) + (domain.length>30?'…':'');
-        const labelLine = label ? `<span style="display:block;font-size:9px;color:var(--text-muted);margin-top:1px">${esc(label)}</span>` : '';
-        return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer"
-          style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--blue);text-align:left;max-width:200px;line-height:1.3;text-decoration:none;display:inline-block"
-          onclick="_hintPopupUrl='${safeJs}'"
-          ><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}</span>${labelLine}</a>`;
-      }).join('')
-    }</div>` : '';
+    // URL radio list — shown when there are multiple URLs to choose from
+    const urlRadioHtml = allUrls.length > 1 ? `
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
+        ${allUrls.map(({url, label}, i) => {
+          const safeHref = esc(url);
+          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
+          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
+          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="hint-url-row-${i}">
+            <input type="radio" name="hint-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
+              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=hint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
+            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
+            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
+          </label>`;
+        }).join('')}
+      </div>` : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
@@ -2108,11 +2107,11 @@
         <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
         <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
         <div style="margin-top:8px;flex-shrink:0;position:relative">
-          <div class="note-hint-text" style="padding:10px 12px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto;padding-right:32px" data-note="${esc(hint.note)}">${noteHtml}</div>
+          <div class="note-hint-text" style="padding:10px 32px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto" data-note="${esc(hint.note)}">${noteHtml}</div>
           <button style="position:absolute;top:6px;right:6px;background:none;border:none;font-size:14px;color:var(--text-muted);cursor:pointer;padding:3px;border-radius:4px;line-height:1" title="複製備註" onclick="copyText(this.closest('[data-note]').dataset.note,this)">📋</button>
-          ${extraChipsHtml}
         </div>
         ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
+        ${urlRadioHtml}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;flex-shrink:0">✓ 快速回覆</div>
           <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:12px">尚未設定快速回覆範本</div>'}</div>
@@ -2120,6 +2119,11 @@
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
+    // Highlight the initially-selected radio row
+    if (allUrls.length > 1) {
+      const firstRow = document.getElementById('hint-url-row-0');
+      if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
+    }
   }
   function _jsonIsUpcoming(iso) {
     if (!iso) return false;
