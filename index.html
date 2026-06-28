@@ -1128,6 +1128,37 @@
     return m ? m[0] : '';
   }
 
+  function _extractAllUrls(text) {
+    if (!text) return [];
+    return (text.match(/https?:\/\/[^\s]+/g) || []);
+  }
+
+  // Gather all unique URLs for given event names from every source
+  function _collectUrls(eventNames) {
+    const seen = new Set(), result = [];
+    const add = url => { if (url && !seen.has(url)) { seen.add(url); result.push(url); } };
+    for (const name of eventNames) {
+      _extractAllUrls((_ensStore[name] || {}).note).forEach(add);
+      for (const rec of records) {
+        if (rec.additionalInfo && (rec.eventNames || []).some(n => n.trim() === name))
+          _extractAllUrls(rec.additionalInfo).forEach(add);
+        if (rec.eventNotes && rec.eventNotes[name])
+          _extractAllUrls(rec.eventNotes[name]).forEach(add);
+      }
+    }
+    return result;
+  }
+
+  function _urlChipsHtml(urls, inputId) {
+    if (!urls.length) return '';
+    return `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${
+      urls.map(u => {
+        const label = u.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 40) + (u.length > 50 ? '…' : '');
+        return `<button type="button" style="font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text-sec);cursor:pointer;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(u)}" onclick="document.getElementById('${inputId}').value='${u.replace(/'/g,"\\'")}'">${esc(label)}</button>`;
+      }).join('')
+    }</div>`;
+  }
+
   // ── Quick Reply use popup ──
   function showMarkDonePopup(id) {
     const r = records.find(x => x.id === id);
@@ -1139,13 +1170,8 @@
     const grpText   = r.group || '';
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
     const cardLang = r.lang || null;
-    let autoUrl = _extractUrl(r.additionalInfo);
-    if (!autoUrl && r.eventNotes) {
-      for (const key of Object.keys(r.eventNotes)) {
-        autoUrl = _extractUrl(r.eventNotes[key]);
-        if (autoUrl) break;
-      }
-    }
+    const allUrls = _collectUrls(allEventNames);
+    const autoUrl = allUrls[0] || '';
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
@@ -1169,6 +1195,7 @@
       <div class="qr-url-wrap" style="flex-shrink:0">
         <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
         <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
+        ${_urlChipsHtml(allUrls, 'qr-url-input')}
       </div>` : '';
 
     // Event selector: single name as title, multiple as checkboxes
@@ -1998,7 +2025,8 @@
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
-    const autoUrl = _extractUrl(hint.note);
+    const allUrls = _collectUrls([eventName]);
+    const autoUrl = allUrls[0] || '';
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
     const rowsHtml = _quickReplies.map((qr, i) => {
       const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
@@ -2016,6 +2044,7 @@
       <div class="qr-url-wrap">
         <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
         <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
+        ${_urlChipsHtml(allUrls, 'qr-url-input')}
       </div>` : '';
 
     const overlay = document.createElement('div');
