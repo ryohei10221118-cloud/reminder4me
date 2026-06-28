@@ -1150,7 +1150,7 @@
   }
 
   function _urlChipsHtml(urls, inputId) {
-    if (!urls.length) return '';
+    if (urls.length < 2) return '';
     return `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${
       urls.map(u => {
         const label = u.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 40) + (u.length > 50 ? '…' : '');
