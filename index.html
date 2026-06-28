@@ -1062,7 +1062,14 @@
   function _ensSave() { localStorage.setItem(ENS_KEY, JSON.stringify(_ensStore)); }
   function _ensSet(eventName, note) {
     if (!note || !note.trim()) return;
-    _ensStore[eventName] = { note: note.trim(), ts: Date.now() };
+    const existing = _ensStore[eventName];
+    let merged = note.trim();
+    if (existing && existing.note) {
+      const newUrlSet = new Set(_extractAllUrls(merged));
+      const missing = _extractAllUrls(existing.note).filter(u => !newUrlSet.has(u));
+      if (missing.length) merged = merged + '\n' + missing.join('\n');
+    }
+    _ensStore[eventName] = { note: merged, ts: Date.now() };
     _ensSave();
   }
   const _defaultQuickReplies = [
