@@ -1200,7 +1200,7 @@
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
     const cardLang = r.lang || null;
     const allUrls = _collectUrls(allEventNames);
-    const autoUrl = allUrls[0]?.url || '';
+    _hintPopupUrl = allUrls[0]?.url || '';
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
@@ -1220,11 +1220,22 @@
       </div>`;
     }).join('');
 
-    const urlSection = hasUrlTemplate ? `
-      <div class="qr-url-wrap" style="flex-shrink:0">
-        <div class="qr-url-label">🔗 貼上網址（結算正確用）</div>
-        <input id="qr-url-input" class="qr-url-input" type="url" placeholder="https://..." value="${esc(autoUrl)}">
-        ${_urlChipsHtml(allUrls, 'qr-url-input')}
+    const urlSection = (hasUrlTemplate && allUrls.length > 1) ? `
+      <div style="margin-top:8px;flex-shrink:0;display:flex;flex-direction:column;gap:3px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
+        ${allUrls.map(({url, label}, i) => {
+          const safeHref = esc(url);
+          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
+          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
+          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="done-url-row-${i}">
+            <input type="radio" name="done-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
+              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=done-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
+            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
+            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
+          </label>`;
+        }).join('')}
       </div>` : '';
 
     // Event selector: single name as title, multiple as checkboxes
@@ -1262,6 +1273,10 @@
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    if (allUrls.length > 1) {
+      const firstRow = document.getElementById('done-url-row-0');
+      if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
+    }
   }
 
   function _getSelectedQrEventNames(r) {
@@ -1280,8 +1295,7 @@
     const r = records.find(x => x.id === id);
     const selectedNames = r ? _getSelectedQrEventNames(r) : [];
     const eventName = selectedNames.join('\n');
-    const urlInput  = document.getElementById('qr-url-input');
-    const url       = urlInput ? urlInput.value.trim() : '';
+    const url = _hintPopupUrl;
 
     let text = qr[lang] || '';
     if (qr.attachName && eventName) text = eventName + '\n' + text;
