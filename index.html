@@ -4064,7 +4064,7 @@
 
   function _saGenerateResettlementReports(data, customReasons) {
     const reasonOpts = _saGetResettlementReasons();
-    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    const nameSuffix = getAgentName() ? ` - ${getAgentName()}` : '';
     if (!data.length) return { english:'No resettlement records.', chinese:'无重新结算记录。', korean:'무 재정산 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
 
     const isMulti = data.some(d=>d.totalEventsInBet>1);
@@ -4091,7 +4091,7 @@
 
   function _saGenerateCancellationReports(data, customReasons) {
     const reasonOpts = _saGetCancellationReasons();
-    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    const nameSuffix = getAgentName() ? ` - ${getAgentName()}` : '';
     if (!data.length) return { english:'No cancellation records.', chinese:'无取消记录。', korean:'무 취소 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
 
     const isMulti = data.some(d=>d.totalEventsInBet>1);
@@ -4257,7 +4257,7 @@
     if (!_saResults || !_saResults.analyzedData) return;
     const rows = _saResults.analyzedData.map((item, i) => {
       const operator = _saResults.operator || (_saOperatorMap[item.siteId] || '');
-      return [operator, item.purchaseId || item.betId || '', '', item.sport||'', item.league||'', item.eventName||'', item.market||'', _saUserName].join('\t');
+      return [operator, item.purchaseId || item.betId || '', '', item.sport||'', item.league||'', item.eventName||'', item.market||'', getAgentName()].join('\t');
     });
     _saCopyText(rows.join('\n'), btn);
   }
@@ -4318,13 +4318,6 @@
 
     el.innerHTML = `
       <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:14px">📄 分析設置</div>
-      <div class="form-group">
-        <label style="font-size:12px;color:var(--text-sec);font-weight:600">👤 绑定名字</label>
-        <input type="text" value="${_saEsc(_saUserName)}" placeholder="例如: Sunny"
-          oninput="_saUserName=this.value;localStorage.setItem('${SA_PREFIX}userName',this.value)"
-          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
-        ${_saUserName ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">示例: Thank you for waiting... - <b>${_saEsc(_saUserName)}</b></div>` : ''}
-      </div>
       <div class="form-group">
         <label style="font-size:12px;color:var(--text-sec);font-weight:600">數據輸入 <span style="font-weight:400;color:var(--text-muted)">(Seamless Tool apiRequests JSON)</span></label>
         <textarea id="sa-json-input" placeholder="請貼上 Seamless Tool JSON 數據..." rows="10"
