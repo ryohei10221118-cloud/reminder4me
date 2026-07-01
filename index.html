@@ -4151,7 +4151,7 @@
     }
   }
 
-  function _saHandleAnalyze() {
+  function _saHandleAnalyze(skipHistory) {
     const ta = document.getElementById('sa-json-input');
     if (!ta) return;
     _saJsonData = ta.value;
@@ -4185,7 +4185,7 @@
       }
       _saResults = reports;
 
-      if (analyzedData.length > 0) {
+      if (!skipHistory && analyzedData.length > 0) {
         const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: reports };
         _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
         localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
@@ -4266,7 +4266,7 @@
     _saAnalysisType = _saAnalysisType === 'resettlement' ? 'cancellation' : 'resettlement';
     if (_saResults && _saResults.analyzedData) {
       const ta = document.getElementById('sa-json-input');
-      if (ta && ta.value.trim()) _saHandleAnalyze();
+      if (ta && ta.value.trim()) _saHandleAnalyze(true);
     }
     _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
   }
