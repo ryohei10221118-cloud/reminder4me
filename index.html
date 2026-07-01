@@ -4435,6 +4435,7 @@
     const rPanelHtml = _saShowReasonPanel ? `
       <div style="position:absolute;top:calc(100% + 6px);right:0;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:12px;z-index:100">
         <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">⚡ 快速選擇原因</div>
+        <div style="max-height:260px;overflow-y:auto;overflow-x:hidden">
         ${Object.keys(reasonOpts).map(k=>{
           const r=reasonOpts[k];
           const isActive=curReason===k;
@@ -4449,6 +4450,7 @@
             ${isActive?'✓ ':''}${_saEsc(label)}
           </button>`;
         }).join('')}
+        </div>
       </div>` : '';
 
     const hPanelHtml = _saShowHistoryPanel ? `
