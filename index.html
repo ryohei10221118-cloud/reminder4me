@@ -4481,13 +4481,13 @@
     el.innerHTML = `
       <div style="position:relative">
         ${rPanelHtml}
-        <button onclick="_saShowReasonPanel=!_saShowReasonPanel;_saShowHistoryPanel=false;_saRenderActionBtns()"
+        <button onclick="event.stopPropagation();_saShowReasonPanel=!_saShowReasonPanel;_saShowHistoryPanel=false;_saRenderActionBtns()"
           title="快速選擇原因"
           style="width:34px;height:34px;border-radius:50%;background:${_saShowReasonPanel?'var(--blue)':'#6366f1'};color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">R</button>
       </div>
       <div style="position:relative">
         ${hPanelHtml}
-        <button onclick="_saShowHistoryPanel=!_saShowHistoryPanel;_saShowReasonPanel=false;_saRenderActionBtns()"
+        <button onclick="event.stopPropagation();_saShowHistoryPanel=!_saShowHistoryPanel;_saShowReasonPanel=false;_saRenderActionBtns()"
           title="查詢歷史"
           style="width:34px;height:34px;border-radius:50%;background:${_saShowHistoryPanel?'#0d9488':'#14b8a6'};color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;position:relative">
           H
