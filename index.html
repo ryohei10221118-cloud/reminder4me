@@ -1045,8 +1045,8 @@
 
 <div id="tab-analyzer" class="tab-content">
   <div style="max-width:1100px;width:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start" id="sa-grid">
-    <div class="card" id="sa-left-panel" style="padding:16px"></div>
-    <div class="card" id="sa-right-panel" style="padding:16px">
+    <div class="card" id="sa-left-panel" style="padding:16px;min-width:0"></div>
+    <div class="card" id="sa-right-panel" style="padding:16px;min-width:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="font-size:14px;font-weight:700;color:var(--text-pri)">✓ 分析結果</div>
         <div style="display:flex;gap:6px;align-items:center" id="sa-action-btns"></div>
@@ -4321,7 +4321,7 @@
       <div class="form-group">
         <label style="font-size:12px;color:var(--text-sec);font-weight:600">數據輸入 <span style="font-weight:400;color:var(--text-muted)">(Seamless Tool apiRequests JSON)</span></label>
         <textarea id="sa-json-input" placeholder="請貼上 Seamless Tool JSON 數據..." rows="10"
-          style="font-family:monospace;font-size:11px;resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-pri);outline:none;line-height:1.5"
+          style="width:100%;font-family:monospace;font-size:11px;resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-pri);outline:none;line-height:1.5"
           >${_saEsc(_saJsonData)}</textarea>
       </div>
       <div id="sa-status"></div>
