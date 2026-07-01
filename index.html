@@ -89,8 +89,8 @@
     .agent-name-input::placeholder { color: var(--text-muted); }
 
     /* ── Layout ── */
-    .container { max-width: 1020px; margin: 0 auto; padding: 16px 20px; }
-    .main-layout { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
+    .main-layout { display: grid; grid-template-columns: minmax(360px, 1fr) 1fr; gap: 16px; align-items: start; }
     .right-col { min-width: 0; }
     @media (max-width: 720px) { .main-layout { grid-template-columns: 1fr; } }
 
@@ -187,6 +187,7 @@
     .order-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
     .order-row { display: flex; gap: 6px; align-items: center; }
     .order-row input { flex: 1; }
+    .event-bet-hint { font-size: 11px; color: var(--text-muted); padding: 2px 2px 3px; line-height: 1.4; }
     .btn-remove-order {
       background: transparent;
       border: none;
@@ -257,10 +258,21 @@
       border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       z-index: 50; overflow: hidden; max-height: 200px; overflow-y: auto;
     }
+    .grp-dropdown {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      z-index: 50; overflow: hidden; max-height: 200px; overflow-y: auto;
+    }
     .req-option {
       padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text-pri);
     }
     .req-option:hover, .req-option.highlighted { background: var(--blue-bg); color: var(--blue); }
+    .grp-dropdown .req-option { display: flex; align-items: center; gap: 6px; }
+    .grp-drop-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .grp-drop-del { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text-muted); padding: 0 2px; line-height: 1; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+    .grp-dropdown .req-option:hover .grp-drop-del, .grp-dropdown .req-option.highlighted .grp-drop-del { opacity: 1; }
+    .grp-drop-del:hover { color: var(--red) !important; }
     .req-option-hint { font-size: 11px; color: var(--text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .gear-btn { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text-muted); padding: 0; line-height: 1; }
     .gear-btn:hover { color: var(--text-sec); }
@@ -446,7 +458,22 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      cursor: pointer;
     }
+    .card-event-name:hover { color: var(--blue); }
+    .card-event-name.copied { color: var(--green); }
+    .card-event-name.dup { background: #fef3c7; color: #b45309; border-radius: 3px; padding: 0 3px; }
+    .card-event-name.dup:hover { color: #92400e; }
+    .card-event-name.dup.copied { background: var(--green-bg); color: var(--green); }
+    .card-event-name.settled { color: var(--text-muted); text-decoration: line-through; }
+    .card-event-name.settled:hover { color: var(--text-muted); }
+    .btn-event-settle {
+      background: none; border: 1px solid var(--border); border-radius: 4px;
+      font-size: 11px; padding: 2px 5px; cursor: pointer; color: var(--text-muted);
+      flex-shrink: 0; line-height: 1; transition: all 0.15s;
+    }
+    .btn-event-settle:hover { border-color: var(--green); color: var(--green); }
+    .btn-event-settle.settled { border-color: var(--green); color: var(--green); background: var(--green-bg); }
     .btn-msg {
       padding: 4px 10px;
       background: var(--surface2);
@@ -507,7 +534,6 @@
     .order-tag {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
       background: var(--blue-bg);
       border: 1px solid var(--blue-light);
       border-radius: 5px;
@@ -515,19 +541,11 @@
       font-size: 12px;
       color: var(--blue);
       font-weight: 600;
-    }
-    .btn-copy-tag {
-      background: none;
-      border: none;
       cursor: pointer;
-      color: var(--text-muted);
-      font-size: 12px;
-      padding: 0;
-      line-height: 1;
-      transition: transform 0.2s ease, color 0.2s ease;
+      transition: background 0.15s;
     }
-    .btn-copy-tag:hover { color: var(--blue); }
-    .btn-copy-tag.copied { color: var(--green); transform: scale(1.4); transition: transform 0.12s ease, color 0.12s ease; }
+    .order-tag:hover { background: rgba(143,172,200,0.22); }
+    .order-tag.copied { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
     .record-req {
       font-size: 12px;
       color: var(--text-pri);
@@ -564,6 +582,7 @@
     .note-hint-card { background: var(--blue-bg); border: 1px solid var(--blue-light); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
     .note-hint-event { font-size: 12px; font-weight: 700; color: var(--text-pri); margin-bottom: 3px; }
     .note-hint-text { font-size: 12px; color: var(--text-sec); white-space: pre-wrap; word-break: break-word; }
+    .note-hint-text.copied { background: var(--green-bg) !important; color: var(--green) !important; }
     .note-hint-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
     /* ── Record actions ── */
@@ -615,6 +634,70 @@
     }
     .btn-del:hover { color: var(--red); border-color: var(--red); }
 
+    /* ── Quick Reply popup ── */
+    .qr-list { display: flex; flex-direction: column; }
+    .qr-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border-light); gap: 10px; }
+    .qr-row:last-child { border-bottom: none; }
+    .qr-row-label { font-size: 13px; font-weight: 600; color: var(--text-pri); flex: 1; min-width: 0; }
+    .qr-lang-btns { display: flex; gap: 5px; flex-shrink: 0; }
+    .btn-qr-lang {
+      padding: 0 10px; height: 26px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface2); color: var(--text-sec); cursor: pointer;
+    }
+    .btn-qr-lang:hover { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-light); }
+    .btn-qr-lang.hl { background: var(--green-bg); color: var(--green); border-color: var(--green-border); font-weight: 700; }
+    .qr-url-wrap { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light); }
+    .qr-url-input {
+      width: 100%; padding: 5px 9px; height: 30px; box-sizing: border-box;
+      font-size: 12px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface2); color: var(--text-pri);
+    }
+    .qr-url-input:focus { outline: none; border-color: var(--blue-light); background: var(--surface); }
+    .qr-url-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+
+    /* ── Quick Reply manager ── */
+    .qrm-list { display: flex; flex-direction: column; gap: 0; }
+    .qrm-item { border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 6px; background: var(--surface); }
+    .qrm-item.drag-over { border-color: var(--blue); background: var(--blue-bg); }
+    .qrm-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; user-select: none; }
+    .qrm-handle { color: var(--text-muted); font-size: 14px; cursor: grab; flex-shrink: 0; padding: 0 2px; }
+    .qrm-handle:active { cursor: grabbing; }
+    .qrm-label-preview { flex: 1; min-width: 0; }
+    .qrm-label { font-size: 13px; font-weight: 600; color: var(--text-pri); }
+    .qrm-preview { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .qrm-badges { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
+    .qrm-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 600; }
+    .qrm-badge.name { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-light); }
+    .qrm-badge.url  { background: var(--orange-bg); color: var(--orange); border: 1px solid rgba(196,149,106,0.3); }
+    .qrm-del { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px; padding: 0 2px; flex-shrink: 0; }
+    .qrm-del:hover { color: var(--red); }
+    .qrm-chevron { color: var(--text-muted); font-size: 10px; transition: transform 0.15s; flex-shrink: 0; }
+    .qrm-body { display: none; padding: 0 10px 10px; border-top: 1px solid var(--border-light); }
+    .qrm-item.open .qrm-body    { display: block; }
+    .qrm-item.open .qrm-chevron { transform: rotate(180deg); }
+    .qrm-item.open .qrm-preview { display: none; }
+    .qrm-field-row { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; }
+    .qrm-field-lbl { font-size: 11px; color: var(--text-muted); width: 28px; flex-shrink: 0; padding-top: 6px; }
+    .qrm-textarea {
+      flex: 1; padding: 5px 8px; font-size: 12px; border: 1px solid var(--border);
+      border-radius: 5px; background: var(--surface2); color: var(--text-pri);
+      resize: vertical; min-height: 36px; font-family: inherit; line-height: 1.4;
+    }
+    .qrm-textarea:focus { outline: none; border-color: var(--blue-light); background: var(--surface); }
+    .qrm-label-input {
+      flex: 1; padding: 4px 8px; height: 28px; box-sizing: border-box; font-size: 13px; font-weight: 600;
+      border: 1px solid var(--border); border-radius: 5px; background: var(--surface2); color: var(--text-pri);
+    }
+    .qrm-label-input:focus { outline: none; border-color: var(--blue-light); }
+    .qrm-checks { display: flex; gap: 14px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border-light); }
+    .qrm-check-lbl { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-sec); cursor: pointer; }
+    .qrm-add-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+    .qrm-add-input { flex: 1; padding: 5px 9px; height: 30px; box-sizing: border-box; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text-pri); }
+    .qrm-add-input:focus { outline: none; border-color: var(--blue-light); }
+    .btn-qr-settings { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 15px; padding: 3px 4px; border-radius: 5px; display: flex; align-items: center; }
+    .btn-qr-settings:hover { color: var(--text-sec); background: var(--surface2); }
+
     /* ── Empty state ── */
     .empty-state { text-align: center; padding: 36px; color: var(--text-muted); font-size: 14px; }
 
@@ -637,8 +720,10 @@
       background: rgba(74,66,56,0.45);
       z-index: 1000;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
+      overflow-y: auto;
+      padding: 20px 0;
       animation: overlayIn 0.2s ease;
     }
     @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
@@ -652,6 +737,7 @@
       box-shadow: 0 16px 60px rgba(74,66,56,0.2);
       animation: cardUp 0.28s cubic-bezier(0.16,1,0.3,1);
       position: relative;
+      margin: auto;
     }
     .popup-card.stage1 { border-color: var(--orange); }
     .popup-card.stage2 { border-color: var(--red); }
@@ -821,15 +907,11 @@
       border-radius: 10px;
       padding: 12px 14px;
     }
-    .msg-event-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 6px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
+    .msg-event-header { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+    .msg-event-name-row { display: flex; align-items: flex-start; gap: 4px; }
+    .msg-event-meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .msg-event-name { font-size: 13px; font-weight: 700; color: var(--text-pri); flex: 1; min-width: 0; }
-    .msg-event-id { font-size: 11px; color: var(--text-muted); font-family: monospace; white-space: nowrap; padding-top: 2px; }
+    .msg-event-id { font-size: 11px; color: var(--text-muted); font-family: monospace; white-space: nowrap; }
     .msg-event-remove { background: none; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 0 2px; flex-shrink: 0; }
     .msg-event-remove:hover { color: var(--red); }
     .msg-event-notes {
@@ -845,6 +927,15 @@
       .card-body { flex-wrap: wrap; }
       .record-actions { flex-direction: row; }
     }
+
+    /* ── Tab navigation ── */
+    .tab-nav { display: flex; gap: 2px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tab-btn { padding: 10px 18px; font-size: 13px; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+    .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab-btn:hover:not(.active) { color: var(--text-sec); }
+    .tab-content { display: none; }
+    .tab-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+    @media (max-width: 700px) { #sa-grid { grid-template-columns: 1fr !important; } }
   </style>
 </head>
 <body>
@@ -863,6 +954,11 @@
   <input class="agent-name-input" id="agent-name" type="text" placeholder="你的名字" oninput="saveAgentName()" />
 </div>
 
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('reminder')" id="tabbtn-reminder">📋 提醒工具</button>
+  <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
+</div>
+<div id="tab-reminder" class="tab-content active">
 <div class="container">
   <div class="main-layout">
 
@@ -894,7 +990,11 @@
             </div>
             <div class="form-group">
               <label>群組名稱 *</label>
-              <input id="f-group" placeholder="群組名稱" autocomplete="off" required>
+              <div style="position:relative">
+                <input id="f-group" placeholder="群組名稱" autocomplete="off" required
+                  oninput="_grpOnInput(this)" onkeydown="_grpOnKey(event)" onfocus="_grpOnInput(this)" onblur="_grpOnBlur()">
+                <div class="grp-dropdown" id="grp-dropdown" style="display:none"></div>
+              </div>
             </div>
             <div class="form-group">
               <label>附加資訊</label>
@@ -919,8 +1019,11 @@
       <div class="section-header">
         <span class="section-title">待處理</span>
         <span class="count-badge" id="active-count" style="display:none">0</span>
-        <button class="export-btn" onclick="markAllDone()" title="全部標記為已完成">✓ 全完成</button>
-        <button class="export-btn" onclick="showExportPopup()" title="匯出所有待處理">📤 匯出</button>
+        <button class="btn-qr-settings" onclick="showQrManager()" title="管理快速回覆範本">⚙</button>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="export-btn" style="margin-left:0" onclick="showExportPopup()" title="匯出所有待處理">📤 匯出</button>
+          <button class="export-btn" style="margin-left:0" onclick="markAllDone()" title="全部標記為已完成">✓ 全完成</button>
+        </div>
       </div>
       <div id="active-records"></div>
 
@@ -936,6 +1039,20 @@
       </div>
     </div>
 
+  </div>
+</div>
+</div>
+
+<div id="tab-analyzer" class="tab-content">
+  <div style="max-width:1100px;width:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start" id="sa-grid">
+    <div class="card" id="sa-left-panel" style="padding:16px"></div>
+    <div class="card" id="sa-right-panel" style="padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri)">✓ 分析結果</div>
+        <div style="display:flex;gap:6px;align-items:center" id="sa-action-btns"></div>
+      </div>
+      <div id="sa-results-area"></div>
+    </div>
   </div>
 </div>
 
@@ -960,6 +1077,411 @@
   let groupCounter = 0;
   let formGroups   = []; // [{id, eventName, orderNos:[]}]
   let formLang     = null; // 'en'|'zh'|'kr'|null
+
+  // ── Quick Replies ──
+  const QR_KEY = 'reminder4me_quick_replies';
+
+  // ── Standalone event notes store (from 賽事訊息產生器, not tied to cards) ──
+  const ENS_KEY = 'reminder4me_ens';
+  let _ensStore = {}; // { eventName: { note, ts } }
+  function _ensLoad() {
+    try { _ensStore = JSON.parse(localStorage.getItem(ENS_KEY) || '{}'); } catch(e) { _ensStore = {}; }
+  }
+  function _ensSave() { localStorage.setItem(ENS_KEY, JSON.stringify(_ensStore)); }
+  function _ensSet(eventName, note) {
+    if (!note || !note.trim()) return;
+    const existing = _ensStore[eventName];
+    let merged = note.trim();
+    if (existing && existing.note) {
+      const newUrlSet = new Set(_extractAllUrls(merged));
+      const missing = _extractAllUrls(existing.note).filter(u => !newUrlSet.has(u));
+      if (missing.length) merged = merged + '\n' + missing.join('\n');
+    }
+    _ensStore[eventName] = { note: merged, ts: Date.now() };
+    _ensSave();
+  }
+  const _defaultQuickReplies = [
+    { id: 'qr1', label: '已结算',  attachName: false, hasUrl: false,
+      zh: '注单已结算，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。- Sunny',
+      en: 'Thank you for waiting. The bet has been settled but BO needs 5-10 mins to be updated. Please check again later. Thank you. - Sunny',
+      kr: '기다려 주셔서 감사합니다. 베팅은 정산되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 나중에 다시 확인해 주시기 바랍니다. 감사합니다. - Sunny' },
+    { id: 'qr2', label: '重新结算', attachName: false, hasUrl: false,
+      zh: '注单已重新结算，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。- Sunny',
+      en: 'Thank you for waiting. The bet has been resettled but BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      kr: '기다려 주셔서 감사합니다. 베팅이 재정산되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다. - Sunny' },
+    { id: 'qr3', label: '已取消',  attachName: false, hasUrl: false,
+      zh: '注单已取消，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。- Sunny',
+      en: 'Thank you for waiting. The bet has been canceled but BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      kr: '기다려 주셔서 감사합니다. 베팅이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다. - Sunny' },
+    { id: 'qr4', label: 'No info', attachName: true,  hasUrl: false,
+      zh: '经确认，该赛事暂无官方资讯，待确认官方赛果后将会立即自动结算，还请您理解並解釋給予您的玩家，谢谢。 - Sunny',
+      en: 'We have no official information available yet. Once there is any update, the bets will be settled accordingly. Thank you. - Sunny',
+      kr: '아직 공식적인 정보가 없습니다. 업데이트가 있으면 그에 따라 베팅이 정산될 것입니다. 감사합니다. - Sunny' },
+    { id: 'qr5', label: '延期24H', attachName: true,  hasUrl: false,
+      zh: '经确认此赛事目前似乎延期或弃赛，相关团队会等待24小时确认赛事是否重启，相关注单将会在之后做对应处理，提前感谢您的耐心。 - Sunny',
+      en: 'This event appears to be postponed or abandoned. The relevant team will wait 24 hours to confirm whether the event will resume. Related bets will be handled accordingly afterwards. Thank you in advance for your patience. - Sunny',
+      kr: '이 이벤트는 연기되거나 취소된 것으로 보입니다. 관련 팀은 이벤트 재개 여부를 확인하기 위해 24시간을 기다릴 것입니다. 관련 베팅은 이후 그에 따라 처리될 예정입니다. 기다려 주셔서 미리 감사드립니다. - Sunny' },
+    { id: 'qr6', label: '调查中',  attachName: true,  hasUrl: false,
+      zh: '该赛事目前正在由相关团队进行进一步调查。相关投注将在有任何更新后相应处理，提前感谢您的耐心等待。- Sunny',
+      en: 'The event is currently under further investigation by relevant team. Related bets will be dealt with accordingly once any update. Thank you for your patience. - Sunny',
+      kr: '현재 해당 이벤트는 관련 팀에 의해 추가 조사 중입니다. 업데이트가 있는 대로 관련 베팅은 그에 따라 처리될 예정입니다. 양해해 주셔서 감사합니다. - Sunny' },
+    { id: 'qr7', label: '结算正确', attachName: false, hasUrl: true,
+      zh: '结算正确，链接仅供参考，谢谢。 - Sunny',
+      en: 'Correctly settled, link as ref only, thank you. - Sunny',
+      kr: '올바르게 정산되었습니다, 참조용 링크로만 사용해 주세요, 감사합니다. - Sunny' },
+  ];
+  let _quickReplies = [];
+  let _qrExpandedIdx    = -1;
+  let _qrDragSrcIdx     = -1;
+  let _hintPopupEvent   = '';
+  let _hintPopupUrl     = '';
+
+  const QR_VER_KEY = 'reminder4me_qr_ver';
+  const QR_VER     = 2; // bump when defaults change
+  function loadQuickReplies() {
+    try {
+      const s   = localStorage.getItem(QR_KEY);
+      const ver = Number(localStorage.getItem(QR_VER_KEY) || 0);
+      if (s && ver >= QR_VER) {
+        const parsed = JSON.parse(s);
+        _quickReplies = parsed.map(x => ({ attachName: false, hasUrl: false, ...x }));
+      } else {
+        // first run or old defaults — load fresh defaults and save version
+        _quickReplies = _defaultQuickReplies.map(x => ({ ...x }));
+        localStorage.setItem(QR_KEY, JSON.stringify(_quickReplies));
+        localStorage.setItem(QR_VER_KEY, String(QR_VER));
+      }
+    } catch(e) { _quickReplies = _defaultQuickReplies.map(x => ({ ...x })); }
+  }
+  function saveQuickReplies() {
+    localStorage.setItem(QR_KEY, JSON.stringify(_quickReplies));
+    localStorage.setItem(QR_VER_KEY, String(QR_VER));
+  }
+
+  function _extractUrl(text) {
+    if (!text) return '';
+    const m = text.match(/https?:\/\/[^\s]+/);
+    return m ? m[0] : '';
+  }
+
+  function _extractAllUrls(text) {
+    if (!text) return [];
+    return (text.match(/https?:\/\/[^\s]+/g) || []);
+  }
+
+  // Gather all unique URLs for given event names, with associated bet line label
+  function _collectUrls(eventNames) {
+    const seen = new Set(), result = [];
+    const addUrl = (url, betLabel) => {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      result.push({ url, label: betLabel || '' });
+    };
+    for (const name of eventNames) {
+      // Check records first so URLs found here get their bet line label
+      for (const rec of records) {
+        const nameIdx = (rec.eventNames || []).findIndex(n => n.trim() === name);
+        let betLabel = '';
+        if (nameIdx >= 0 && rec.betInfos && rec.betInfos[nameIdx]) {
+          const bi = rec.betInfos[nameIdx];
+          const lines = (bi.betLines && bi.betLines.length)
+            ? bi.betLines
+            : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName }] : [];
+          betLabel = lines.map(bl => [bl.lineType, bl.selectionName].filter(Boolean).join(' / ')).filter(Boolean).join(', ');
+        }
+        if (nameIdx >= 0 && rec.additionalInfo)
+          _extractAllUrls(rec.additionalInfo).forEach(u => addUrl(u, betLabel));
+        if (rec.eventNotes && rec.eventNotes[name])
+          _extractAllUrls(rec.eventNotes[name]).forEach(u => addUrl(u, betLabel));
+      }
+      // Standalone notes store (no bet context)
+      _extractAllUrls((_ensStore[name] || {}).note).forEach(u => addUrl(u, ''));
+    }
+    return result;
+  }
+
+  function _urlChipsHtml(items, inputId) {
+    if (items.length < 2) return '';
+    return `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${
+      items.map(({url, label}) => {
+        const safe = url.replace(/'/g, "\\'");
+        const domain = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const domainShort = domain.slice(0, 32) + (domain.length > 32 ? '…' : '');
+        const labelLine = label ? `<span style="display:block;font-size:9px;color:var(--text-muted);margin-top:1px;line-height:1.2;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>` : '';
+        return `<button type="button" title="${esc(url)}" onclick="document.getElementById('${inputId}').value='${safe}'"
+          style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text-sec);cursor:pointer;text-align:left;max-width:200px;line-height:1.3">
+          <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}</span>${labelLine}
+        </button>`;
+      }).join('')
+    }</div>`;
+  }
+
+  // ── Quick Reply use popup ──
+  function showMarkDonePopup(id) {
+    const r = records.find(x => x.id === id);
+    if (!r || r.completedAt) return;
+    const allEventNames = getEventNames(r);
+    const settledSet = new Set(r.settledEventIndices || []);
+    const pendingNames = allEventNames.filter((_, i) => !settledSet.has(i));
+    const reqText   = r.requirement || '';
+    const grpText   = r.group || '';
+    const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
+    const cardLang = r.lang || null;
+    const allUrls = _collectUrls(allEventNames);
+    _hintPopupUrl = allUrls[0]?.url || '';
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+
+    const rowsHtml = _quickReplies.map((qr, i) => {
+      const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
+      const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>' : '';
+      const hlZh = cardLang === 'zh' ? ' hl' : '';
+      const hlEn = cardLang === 'en' ? ' hl' : '';
+      const hlKr = cardLang === 'kr' ? ' hl' : '';
+      return `<div class="qr-row">
+        <span class="qr-row-label">${esc(qr.label)}${nameTag}${urlTag}</span>
+        <div class="qr-lang-btns">
+          <button class="btn-qr-lang${hlZh}" onclick="_qrCopyDone('${id}',${i},'zh',this)">中</button>
+          <button class="btn-qr-lang${hlEn}" onclick="_qrCopyDone('${id}',${i},'en',this)">EN</button>
+          <button class="btn-qr-lang${hlKr}" onclick="_qrCopyDone('${id}',${i},'kr',this)">한</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    const urlSection = (hasUrlTemplate && allUrls.length > 1) ? `
+      <div style="margin-top:8px;flex-shrink:0;display:flex;flex-direction:column;gap:3px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
+        ${allUrls.map(({url, label}, i) => {
+          const safeHref = esc(url);
+          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
+          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
+          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="done-url-row-${i}">
+            <input type="radio" name="done-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
+              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=done-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
+            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
+            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
+          </label>`;
+        }).join('')}
+      </div>` : '';
+
+    // Event selector: single name as title, multiple as checkboxes
+    const displayNames = pendingNames.length ? pendingNames : allEventNames;
+    let eventSection = '';
+    if (displayNames.length === 1) {
+      eventSection = `<div class="popup-title" style="font-size:13px;margin-bottom:6px;flex-shrink:0">🏆 ${esc(displayNames[0])}</div>`;
+    } else if (displayNames.length > 1) {
+      const cbItems = displayNames.map(n =>
+        `<label style="display:flex;align-items:flex-start;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--text-pri)">
+          <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" checked style="margin-top:2px;flex-shrink:0">
+          <span style="line-height:1.4">${esc(n)}</span>
+        </label>`).join('');
+      eventSection = `
+        <div style="margin-bottom:8px;flex-shrink:0">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">🏆 選擇帶入的賽事</div>
+          <div style="background:var(--surface2);border-radius:6px;padding:6px 10px">${cbItems}</div>
+        </div>`;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
+        <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
+        ${eventSection}
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
+        <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
+        ${urlSection}
+        <div class="popup-btns" style="margin-top:12px;flex-shrink:0">
+          <button class="btn-popup-sec" onclick="showQrManager()">⚙ 管理範本</button>
+          <button class="btn-popup-done" onclick="document.getElementById('popup-overlay')?.remove();markDone('${id}')">✓ 直接搞定</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    if (allUrls.length > 1) {
+      const firstRow = document.getElementById('done-url-row-0');
+      if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
+    }
+  }
+
+  function _getSelectedQrEventNames(r) {
+    const cbs = document.querySelectorAll('.qr-event-cb');
+    if (cbs.length > 0) return [...cbs].filter(cb => cb.checked).map(cb => cb.dataset.name).filter(Boolean);
+    // fallback: first pending event
+    const allNames = getEventNames(r);
+    const settledSet = new Set(r.settledEventIndices || []);
+    const pending = allNames.filter((_, i) => !settledSet.has(i));
+    return [(pending[0] || allNames[0] || '').trim()].filter(Boolean);
+  }
+
+  function _qrCopyDone(id, qrIdx, lang, btn) {
+    const qr = _quickReplies[qrIdx];
+    if (!qr) return;
+    const r = records.find(x => x.id === id);
+    const selectedNames = r ? _getSelectedQrEventNames(r) : [];
+    const eventName = selectedNames.join('\n');
+    const url = _hintPopupUrl;
+
+    let text = qr[lang] || '';
+    if (qr.attachName && eventName) text = eventName + '\n' + text;
+    const agentName = getAgentName();
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
+      text = text.trimEnd() + suffix;
+    }
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+
+    copyText(text, btn);
+    setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
+  }
+
+  function _qrCopyHint(qrIdx, lang, btn) {
+    const qr = _quickReplies[qrIdx];
+    if (!qr) return;
+    const url = _hintPopupUrl;
+    let text = qr[lang] || '';
+    if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
+    const agentName = getAgentName();
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
+      text = text.trimEnd() + suffix;
+    }
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+    copyText(text, btn);
+    setTimeout(() => {
+      document.getElementById('popup-overlay')?.remove();
+      // only auto-clear if there's just one event in the form; keep the rest if multi-event
+      const filledCount = formGroups.reduce((n, g) => n + g.eventNames.filter(e => e.trim()).length, 0);
+      if (filledCount <= 1) clearForm();
+    }, 350);
+  }
+
+  // ── Quick Reply manager ──
+  function showQrManager() {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+    _qrExpandedIdx = -1;
+    _renderQrManager();
+  }
+
+  function _renderQrManager() {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+
+    const itemsHtml = _quickReplies.map((qr, i) => {
+      const isOpen = _qrExpandedIdx === i;
+      const preview = qr.zh ? qr.zh.slice(0, 18) + (qr.zh.length > 18 ? '…' : '') : '（未填內容）';
+      return `<div class="qrm-item${isOpen ? ' open' : ''}" id="qrm-item-${i}"
+          draggable="true"
+          ondragstart="_qrDragStart(${i})"
+          ondragover="_qrDragOver(event,${i})"
+          ondragleave="_qrDragLeave(${i})"
+          ondrop="_qrDrop(event,${i})">
+        <div class="qrm-header" onclick="_qrToggle(${i})">
+          <span class="qrm-handle" onclick="event.stopPropagation()" draggable="false">⠿</span>
+          <div class="qrm-label-preview">
+            <div class="qrm-label">${esc(qr.label) || '<span style="color:var(--text-muted)">（未命名）</span>'}</div>
+            <div class="qrm-preview">${esc(preview)}</div>
+          </div>
+          <div class="qrm-badges">
+            ${qr.attachName ? '<span class="qrm-badge name">附名</span>' : ''}
+            ${qr.hasUrl     ? '<span class="qrm-badge url">+URL</span>'  : ''}
+          </div>
+          <span class="qrm-chevron">▼</span>
+          <button class="qrm-del" onclick="event.stopPropagation();_qrMgrRemove(${i})" title="移除">×</button>
+        </div>
+        <div class="qrm-body">
+          <div class="qrm-field-row">
+            <span class="qrm-field-lbl" style="width:36px;color:var(--text-sec);font-weight:600">標題</span>
+            <input class="qrm-label-input" value="${esc(qr.label)}" placeholder="情況名稱" oninput="_qrMgrSet(${i},'label',this.value)">
+          </div>
+          <div class="qrm-field-row">
+            <span class="qrm-field-lbl">中</span>
+            <textarea class="qrm-textarea" rows="3" oninput="_qrMgrSet(${i},'zh',this.value)">${esc(qr.zh)}</textarea>
+          </div>
+          <div class="qrm-field-row">
+            <span class="qrm-field-lbl">EN</span>
+            <textarea class="qrm-textarea" rows="3" oninput="_qrMgrSet(${i},'en',this.value)">${esc(qr.en)}</textarea>
+          </div>
+          <div class="qrm-field-row">
+            <span class="qrm-field-lbl">한</span>
+            <textarea class="qrm-textarea" rows="3" oninput="_qrMgrSet(${i},'kr',this.value)">${esc(qr.kr)}</textarea>
+          </div>
+          <div class="qrm-checks">
+            <label class="qrm-check-lbl">
+              <input type="checkbox" ${qr.attachName ? 'checked' : ''} onchange="_qrMgrSet(${i},'attachName',this.checked)">
+              附上賽事名稱
+            </label>
+            <label class="qrm-check-lbl">
+              <input type="checkbox" ${qr.hasUrl ? 'checked' : ''} onchange="_qrMgrSet(${i},'hasUrl',this.checked)">
+              附上網址
+            </label>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="min-width:300px;max-width:500px;width:95%">
+        <button class="popup-close-btn" onclick="document.getElementById('popup-overlay').remove()">×</button>
+        <div class="popup-badge info">⚙ 管理快速回覆範本</div>
+        <div class="qrm-list" id="qrm-list" style="margin-top:14px;max-height:55vh;overflow-y:auto">${itemsHtml}</div>
+        <div style="padding-top:10px;border-top:1px solid var(--border-light);margin-top:8px">
+          <div class="qrm-add-row">
+            <input id="qrm-new-label" class="qrm-add-input" placeholder="新情況名稱" onkeydown="if(event.key==='Enter')_qrMgrAdd()">
+            <button class="btn-summary" style="flex-shrink:0" onclick="_qrMgrAdd()">+ 新增</button>
+            <button class="btn-done" style="flex-shrink:0;padding:5px 14px" onclick="_qrMgrSave()">儲存</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  function _qrToggle(i) {
+    const item = document.getElementById('qrm-item-' + i);
+    if (!item) return;
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('#qrm-list .qrm-item.open').forEach(el => el.classList.remove('open'));
+    _qrExpandedIdx = -1;
+    if (!wasOpen) { item.classList.add('open'); _qrExpandedIdx = i; }
+  }
+  function _qrMgrSet(i, field, val) { if (_quickReplies[i]) _quickReplies[i][field] = val; }
+  function _qrMgrRemove(i) { _quickReplies.splice(i, 1); _qrExpandedIdx = -1; _renderQrManager(); }
+  function _qrMgrAdd() {
+    const inp = document.getElementById('qrm-new-label');
+    const label = inp ? inp.value.trim() : '';
+    _quickReplies.push({ id: 'qr_' + Date.now(), label, zh: '', en: '', kr: '', attachName: false, hasUrl: false });
+    _qrExpandedIdx = _quickReplies.length - 1;
+    _renderQrManager();
+  }
+  function _qrMgrSave() { saveQuickReplies(); document.getElementById('popup-overlay').remove(); }
+
+  // drag-to-reorder
+  function _qrDragStart(i)       { _qrDragSrcIdx = i; }
+  function _qrDragOver(e, i)     { e.preventDefault(); if (i !== _qrDragSrcIdx) document.getElementById('qrm-item-' + i)?.classList.add('drag-over'); }
+  function _qrDragLeave(i)       { document.getElementById('qrm-item-' + i)?.classList.remove('drag-over'); }
+  function _qrDrop(e, i) {
+    e.preventDefault();
+    document.getElementById('qrm-item-' + i)?.classList.remove('drag-over');
+    if (_qrDragSrcIdx === -1 || _qrDragSrcIdx === i) return;
+    const moved = _quickReplies.splice(_qrDragSrcIdx, 1)[0];
+    _quickReplies.splice(i, 0, moved);
+    _qrDragSrcIdx = -1;
+    _qrExpandedIdx = -1;
+    _renderQrManager();
+  }
+
+  // keep for backward compat (called from old inline code if any)
+  function copyAndDone(id, qrIdx, lang, btn) { _qrCopyDone(id, qrIdx, lang, btn); }
 
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
   function load() {
@@ -1101,20 +1623,26 @@
   function _buildBetInfoHtml(r) {
     if (!r.betInfos) return '';
     const na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
+    const _betLineRow = bl => {
+      const st = bl.status !== null && bl.status !== undefined ? _jsonStatusMap[bl.status] : null;
+      const statusBadge = st ? `<span class="bet-status-badge" style="color:${st.color}">${st.label}</span>` : '';
+      const line1 = `${na(bl.lineType)} / ${na(bl.selectionName)}`;
+      const hasScore = bl.score1 !== null && bl.score1 !== undefined;
+      const hasSettlement = bl.settlementResult !== null && bl.settlementResult !== '';
+      const scorePart = hasScore ? `${na(bl.score1)}-${na(bl.score2)}` : null;
+      const settlePart = hasSettlement ? na(bl.settlementResult) : null;
+      const scoreLine = (scorePart && settlePart) ? `${scorePart} / ${settlePart}`
+                      : scorePart ? scorePart : settlePart ? settlePart : null;
+      return `<div class="bet-info-row"><span class="bet-info-line" title="${esc(line1)}">${esc(line1)}</span>${statusBadge}</div>`
+           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '');
+    };
     const rows = r.betInfos.map(b => {
       if (!b) return '';
       const leaguePart = b.leagueName ? `<div class="bet-league-line">${esc(b.leagueName)}</div>` : '';
-      const st = b.status !== null && b.status !== undefined ? _jsonStatusMap[b.status] : null;
-      const statusBadge = st ? `<span class="bet-status-badge" style="color:${st.color}">${st.label}</span>` : '';
-      const line1 = `${na(b.lineType)} / ${na(b.selectionName)}`;
-      const hasScore = b.score1 !== null || b.score2 !== null;
-      const hasSettlement = b.settlementResult !== null && b.settlementResult !== '';
-      const scorePart = hasScore ? `${na(b.score1)}-${na(b.score2)}` : null;
-      const settlePart = hasSettlement ? na(b.settlementResult) : null;
-      const scoreLine = (scorePart && settlePart) ? `${scorePart} / ${settlePart}`
-                      : scorePart ? scorePart
-                      : settlePart ? settlePart
-                      : null;
+      const betLinesPart = (b.betLines && b.betLines.length)
+        ? b.betLines.map(_betLineRow).join('')
+        : _betLineRow({ lineType: b.lineType, selectionName: b.selectionName,
+                        status: b.status, score1: b.score1, score2: b.score2, settlementResult: b.settlementResult });
       let timePart = '';
       if (b.startDate) {
         const upcoming = _jsonIsUpcoming(b.startDate);
@@ -1124,10 +1652,7 @@
         else if (stale) timePart = `<div class="bet-time-line" style="color:var(--orange)">⚠ &gt;24h · ${esc(timeStr)}</div>`;
         else            timePart = `<div class="bet-time-line">${esc(timeStr)}</div>`;
       }
-      return leaguePart
-           + `<div class="bet-info-row"><span class="bet-info-line" title="${esc(line1)}">${esc(line1)}</span>${statusBadge}</div>`
-           + (scoreLine ? `<div class="bet-score-line">${esc(scoreLine)}</div>` : '')
-           + timePart;
+      return leaguePart + betLinesPart + timePart;
     }).filter(Boolean).join('');
     return rows ? `<div class="bet-info-block">${rows}</div>` : '';
   }
@@ -1262,18 +1787,20 @@
   function _cleanPasteText(clipData) {
     const html = clipData.getData('text/html');
     if (html) {
-      // Parse HTML: innerText keeps display text of links (not href)
-      // So pure URL links stay as URLs, non-URL link text is preserved
-      let text = new DOMParser().parseFromString(html, 'text/html').body.innerText;
-      // Remove (https://...) that appear as plain text alongside other content
+      // Ensure block elements and <br> produce newlines
+      const processed = html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(div|p|li|tr|td|h[1-6])[^>]*>/gi, '\n');
+      const doc = new DOMParser().parseFromString(processed, 'text/html');
+      let text = doc.body.innerText;
       text = text.replace(/\s*\(https?:\/\/[^\s)]+\)/g, '');
-      const cleaned = text.replace(/\s{2,}/g, ' ').trim();
-      return cleaned || clipData.getData('text/plain').trim();
+      // Collapse spaces within lines only, preserve newlines
+      return text.replace(/ {2,}/g, ' ').replace(/\n{2,}/g, '\n').trim()
+        || clipData.getData('text/plain').trim();
     }
-    // Plain text: only remove parenthesised URLs
     return clipData.getData('text/plain').trim()
       .replace(/\s*\(https?:\/\/[^\s)]+\)/g, '')
-      .replace(/\s{2,}/g, ' ').trim();
+      .replace(/ {2,}/g, ' ').trim();
   }
   function showNotepadPopup() {
     const existing = document.getElementById('notepad-overlay');
@@ -1310,19 +1837,16 @@
 
   // ── Copy util ──
   function copyText(text, btn) {
-    navigator.clipboard.writeText(text).then(() => {
-      if (btn) {
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1800);
-      }
-    }).catch(() => {
+    // Show feedback immediately — don't wait for async clipboard
+    if (btn) {
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1500);
+    }
+    navigator.clipboard.writeText(text).catch(() => {
       const ta = document.createElement('textarea');
-      ta.value = text; document.body.appendChild(ta); ta.select();
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
       document.execCommand('copy'); document.body.removeChild(ta);
-      if (btn) {
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1800);
-      }
     });
   }
   function copyReply(lang, btn) { copyText(_replyTexts[lang] || '', btn); }
@@ -1376,19 +1900,50 @@
               const stColor = {0:'var(--blue)',1:'var(--red)',2:'var(--green)',3:'var(--text-muted)',4:'var(--text-muted)',15:'var(--text-muted)',16:'var(--orange)',17:'var(--green)',32:'var(--orange)'};
               const badge = st !== null && stInfo[st] ? `<span style="font-size:11px;font-weight:600;color:${stColor[st]};white-space:nowrap;flex-shrink:0">${stInfo[st]}</span>` : '';
               const hintKey = e.trim();
-              const hasHint = hintKey && _noteHintsMap && _noteHintsMap[hintKey];
+              const hasHint = hintKey && !!_getHint(hintKey);
               const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
+              const bi = (g.betInfos || [])[ei] ?? null;
+              let betHintHtml = '';
+              if (bi) {
+                const _na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
+                const lines = (bi.betLines && bi.betLines.length)
+                  ? bi.betLines
+                  : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName, status: bi.status, score1: bi.score1, score2: bi.score2, settlementResult: bi.settlementResult }] : [];
+                betHintHtml = lines.map(bl => {
+                  const isSettled = bl.status !== null && bl.status !== undefined && bl.status !== 0;
+                  const hasScore  = bl.score1 !== null && bl.score1 !== undefined;
+                  let hint = `${_na(bl.lineType)} / ${_na(bl.selectionName)}`;
+                  if (isSettled && hasScore) {
+                    hint += `　${_na(bl.score1)}-${_na(bl.score2)}`;
+                    if (bl.settlementResult) hint += ` / ${_na(bl.settlementResult)}`;
+                  }
+                  return `<div class="event-bet-hint">${esc(hint)}</div>`;
+                }).join('');
+              }
               return `
-              <div class="order-row">
-                <input class="event-input" value="${esc(e)}" placeholder="賽事名稱" autocomplete="off" required>
-                ${badge}${hintIcon}
-                ${ei === g.eventNames.length - 1 ? `<button type="button" class="btn-add-inline" onclick="addEventName('${g.id}')" title="新增賽事名稱">+</button>` : ''}
-                ${g.eventNames.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeEventName('${g.id}',${ei})">×</button>` : ''}
+              <div>
+                <div class="order-row">
+                  <input class="event-input" value="${esc(e)}" placeholder="賽事名稱" autocomplete="off" required oninput="_onEventNameInput()">
+                  ${badge}${hintIcon}
+                  ${ei === g.eventNames.length - 1 ? `<button type="button" class="btn-add-inline" onclick="addEventName('${g.id}')" title="新增賽事名稱">+</button>` : ''}
+                  ${g.eventNames.length > 1 ? `<button type="button" class="btn-remove-order" onclick="removeEventName('${g.id}',${ei})">×</button>` : ''}
+                </div>
+                ${betHintHtml}
               </div>`;
             }).join('')}
           </div>
         </div>
       </div>`).join('');
+  }
+
+  let _eventNameInputTimer = null;
+  function _onEventNameInput() {
+    clearTimeout(_eventNameInputTimer);
+    _eventNameInputTimer = setTimeout(() => {
+      syncGroupValues();
+      const allNames = formGroups.flatMap(g => g.eventNames.filter(n => n.trim()));
+      _renderNoteHints(allNames);
+    }, 300);
   }
 
   function addFormGroup() {
@@ -1480,37 +2035,137 @@
     _noteHintsMap = {};
     for (const name of eventNames) {
       if (!name) continue;
+      let best = null;
       for (const rec of records) {
-        if (!rec.eventNotes) continue;
-        const note = rec.eventNotes[name];
-        if (!note || _noteHintsMap[name]) continue;
-        const ts = rec.eventNoteTimes && rec.eventNoteTimes[name];
-        _noteHintsMap[name] = { note, timeStr: ts ? _tsToUtc8(ts) : '' };
+        // check per-event notes
+        if (rec.eventNotes) {
+          const note = rec.eventNotes[name];
+          if (note) {
+            const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || rec.createdAt || 0;
+            if (!best || ts > best.ts) best = { note, ts };
+          }
+        }
+        // check additionalInfo on records that include this event
+        if (rec.additionalInfo && (rec.eventNames || []).some(n => n.trim() === name)) {
+          const ts = rec.createdAt || 0;
+          if (!best || ts > best.ts) best = { note: rec.additionalInfo, ts };
+        }
       }
+      // also check standalone store from 賽事訊息產生器
+      const ens = _ensStore[name];
+      if (ens && (!best || ens.ts > best.ts)) best = { note: ens.note, ts: ens.ts };
+      if (best) _noteHintsMap[name] = { note: best.note, timeStr: best.ts ? _tsToUtc8(best.ts) : '' };
     }
     renderFormGroups();
   }
+
+  function _refreshNoteHints() {
+    const names = new Set();
+    for (const rec of records) {
+      if (rec.eventNotes) Object.keys(rec.eventNotes).forEach(n => names.add(n));
+      if (rec.additionalInfo) (rec.eventNames || []).forEach(n => { if (n.trim()) names.add(n.trim()); });
+    }
+    _renderNoteHints([...names]);
+  }
+  function _getHint(name) {
+    if (!name) return null;
+    if (_noteHintsMap[name]) return _noteHintsMap[name];
+    const ens = _ensStore[name];
+    if (ens) return { note: ens.note, timeStr: ens.ts ? _tsToUtc8(ens.ts) : '' };
+    let best = null;
+    for (const rec of records) {
+      if (rec.eventNotes) {
+        const note = rec.eventNotes[name];
+        if (note) {
+          const ts = (rec.eventNoteTimes && rec.eventNoteTimes[name]) || rec.createdAt || 0;
+          if (!best || ts > best.ts) best = { note, ts };
+        }
+      }
+      if (rec.additionalInfo && (rec.eventNames || []).some(n => n.trim() === name)) {
+        const ts = rec.createdAt || 0;
+        if (!best || ts > best.ts) best = { note: rec.additionalInfo, ts };
+      }
+    }
+    return best ? { note: best.note, timeStr: best.ts ? _tsToUtc8(best.ts) : '' } : null;
+  }
   function showNoteHintPopup(eventName) {
-    const hint = _noteHintsMap[eventName];
+    const hint = _getHint(eventName);
     if (!hint) return;
+    _hintPopupEvent = eventName;
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
+
+    const allUrls = _collectUrls([eventName]);
+    _hintPopupUrl = allUrls[0]?.url || '';
+
+    const rowsHtml = _quickReplies.map((qr, i) => {
+      const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
+      const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>'  : '';
+      return `<div class="qr-row">
+        <span class="qr-row-label">${esc(qr.label)}${nameTag}${urlTag}</span>
+        <div class="qr-lang-btns">
+          <button class="btn-qr-lang" onclick="_qrCopyHint(${i},'zh',this)">中</button>
+          <button class="btn-qr-lang" onclick="_qrCopyHint(${i},'en',this)">EN</button>
+          <button class="btn-qr-lang" onclick="_qrCopyHint(${i},'kr',this)">한</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Note text: URLs are links (open new tab only, selection handled by radio below)
+    const noteHtml = hint.note.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+      if (i % 2 === 1) {
+        return `<a href="${esc(part)}" target="_blank" rel="noopener noreferrer"
+          style="color:var(--blue);word-break:break-all;text-decoration:underline"
+          onclick="event.stopPropagation()">${esc(part)}</a>`;
+      }
+      return esc(part);
+    }).join('');
+
+    // URL radio list — shown when there are multiple URLs to choose from
+    const urlRadioHtml = allUrls.length > 1 ? `
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
+        ${allUrls.map(({url, label}, i) => {
+          const safeHref = esc(url);
+          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
+          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
+          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="hint-url-row-${i}">
+            <input type="radio" name="hint-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
+              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=hint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
+            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
+            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
+          </label>`;
+        }).join('')}
+      </div>` : '';
+
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
-      <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:420px;width:92%">
-        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
-        <div class="popup-badge info">📌 歷史記錄</div>
-        <div class="popup-title" style="font-size:13px">🏆 ${esc(eventName)}</div>
-        <div style="position:relative;margin-top:8px">
-          <div class="note-hint-text" style="padding:10px 36px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word">${esc(hint.note)}</div>
-          <button class="btn-copy-inline" style="position:absolute;top:6px;right:6px;font-size:13px" data-note="${esc(hint.note)}" onclick="copyText(this.dataset.note,this)" title="複製">📋</button>
+      <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
+        <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
+        <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
+        <div style="margin-top:8px;flex-shrink:0;position:relative">
+          <div class="note-hint-text" style="padding:10px 32px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto" data-note="${esc(hint.note)}">${noteHtml}</div>
+          <button style="position:absolute;top:6px;right:6px;background:none;border:none;font-size:14px;color:var(--text-muted);cursor:pointer;padding:3px;border-radius:4px;line-height:1" title="複製備註" onclick="copyText(this.closest('[data-note]').dataset.note,this)">📋</button>
         </div>
-        ${hint.timeStr ? `<div class="note-hint-time" style="margin-top:6px;font-size:11px;color:var(--text-muted)">${esc(hint.timeStr)}</div>` : ''}
+        ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
+        ${urlRadioHtml}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;flex-shrink:0">✓ 快速回覆</div>
+          <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:12px">尚未設定快速回覆範本</div>'}</div>
+        </div>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
+    // Highlight the initially-selected radio row
+    if (allUrls.length > 1) {
+      const firstRow = document.getElementById('hint-url-row-0');
+      if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
+    }
   }
   function _jsonIsUpcoming(iso) {
     if (!iso) return false;
@@ -1548,6 +2203,90 @@
     setTimeout(() => ta.focus(), 50);
   }
 
+  function _apiStatusStrToNum(str) {
+    return { Opened:0, Lost:1, Won:2, Draw:3, Canceled:4, Cancelled:4,
+             HalfLost:16, HalfWon:17, Cashout:32 }[str] ?? null;
+  }
+
+  function _parseApiRequestsJson(data) {
+    const reserve = (data.reserves || [])[0];
+    const ticketId = reserve ? String(reserve.purchaseid || '') : '';
+
+    const dp = new DOMParser();
+
+    // Find the debit_reserve record — it has the full Bet XML
+    const debitRec = (data.apiRequests || []).find(r => r.operationType === 'debit_reserve');
+    if (!debitRec) return null;
+    const debitXml = dp.parseFromString(debitRec.reqparams, 'text/xml');
+
+    // Each <Bet> element = one selection
+    const betEls = [...debitXml.querySelectorAll('Bet')];
+    if (!betEls.length) return null;
+
+    // Get final status per BetID from the latest credit_customer settlement
+    const creditRecs = (data.apiRequests || [])
+      .filter(r => r.operationType === 'credit_customer')
+      .sort((a, b) => new Date(b.creationdate) - new Date(a.creationdate));
+    const betFinalStatus = {};  // betId → { statusNum, statusStr }
+    creditRecs.forEach(cr => {
+      const cx = dp.parseFromString(cr.reqparams, 'text/xml');
+      cx.querySelectorAll('Change').forEach(chg => {
+        chg.querySelectorAll('Bet').forEach(b => {
+          const bid = b.getAttribute('ID');
+          if (bid && !(bid in betFinalStatus)) {
+            const ns = chg.getAttribute('NewStatus') || b.getAttribute('NewStatus') || '';
+            betFinalStatus[bid] = { statusNum: _apiStatusStrToNum(ns), statusStr: ns };
+          }
+        });
+      });
+    });
+
+    // Build one selection per Bet element
+    const selections = betEls.map(bet => {
+      const a = name => bet.getAttribute(name) || '';
+      const eventName     = a('EventName');
+      const lineType      = a('LineTypeName');
+      const yourBet       = a('YourBet');
+      const scoreStr      = a('Score');          // "3:2"
+      const betId         = a('BetID');
+      const eventDate     = a('EventDate');      // UTC
+
+      const scoreParts = scoreStr ? scoreStr.split(':') : [];
+      const score1 = scoreParts.length >= 2 ? Number(scoreParts[0]) : null;
+      const score2 = scoreParts.length >= 2 ? Number(scoreParts[1]) : null;
+
+      const settled    = betFinalStatus[betId];
+      const statusNum  = settled ? settled.statusNum : _apiStatusStrToNum(a('Status'));
+      const statusStr  = settled ? settled.statusStr : (a('Status') || '');
+
+      return {
+        eventName,
+        eventId:          a('NewEventID') || a('EventID') || '',
+        leagueName:       a('LeagueName') || '',
+        startDate:        eventDate ? eventDate + (eventDate.endsWith('Z') ? '' : 'Z') : null,
+        status:           statusNum,
+        lineType,
+        selectionName:    yourBet,
+        score1, score2,
+        settlementResult: statusStr,
+        betLines: [{ lineType, selectionName: yourBet, status: statusNum, score1, score2, settlementResult: statusStr }],
+      };
+    }).filter(s => s.eventName);
+
+    if (!selections.length || !ticketId) return null;
+
+    // Group by eventId (same-event multi-line)
+    const evtMap = {}, evtOrder = [];
+    selections.forEach(s => {
+      const key = s.eventId || s.eventName;
+      if (!evtMap[key]) { evtMap[key] = { ...s, betLines: [] }; evtOrder.push(key); }
+      if (s.status === 0) evtMap[key].status = 0;
+      evtMap[key].betLines.push(...s.betLines);
+    });
+
+    return { ticketId, selections: evtOrder.map(k => evtMap[k]) };
+  }
+
   function _autoParseJson(overlay) {
     const ta = document.getElementById('json-import-ta');
     if (!ta) return;
@@ -1561,20 +2300,55 @@
       return;
     }
 
+    // ── apiRequests format (wallet API log) ──
+    if (data.apiRequests && data.reserves) {
+      const parsed = _parseApiRequestsJson(data);
+      const err = document.getElementById('json-parse-err');
+      if (!parsed) {
+        if (err) { err.textContent = '⚠ 找不到 Bet 資料 (reqparams XML)'; err.style.display = 'block'; }
+        return;
+      }
+      _jsonImportData = parsed;
+      _renderJsonSelectionState(overlay);
+      return;
+    }
+
+    // ── existing Selections format ──
     const ticketMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
     const ticketId = ticketMatch ? ticketMatch[1] : String(data.SQLTicketId || '');
-    const selections = (data.Selections || []).map(s => ({
+    const rawSelections = (data.Selections || []).map(s => ({
       eventName:        s.EventName || '',
       eventId:          s.EventId || '',
       leagueName:       s.LeagueName || s.League || s.CompetitionName || '',
       startDate:        s.StartEventDate || null,
       status:           s.SelectionStatus ?? null,
-      lineType:         s.LineTypeName || '',
+      lineType:         s.MarketTypeName || s.MarketName || s.LineTypeName || '',
       selectionName:    s.SelectionName || '',
       score1:           s.Score1 ?? null,
       score2:           s.Score2 ?? null,
       settlementResult: s.SettlementResult || '',
-    })).filter(s => s.eventName);
+      rowTypeId:        s.RowTypeId ?? 1,
+      lineTypeId:       s.LineTypeId ?? 1,
+    })).filter(s => s.eventName && !(
+      (s.selectionName || '').includes('|') && (s.lineType || '').includes('|')
+    ));
+
+    // group by EventId so multi-line bets on same event become one entry
+    const _evtMap = {}, _evtOrder = [];
+    rawSelections.forEach(s => {
+      const key = s.eventId || s.eventName;
+      if (!_evtMap[key]) {
+        _evtMap[key] = { ...s, betLines: [] };
+        _evtOrder.push(key);
+      }
+      // if any sub-selection is Opened, mark the whole event as Opened
+      if (s.status === 0) _evtMap[key].status = 0;
+      _evtMap[key].betLines.push({
+        lineType: s.lineType, selectionName: s.selectionName,
+        status: s.status, score1: s.score1, score2: s.score2, settlementResult: s.settlementResult,
+      });
+    });
+    const selections = _evtOrder.map(k => _evtMap[k]);
 
     const err = document.getElementById('json-parse-err');
     if (!ticketId) {
@@ -1616,13 +2390,43 @@
             const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : '';
             const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
             const na = v => (v === null || v === undefined || v === '') ? 'n/a' : String(v);
-            const betLine = s.lineType || s.selectionName
-              ? `${na(s.lineType)} / ${na(s.selectionName)}` : null;
-            const hasScore = s.score1 !== null && s.score1 !== undefined;
-            const hasSettle = s.settlementResult !== null && s.settlementResult !== '' && s.settlementResult !== undefined;
-            const scoreLine = hasScore && hasSettle ? `${na(s.score1)}-${na(s.score2)} / ${na(s.settlementResult)}`
-                            : hasScore ? `${na(s.score1)}-${na(s.score2)}` : null;
             const defaultChecked = sorted.length === 1 ? true : s.status === 0;
+            const betLinesHtml = (() => {
+              const bls = s.betLines || [];
+              const multi = bls.length > 1;
+              const blRows = bls.map((bl, bli) => {
+                const blLine = (bl.lineType || bl.selectionName) ? `${na(bl.lineType)} / ${na(bl.selectionName)}` : null;
+                const hasScore  = bl.score1 !== null && bl.score1 !== undefined;
+                const hasSettle = bl.settlementResult !== null && bl.settlementResult !== '' && bl.settlementResult !== undefined;
+                const scoreLine = hasScore && hasSettle ? `${na(bl.score1)}-${na(bl.score2)} / ${na(bl.settlementResult)}`
+                                : hasScore ? `${na(bl.score1)}-${na(bl.score2)}` : null;
+                const blStatus = _jsonStatusBadge(bl.status);
+                // Default check: Opened (0), Lost (1), or unknown; uncheck Won/Draw/Canceled/Cashout
+                const blChecked = bl.status === 0 || bl.status === 1 || bl.status === null || bl.status === undefined;
+                if (multi) {
+                  return `<label style="display:flex;align-items:flex-start;gap:5px;padding:2px 0;cursor:pointer;user-select:none" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="json-bl-cb" data-ei="${s.origIdx}" data-bli="${bli}" ${blChecked ? 'checked' : ''} style="margin-top:2px;flex-shrink:0">
+                    <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                      <span style="display:flex;align-items:center;gap:4px">${blStatus}<span class="json-bet-line" style="margin:0">${blLine ? esc(blLine) : ''}</span></span>
+                      ${scoreLine ? `<span class="json-score-line" style="margin:0">${esc(scoreLine)}</span>` : ''}
+                    </span>
+                  </label>`;
+                }
+                return (blLine ? `<div class="json-bet-line">${esc(blLine)}</div>` : '')
+                     + (scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : '');
+              }).join('');
+              if (multi) {
+                const selAllId = `json-bl-all-${s.origIdx}`;
+                const allChecked = bls.every(bl => bl.status === 0 || bl.status === 1 || bl.status === null || bl.status === undefined);
+                return `<div style="margin-bottom:2px;padding-bottom:2px;border-bottom:1px solid var(--border-light)" onclick="event.stopPropagation()">
+                  <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);cursor:pointer">
+                    <input type="checkbox" id="${selAllId}" ${allChecked ? 'checked' : ''} onchange="this.closest('.json-event-item').querySelectorAll('.json-bl-cb').forEach(cb=>{cb.checked=this.checked})">
+                    全選
+                  </label>
+                </div>${blRows}`;
+              }
+              return blRows;
+            })();
             return `
             <label class="json-event-item${s.status === 0 ? ' is-opened' : ''}">
               <input type="checkbox" id="json-cb-${s.origIdx}" ${defaultChecked ? 'checked' : ''}>
@@ -1633,8 +2437,7 @@
                   <span class="json-event-time"${timeColor ? ` style="color:${timeColor}"` : ''}>${_jsonToUtc8(s.startDate)}${timeNote}</span>
                   <button onclick="event.preventDefault();_copyJsonEventName(${s.origIdx})" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1" title="複製賽事名稱" onmouseover="this.style.color='var(--text-pri)'" onmouseout="this.style.color='var(--text-muted)'">📋</button>
                 </div>
-                ${betLine ? `<div class="json-bet-line">${esc(betLine)}</div>` : ''}
-                ${scoreLine ? `<div class="json-score-line">${esc(scoreLine)}</div>` : ''}
+                ${betLinesHtml}
               </div>
             </label>`;
           }).join('')}
@@ -1666,17 +2469,28 @@
     const { ticketId, selections } = _jsonImportData;
     const eventNames    = indices.map(i => selections[i].eventName);
     const eventStatuses = indices.map(i => selections[i].status);
-    const betInfos      = indices.map(i => ({
+    const betInfos      = indices.map(i => {
+      const allBls = selections[i].betLines || [];
+      const checkedBls = allBls.length > 1
+        ? allBls.filter((_, bli) => {
+            const cb = document.querySelector(`.json-bl-cb[data-ei="${i}"][data-bli="${bli}"]`);
+            return !cb || cb.checked;
+          })
+        : allBls;
+      return {
       eventId:          selections[i].eventId,
       leagueName:       selections[i].leagueName,
       status:           selections[i].status,
       startDate:        selections[i].startDate,
+      betLines:         checkedBls,
+      // keep flat fields for backward compat
       lineType:         selections[i].lineType,
       selectionName:    selections[i].selectionName,
       score1:           selections[i].score1,
       score2:           selections[i].score2,
       settlementResult: selections[i].settlementResult,
-    }));
+      };
+    });
 
     syncGroupValues();
 
@@ -1703,7 +2517,8 @@
     }
     _jsonImportData = null;
     renderFormGroups();
-    _renderNoteHints(eventNames);
+    const allNames = formGroups.flatMap(g => g.eventNames.filter(Boolean));
+    _renderNoteHints(allNames);
     _renderJsonPasteState(overlay, `已新增注單 ${ticketId}`);
   }
 
@@ -1745,6 +2560,7 @@
     _jsonImportData = null;
     _pendingMergeData = null;
     renderFormGroups();
+    _renderNoteHints(formGroups.flatMap(g => g.eventNames.filter(Boolean)));
     _renderJsonPasteState(overlay, `已合併注單 ${ticketId}`);
   }
   function _doSeparate() {
@@ -1784,6 +2600,25 @@
     schedule(r);
     fullRender();
     return r;
+  }
+
+  function markEventSettled(id, ei) {
+    const r = records.find(x => x.id === id);
+    if (!r || r.completedAt) return;
+    if (!r.settledEventIndices) r.settledEventIndices = [];
+    const pos = r.settledEventIndices.indexOf(ei);
+    if (pos >= 0) {
+      r.settledEventIndices.splice(pos, 1); // toggle off
+    } else {
+      r.settledEventIndices.push(ei);
+    }
+    const totalEvents = getEventNames(r).length;
+    if (r.settledEventIndices.length >= totalEvents) {
+      markDone(id);
+      return;
+    }
+    save();
+    renderActive();
   }
 
   function markDone(id) {
@@ -2047,6 +2882,7 @@
       lines.push(`${names.join('\n')}${msg ? '\n' + msg : ''}`);
     });
     save();
+    _refreshNoteHints();
     copyText(lines.join('\n\n'), btn);
     if (markAllDone) {
       setTimeout(() => {
@@ -2232,19 +3068,30 @@
     }
   }
 
-  function renderCardHtml(r, inBatch = false) {
+  function renderCardHtml(r, inBatch = false, dupSet = null) {
     const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
     const stageLabel = r.stage === 1 ? '第1次' : r.stage === 2 ? '第2次' : '待定';
     const orderTagsHtml = r.orderNos.length
-      ? r.orderNos.map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
+      ? r.orderNos.map(o => `<span class="order-tag" title="點擊複製" onclick="copyText('${o.replace(/'/g,"\\'")}',this)">${esc(o)}</span>`).join('')
       : '';
     const eventNames = getEventNames(r);
-    const eventRowsHtml = eventNames.map((name, ei) => `
+    const settledSet = new Set(r.settledEventIndices || []);
+    const isMulti = eventNames.length > 1;
+    const eventRowsHtml = eventNames.map((name, ei) => {
+      const isDup = dupSet && dupSet.has(name);
+      const isSettled = settledSet.has(ei);
+      const nameClass = ['card-event-name', isDup ? 'dup' : '', isSettled ? 'settled' : ''].filter(Boolean).join(' ');
+      const titleTxt = isDup ? '此賽事出現在其他待處理卡片，點擊複製' : '點擊複製';
+      const settleBtn = isMulti
+        ? `<button class="btn-event-settle${isSettled ? ' settled' : ''}" onclick="markEventSettled('${r.id}',${ei})" title="${isSettled ? '取消標記' : '標記此賽事已完成'}">✓</button>`
+        : '';
+      return `
       <div class="card-event-row">
-        <span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(name)}</span>
-        <button class="btn-copy-inline" data-copy="${esc(name)}" onclick="copyText(this.dataset.copy,this)" title="複製賽事名稱">⎘</button>
+        <span class="${nameClass}" title="${titleTxt}" onclick="copyText('${name.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(name)}</span>
+        ${settleBtn}
         <button class="btn-msg" onclick="openMsgPopup('${r.id}',${ei})">📝 訊息</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     const checkboxHtml = inBatch
       ? `<input type="checkbox" class="batch-cb" id="cb-${r.id}" ${selectedIds.has(r.id) ? 'checked' : ''} onchange="toggleSelect('${r.id}')">`
       : '';
@@ -2266,7 +3113,7 @@
             ${_buildBetInfoHtml(r)}
           </div>
           <div class="record-actions">
-            <button class="btn-done"    onclick="markDone('${r.id}')">✓ 搞定</button>
+            <button class="btn-done"    onclick="showMarkDonePopup('${r.id}')">✓ 搞定</button>
             <button class="btn-summary" onclick="showSummaryPopup('${r.id}')">📋 概要</button>
             <button class="btn-restart" onclick="restartTimer('${r.id}')">↺ 重新計時</button>
             <button class="btn-del"     onclick="deleteRecord('${r.id}')">移除</button>
@@ -2282,6 +3129,11 @@
     badge.textContent = active.length;
     badge.style.display = active.length ? 'inline-flex' : 'none';
     if (active.length === 0) { el.innerHTML = '<div class="empty-state">目前沒有待處理的記錄</div>'; return; }
+
+    // build duplicate event name set across all active records
+    const _nameCount = {};
+    active.forEach(r => getEventNames(r).forEach(n => { if (n) _nameCount[n] = (_nameCount[n] || 0) + 1; }));
+    const dupSet = new Set(Object.keys(_nameCount).filter(n => _nameCount[n] > 1));
 
     // separate batch vs solo records
     const batches = {};
@@ -2307,7 +3159,7 @@
 
     const parts = [];
     items.forEach(item => {
-      if (item.type === 'solo') { parts.push(renderCardHtml(item.r, false)); return; }
+      if (item.type === 'solo') { parts.push(renderCardHtml(item.r, false, dupSet)); return; }
       const bid = item.bid;
       const group = batches[bid];
       const selCount = group.filter(r => selectedIds.has(r.id)).length;
@@ -2326,7 +3178,7 @@
               <button class="batch-bar-btn batch-bar-msg"     ${selCount === 0 ? 'disabled' : ''} onclick="showBatchMsgPopup('${bid}')">📝 批量訊息</button>
             </div>
           </div>
-          ${group.map(r => renderCardHtml(r, true)).join('')}
+          ${group.map(r => renderCardHtml(r, true, dupSet)).join('')}
         </div>`);
     });
 
@@ -2341,12 +3193,12 @@
     el.innerHTML = done.slice(0,30).map(r => {
       const dur = fmtDuration(r.completedAt - r.createdAt);
       const orderTagsHtml = r.orderNos && r.orderNos.filter(Boolean).length
-        ? r.orderNos.filter(Boolean).map(o => `<span class="order-tag">${esc(o)}<button class="btn-copy-tag" title="複製" data-val="${esc(o)}" onclick="copyText(this.dataset.val,this)">⧉</button></span>`).join('')
+        ? r.orderNos.filter(Boolean).map(o => `<span class="order-tag" title="點擊複製" onclick="copyText('${o.replace(/'/g,"\\'")}',this)">${esc(o)}</span>`).join('')
         : '';
       return `
         <div class="record-card done">
           <div class="card-header">
-            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name"><span style="user-select:none">🏆 </span>${esc(n)}</span><button class="btn-copy-inline" data-copy="${esc(n)}" onclick="copyText(this.dataset.copy,this)" title="複製賽事名稱">⎘</button></div>`).join('')}</div>
+            <div class="card-events">${getEventNames(r).map(n => `<div class="card-event-row"><span class="card-event-name" title="點擊複製" onclick="copyText('${n.replace(/'/g,"\\'")}',this)"><span style="user-select:none">🏆 </span>${esc(n)}</span></div>`).join('')}</div>
           </div>
           <div class="card-body">
             <div class="timer-box" style="border-color:var(--border)">
@@ -2467,6 +3319,7 @@
     r.eventNotes[eventName] = ta ? ta.value : '';
     if (r.eventNotes[eventName]) r.eventNoteTimes[eventName] = Date.now();
     save();
+    _refreshNoteHints();
     const betInfo = r.betInfos && r.betInfos[eventIdx];
     const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
     const parts = [eventName];
@@ -2479,7 +3332,18 @@
     const groupLines = groups.map(g => {
       const lines = [];
       g.orderNos.filter(Boolean).forEach(o => lines.push(o));
-      (g.eventNames || []).filter(Boolean).forEach(e => lines.push(e));
+      (g.eventNames || []).filter(Boolean).forEach((e, ei) => {
+        lines.push(e);
+        const bi = (g.betInfos || [])[ei];
+        if (bi) {
+          const bls = bi.betLines && bi.betLines.length ? bi.betLines
+                    : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName }] : [];
+          bls.forEach(bl => {
+            const p = [bl.lineType, bl.selectionName].filter(Boolean).join(' / ');
+            if (p) lines.push(p);
+          });
+        }
+      });
       return lines.join('\n');
     }).filter(Boolean);
     const tail = [requirement, group, additionalInfo].filter(Boolean).join('\n');
@@ -2491,9 +3355,23 @@
   function getRecordSummary(id) {
     const r = records.find(x => x.id === id);
     if (!r) return '';
-    const parts = [...r.orderNos.filter(Boolean), ...getEventNames(r), r.requirement, r.group];
+    const parts = [...r.orderNos.filter(Boolean)];
+    getEventNames(r).forEach((name, ei) => {
+      if (!name) return;
+      parts.push(name);
+      const bi = (r.betInfos || [])[ei];
+      if (bi) {
+        const bls = bi.betLines && bi.betLines.length ? bi.betLines
+                  : (bi.lineType || bi.selectionName) ? [{ lineType: bi.lineType, selectionName: bi.selectionName }] : [];
+        bls.forEach(bl => {
+          const p = [bl.lineType, bl.selectionName].filter(Boolean).join(' / ');
+          if (p) parts.push(p);
+        });
+      }
+    });
+    parts.push(r.requirement, r.group);
     if (r.additionalInfo) parts.push(r.additionalInfo);
-    return parts.join('\n');
+    return parts.filter(Boolean).join('\n');
   }
 
   function showSummaryPopup(id) {
@@ -2585,6 +3463,7 @@
 
     const batchId = recordsToAdd.length > 1 ? `b${Date.now()}` : null;
     recordsToAdd.forEach(g => addRecord(g.eventNames, g.orderNos, req, grp, info, formLang, batchId, g.betInfos));
+    _grpHistSave(grp);
 
     showSubmitPopup(recordsToAdd, req, grp, info);
 
@@ -2606,17 +3485,130 @@
   }
 
   // ── Init ──
+  // ── Group name autocomplete ──
+  const GRP_HIST_KEY = 'reminder4me_grp_hist';
+  const GRP_MAX      = 200;
+  let _grpHiIdx      = -1;
+
+  function _grpHistLoad() {
+    try { return JSON.parse(localStorage.getItem(GRP_HIST_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function _grpHistSave(name) {
+    if (!name) return;
+    let list = _grpHistLoad().filter(x => x !== name);
+    list.unshift(name);
+    if (list.length > GRP_MAX) list = list.slice(0, GRP_MAX);
+    localStorage.setItem(GRP_HIST_KEY, JSON.stringify(list));
+  }
+  function _grpOnInput(inp) {
+    const q = inp.value.trim().toLowerCase();
+    const list = _grpHistLoad();
+    const matches = q
+      ? list.filter(x => x.toLowerCase().includes(q)).slice(0, 8)
+      : list.slice(0, 8);
+    _grpHiIdx = -1;
+    _grpShowDrop(matches, inp);
+  }
+  function _grpShowDrop(matches, inp) {
+    const drop = document.getElementById('grp-dropdown');
+    if (!drop) return;
+    if (!matches.length) { drop.style.display = 'none'; return; }
+    drop.innerHTML = matches.map((m, i) => {
+      const safe = m.replace(/'/g, "\\'");
+      return `<div class="req-option" data-i="${i}" onmousedown="_grpPick('${safe}')">
+        <span class="grp-drop-label">${esc(m)}</span>
+        <button class="grp-drop-del" onmousedown="event.stopPropagation();_grpHistDelete('${safe}',event)" title="删除">×</button>
+      </div>`;
+    }).join('');
+    drop.style.display = 'block';
+  }
+  function _grpHistDelete(name, ev) {
+    if (ev) ev.stopPropagation();
+    const list = _grpHistLoad().filter(x => x !== name);
+    localStorage.setItem(GRP_HIST_KEY, JSON.stringify(list));
+    const inp = document.getElementById('f-group');
+    if (inp) _grpOnInput(inp);
+  }
+  function _grpPick(name) {
+    const inp = document.getElementById('f-group');
+    if (inp) inp.value = name;
+    const drop = document.getElementById('grp-dropdown');
+    if (drop) drop.style.display = 'none';
+    _grpHiIdx = -1;
+  }
+  function _grpOnKey(e) {
+    const drop = document.getElementById('grp-dropdown');
+    if (!drop || drop.style.display === 'none') return;
+    const items = drop.querySelectorAll('.req-option');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _grpHiIdx = Math.min(_grpHiIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('highlighted', i === _grpHiIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _grpHiIdx = Math.max(_grpHiIdx - 1, -1);
+      items.forEach((el, i) => el.classList.toggle('highlighted', i === _grpHiIdx));
+    } else if (e.key === 'Enter' && _grpHiIdx >= 0) {
+      e.preventDefault();
+      items[_grpHiIdx]?.dispatchEvent(new MouseEvent('mousedown'));
+    } else if (e.key === 'Escape') {
+      drop.style.display = 'none'; _grpHiIdx = -1;
+    }
+  }
+  function _grpOnBlur() {
+    setTimeout(() => {
+      const drop = document.getElementById('grp-dropdown');
+      if (drop) drop.style.display = 'none';
+      _grpHiIdx = -1;
+    }, 150);
+  }
+
+  const PRUNE_CHECK_KEY = 'reminder4me_last_prune';
+  const PRUNE_INTERVAL  = 60 * 60 * 1000; // 1 hour
+
   function pruneOldCompleted() {
-    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const last = Number(localStorage.getItem(PRUNE_CHECK_KEY) || 0);
+    if (now - last < PRUNE_INTERVAL) return;
+    localStorage.setItem(PRUNE_CHECK_KEY, String(now));
+    const cutoff = now - 7 * 24 * 60 * 60 * 1000;
     const before = records.length;
     records = records.filter(r => !r.completedAt || r.completedAt >= cutoff);
     if (records.length !== before) { save(); fullRender(); }
   }
 
+  function _grpMigrateFromRecords() {
+    if (localStorage.getItem(GRP_HIST_KEY)) return; // already exists, skip
+    const freq = {};
+    records.forEach(r => { if (r.group) freq[r.group] = (freq[r.group] || 0) + 1; });
+    const sorted = Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
+    if (sorted.length) localStorage.setItem(GRP_HIST_KEY, JSON.stringify(sorted));
+  }
+
+  function _grpDedupCase() {
+    const DEDUP_KEY = 'reminder4me_grp_dedup_v1';
+    if (localStorage.getItem(DEDUP_KEY)) return;
+    const list = _grpHistLoad();
+    const seen = new Set();
+    const deduped = list.filter(x => {
+      const lc = x.toLowerCase();
+      if (seen.has(lc)) return false;
+      seen.add(lc);
+      return true;
+    });
+    localStorage.setItem(GRP_HIST_KEY, JSON.stringify(deduped));
+    localStorage.setItem(DEDUP_KEY, '1');
+  }
+
   function init() {
-    load(); loadAgentName(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
+    load(); loadAgentName(); loadQuickReplies(); _ensLoad(); pruneOldCompleted(); scheduleAll(); fullRender(); updateNotifBtn();
+    _grpMigrateFromRecords();
+    _grpDedupCase();
     initFormGroups();
     setInterval(tickTimers, 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') pruneOldCompleted();
+    });
   }
   document.addEventListener('DOMContentLoaded', init);
 
@@ -2668,13 +3660,25 @@
       const st = _jsonStatusMap[ev.status];
       const borderStyle = !isWon && st ? `border-left:3px solid ${st.color};` : '';
       const statusBadge = st ? `<span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>` : '';
+      const hintKey = ev.eventName.trim();
+      const hasHint = hintKey && !!_getHint(hintKey);
+      const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
+      const upcoming = ev.startDate && _jsonIsUpcoming(ev.startDate);
+      const stale    = ev.startDate && ev.status === 0 && _jsonIsStale(ev.startDate);
+      const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : 'var(--text-muted)';
+      const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
+      const timeHtml  = ev.startDate ? `<span style="font-size:11px;color:${timeColor};white-space:nowrap">${_jsonToUtc8(ev.startDate)}${timeNote}</span>` : '';
       return `
       <div class="msg-event-row" id="msg-ev-${i}" style="${borderStyle}">
         <div class="msg-event-header">
-          <span class="msg-event-name">${esc(ev.eventName)}</span>
-          ${statusBadge}
-          <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
-          <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
+          <div class="msg-event-name-row">
+            <span class="msg-event-name">${esc(ev.eventName)}</span>
+            <button class="msg-event-remove" onclick="_removeMsgEvent(${i})" title="移除">×</button>
+          </div>
+          <div class="msg-event-meta-row">
+            ${statusBadge}${hintIcon}${timeHtml}
+            <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
+          </div>
         </div>
         <textarea class="msg-event-notes" id="msg-notes-${i}" placeholder="備註（留空則不複製此賽事）...">${esc(ev.notes || '')}</textarea>
       </div>`;
@@ -2691,7 +3695,11 @@
           <div id="msg-parse-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px;padding:6px 10px;background:var(--red-bg);border-radius:6px;flex-shrink:0"></div>
           ${_msgEvents.length > 0 ? `
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;flex-shrink:0">${_msgEvents.length} 場賽事</div>
-            <div id="msg-events-list" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;margin-bottom:14px;flex:1">${eventRows}</div>
+            <div id="msg-events-list" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;margin-bottom:10px;flex:1">${eventRows}</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-sec);margin-bottom:10px;flex-shrink:0;cursor:pointer">
+              <input type="checkbox" id="msg-include-eventid" checked style="accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
+              附上 EventId
+            </label>
             <button class="btn-copy-reply" style="width:100%;margin:0;flex-shrink:0" onclick="_copyMsgCompose()">📋 複製</button>
           ` : `
             <div style="text-align:center;padding:28px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 後賽事會自動出現在這裡</div>
@@ -2716,16 +3724,37 @@
       if (err) { err.textContent = '⚠ JSON 格式錯誤，請確認後再試'; err.style.display = 'block'; }
       return;
     }
-    const selections = (data.Selections || [])
-      .map(s => ({ eventName: s.EventName || '', eventId: String(s.EventId || ''), status: s.SelectionStatus ?? null }))
-      .filter(s => s.eventName && s.eventId);
-    if (selections.length === 0) {
+
+    // Group by EventId, filter virtual composite selections
+    const evtMap = {}, evtOrder = [];
+    (data.Selections || []).forEach(s => {
+      if (!s.EventName || !s.EventId) return;
+      // skip virtual composite selections
+      if ((s.SelectionName || '').includes('|') && (s.LineTypeName || '').includes('|')) return;
+      const key = String(s.EventId);
+      if (!evtMap[key]) {
+        evtMap[key] = { eventName: s.EventName, eventId: key, status: s.SelectionStatus ?? null, startDate: s.StartEventDate || null };
+        evtOrder.push(key);
+      } else {
+        // if any sub-selection is Opened, mark event as Opened
+        if (s.SelectionStatus === 0) evtMap[key].status = 0;
+        // if current is not Opened and any sub is Lost, mark Lost
+        else if (evtMap[key].status !== 0 && s.SelectionStatus === 1) evtMap[key].status = 1;
+      }
+    });
+
+    if (evtOrder.length === 0) {
       if (err) { err.textContent = '⚠ 找不到任何賽事 (EventName / EventId)'; err.style.display = 'block'; }
       return;
     }
+
     const existingIds = new Set(_msgEvents.map(e => String(e.eventId)));
-    selections.forEach(s => {
-      if (!existingIds.has(s.eventId)) _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, status: s.status, notes: '' });
+    evtOrder.forEach(key => {
+      if (!existingIds.has(key)) {
+        const s = evtMap[key];
+        _msgEvents.push({ eventName: s.eventName, eventId: s.eventId, status: s.status, startDate: s.startDate, notes: '' });
+        existingIds.add(key);
+      }
     });
     if (err) err.style.display = 'none';
     ta.value = '';
@@ -2748,10 +3777,18 @@
 
   function _copyMsgCompose() {
     _saveCurrentMsgNotes();
+    const includeEventId = document.getElementById('msg-include-eventid')?.checked !== false;
     const parts = _msgEvents
       .filter(ev => ev.notes && ev.notes.trim())
-      .map(ev => `${ev.eventName}\nEventId: ${ev.eventId}\n${ev.notes.trim()}`);
+      .map(ev => includeEventId
+        ? `${ev.eventName}\nEventId: ${ev.eventId}\n${ev.notes.trim()}`
+        : `${ev.eventName}\n${ev.notes.trim()}`);
     if (!parts.length) { alert('請至少填寫一筆備註'); return; }
+    // save notes (including links) to standalone store so 📌 works later
+    _msgEvents.forEach(ev => { if (ev.notes && ev.notes.trim()) _ensSet(ev.eventName, ev.notes); });
+    // update 📌 on form if any matching event names are already there
+    const allFormNames = formGroups.flatMap(g => g.eventNames.filter(n => n.trim()));
+    if (allFormNames.length) _renderNoteHints(allFormNames);
     const text = parts.join('\n\n');
     navigator.clipboard.writeText(text).then(() => _closeMsgCompose()).catch(() => {
       const ta = document.createElement('textarea');
@@ -2764,6 +3801,897 @@
       _closeMsgCompose();
     });
   }
+  // ── Settlement Analyzer ──
+  const SA_PREFIX = 'sa_';
+  const SA_DEFAULT_OPERATOR_MAP = {
+    20550:'hapigou',20549:'DFGROUPS',20547:'TRG001',20541:'Winboxwlt',20540:'Bitsler',20539:'ExoLabs',20538:'unicasino00',20537:'AluminisSL',20531:'INSERTGAMESL',20528:'100panalo',20529:'S5Game',20526:'QueenNinja',20525:'BCGameth',20523:'Filbet',20521:'GlobalTech',20515:'QuantumPlay',20516:'HighendKO',20511:'998v2',20502:'TopOne',20504:'NextralSL',20500:'Aone33my',20498:'BGJWLT',20497:'AIXSWL',20496:'BGJSL',20494:'OXPLAY',20493:'Betkuku',20492:'Liboasia',20491:'IBIresell',20490:'MClubCredit',20488:'ZenithEU',20485:'KZsports',20482:'88Wager',20481:'INFVN8',20478:'V9Betsb',20477:'RICHAPI',20475:'LogicX1',20474:'APBsolution',20473:'Neftsoft',20471:'AMBsuperSL',20470:'FUNGOIT',20469:'GAMTING',20468:'IDNUPPRO',20464:'Deejay',20459:'GROUPIG',20457:'UFAGOAT',20455:'GplayGUFAPlus',20448:'MPOAIXTW',20445:'Nexiux',20444:'WGS1688',20437:'Casinoplus',20428:'BITWIN',20427:'TitanHubWLT',20426:'Aluminis',20423:'GA8888',20417:'GrandEUR',20416:'SuperswanZT3',20415:'Lazer7',20413:'BETEAST',20412:'Ambnsb',20407:'TitanHubSL',20408:'HappyAce',20405:'Speedix',20402:'BCGAME',20410:'GMAGTOP',20400:'Totocloud',20393:'COPSports',20382:'Royalplay',20376:'GP416IB88',20369:'Honorlink',20372:'VedaGaming',20362:'2UPiogroup',20361:'Dragonfly',20360:'SUPBIT',20355:'SuperswanZT2',20346:'RubyGame',20344:'HT88tech',20343:'SharpSports',20342:'LiveSports',20341:'YuanSports',20340:'IGGroupSL',20339:'IGGroupWLT',20337:'gwtech',20323:'StarbetWlt',20321:'caerus88',20319:'ezbet1',20316:'SuperSwanZF1',20394:'LOTO188betSL',20313:'Superswansl',20311:'Expimz',20300:'SplusSL',20299:'SplusWLT',20298:'AMBFeed',20293:'EZbetV2',20290:'DGnine',20287:'XIMAX2',20285:'MSports',20273:'BT1wallet',20272:'BT1seamless',20268:'SEAGwlt',20266:'GBETsportsl',20265:'7Lucky',20262:'w88seamless',20256:'DCsunrise',20254:'LUCASPORTS',20253:'NYSPORTS',25009:'Wcbgcsl',20244:'Wcpop1sl',20243:'Wcctpsl',20242:'Wcctpwlt',20241:'Wcpop1wlt',20219:'KzingSW',20217:'Dawoobet',25000:'BW88SL',20208:'RaiseTechSL',20200:'SLTest',20198:'EZbetSports',20195:'WDBwlt',20191:'UGSportSL',20189:'NJCGROUPSL',20188:'BetEnjoy (Winka)',20182:'GSCFTW',20177:'RTNJCWLT',20171:'RTSeinLuckyCoLtd',20166:'RTnova88',20144:'XTadmin',20142:'368Cash',20130:'LDSports',20129:'AISports',20123:'WDBBSPORT',20121:'BTTB2B',20101:'Theonebet',20091:'TechPlay',20087:'M88bsports',20082:'Superswanwlt',20078:'Fun88Sandbox',20075:'X2DYNAMIC',20070:'FB88Bet',20063:'ManbetX',20059:'Kzing88',20058:'AEWL88',20056:'Big88com',20029:'24TechSLM',20027:'777WLT',20024:'GPlayG',20022:'EMCBet',20020:'Aplus777',322:'SgameTV',321:'BtiAsiaWlt',315:'RaiseTechWLT',285:'JBOSPORTS',266:'TCGaming',228:'24Tech',219:'Five88',213:'Fun88asia',188:'10BetKRSM',141:'BTT',65:'W88SL'
+  };
+
+  var _saAnalysisType = 'resettlement';
+  var _saResettlementReason = '';
+  var _saCancellationReason = '';
+  var _saUserName = localStorage.getItem(SA_PREFIX+'userName') || '';
+  var _saJsonData = '';
+  var _saResults = null;
+  var _saError = '';
+  var _saCopyStatus = '';
+  var _saLoading = false;
+  var _saPerEventReasons = {};
+  var _saShowPerEventReasons = false;
+  var _saShowReasonPanel = false;
+  var _saShowHistoryPanel = false;
+  var _saShowReasonManager = false;
+  var _saManagingReasonType = 'resettlement';
+  var _saQueryHistory = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'queryHistory') || '[]'); } catch(e) { return []; } })();
+  var _saCustomResettlementReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customResettlementReasons') || '{}'); } catch(e) { return {}; } })();
+  var _saCustomCancellationReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customCancellationReasons') || '{}'); } catch(e) { return {}; } })();
+  var _saOperatorMap = { ...SA_DEFAULT_OPERATOR_MAP };
+  var _saNewReason = { english: '', chinese: '', korean: '' };
+  var _saEditingReason = null;
+  var _saDeleteConfirmKey = null;
+
+  const SA_DEFAULT_RESETTLEMENT_REASONS = {
+    '': { english: 'Will provide after confirming', chinese: '确认后提供', korean: '확인 후 제공하겠습니다' },
+    '_custom_fill': { english: '', chinese: '', korean: '' },
+    'feed_provider': { english: 'Wrong info from feed', chinese: '供应商赛果有误', korean: '공급업체 경기 결과 오류' },
+    'system_error': { english: 'System error', chinese: '系统错误', korean: '시스템 오류' },
+    'official_score': { english: 'Official score changed', chinese: '官方赛果更新', korean: '공식 경기 결과 변경됨' },
+    'under_investigation': { english: 'Under investigation', chinese: '调查中', korean: '조사 중' },
+  };
+  const SA_DEFAULT_CANCELLATION_REASONS = {
+    '': { english: 'Will provide after confirming', chinese: '确认后提供', korean: '확인 후 제공하겠습니다' },
+    '_custom_fill': { english: '', chinese: '', korean: '' },
+    'player_retired': { english: 'Player retired', chinese: '选手退赛', korean: '기권' },
+    'postponed': { english: 'Postponed', chinese: '延期', korean: '연기' },
+    'not_played': { english: 'Not played', chinese: '赛事未进行', korean: '경기 미실시' },
+    'walkover': { english: 'Walkover', chinese: '不战而胜', korean: '부전승' },
+  };
+
+  function _saGetResettlementReasons() { return { ...SA_DEFAULT_RESETTLEMENT_REASONS, ..._saCustomResettlementReasons }; }
+  function _saGetCancellationReasons() { return { ...SA_DEFAULT_CANCELLATION_REASONS, ..._saCustomCancellationReasons }; }
+  function _saCurrentReasonOptions() { return _saAnalysisType === 'resettlement' ? _saGetResettlementReasons() : _saGetCancellationReasons(); }
+  function _saCurrentReason() { return _saAnalysisType === 'resettlement' ? _saResettlementReason : _saCancellationReason; }
+  function _saSetCurrentReason(v) { if (_saAnalysisType === 'resettlement') _saResettlementReason = v; else _saCancellationReason = v; }
+
+  function _saParseXML(str) {
+    return new DOMParser().parseFromString(str, 'text/xml');
+  }
+
+  function _saGetPurchaseId(record) {
+    if (!record.queryparams) return '';
+    try {
+      const p = JSON.parse(record.queryparams);
+      return p.purchase_id || '';
+    } catch(e) {
+      try { return new URLSearchParams(record.queryparams).get('purchase_id') || ''; } catch(e2) { return ''; }
+    }
+  }
+
+  const SA_STATUS_TRANSLATIONS = {
+    chinese: { Won:'赢', Lost:'输', Canceled:'取消', 'Half Won':'半赢', 'Half Lost':'半输', Opened:'未结算', Draw:'平局', Declined:'拒绝', Cashout:'提前结算' },
+    korean:  { Won:'승리', Lost:'패', Canceled:'취소', 'Half Won':'반승', 'Half Lost':'반패', Opened:'진행중 베팅', Draw:'무승부', Declined:'거부됨', Cashout:'캐시아웃' }
+  };
+
+  function _saTranslateStatus(status, lang) {
+    if (lang === 'english') return status;
+    return SA_STATUS_TRANSLATIONS[lang]?.[status] || status;
+  }
+
+  function _saTranslateHistory(hist, lang) {
+    return hist.map(s => _saTranslateStatus(s, lang)).join(' → ');
+  }
+
+  function _saFormatDateTime(dt) {
+    if (!dt || dt === 'N/A') return 'N/A';
+    try {
+      let s = String(dt);
+      if (!s.includes('Z') && !s.includes('+') && !/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-\d{2}/.test(s)) s += 'Z';
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return 'N/A';
+      const pad = n => String(n).padStart(2,'0');
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} (UTC+0)`;
+    } catch(e) { return 'N/A'; }
+  }
+
+  function _saAnalyzeResettlements(data) {
+    const lineTracking = new Map(), betStatusTracking = new Map(), betNumberOfLines = new Map();
+    const records = data.filter(r => r.operationType === 'credit_customer' || r.operationType === 'debit_customer')
+                        .sort((a,b) => new Date(a.creationdate) - new Date(b.creationdate));
+
+    records.forEach(record => {
+      if (!record.reqparams) return;
+      try {
+        const xml = _saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Purchase')].forEach(p => {
+          const n = parseInt(p.getAttribute('NumberOfLines')||'0');
+          if (n > 0) [...p.getElementsByTagName('Selection')].forEach(s =>
+            [...s.getElementsByTagName('Change')].forEach(c => {
+              const b = c.getElementsByTagName('Bet')[0];
+              if (b) { const bid = b.getAttribute('ID'); if (bid&&bid!=='0') betNumberOfLines.set(bid, Math.max(betNumberOfLines.get(bid)||0, n)); }
+            }));
+        });
+        [...xml.getElementsByTagName('Selection')].forEach(sel =>
+          [...sel.getElementsByTagName('Change')].forEach(chg => {
+            const b = chg.getElementsByTagName('Bet')[0];
+            if (!b) return;
+            const bid = b.getAttribute('ID'), status = b.getAttribute('NewStatus'), dateUTC = chg.getAttribute('DateUTC');
+            if (bid&&bid!=='0'&&status&&dateUTC) {
+              if (!betStatusTracking.has(bid)) betStatusTracking.set(bid,[]);
+              betStatusTracking.get(bid).push({ status, dateUTC });
+            }
+          }));
+      } catch(e) {}
+    });
+
+    records.forEach(record => {
+      if (!record.reqparams) return;
+      try {
+        const xml = _saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Selection')].forEach(sel => {
+          const lineId = sel.getAttribute('LineID'), eventName = sel.getAttribute('EventName');
+          if (!lineId||!eventName) return;
+          const purchaseEl = sel.parentNode?.parentNode;
+          const purchaseId = purchaseEl?.getAttribute('PurchaseID') || _saGetPurchaseId(record);
+          [...sel.getElementsByTagName('Change')].forEach(chg => {
+            const oldStatus = chg.getAttribute('OldStatus'), newStatus = chg.getAttribute('NewStatus'), dateUTC = chg.getAttribute('DateUTC');
+            const b = chg.getElementsByTagName('Bet')[0];
+            const betId = b ? b.getAttribute('ID') : '';
+            if (!lineTracking.has(lineId)) lineTracking.set(lineId, {
+              eventName, branchName: sel.getAttribute('BranchName')||'', leagueName: sel.getAttribute('LeagueName')||'',
+              eventTypeName: sel.getAttribute('EventTypeName')||'', siteId: record.siteid, statusHistory: [],
+              betId: betId&&betId!=='0'?betId:'', purchaseId
+            });
+            const t = lineTracking.get(lineId);
+            t.statusHistory.push({ oldStatus, newStatus, dateUTC });
+            if (betId&&betId!=='0'&&!t.betId) t.betId = betId;
+            if (purchaseId&&!t.purchaseId) t.purchaseId = purchaseId;
+          });
+        });
+      } catch(e) {}
+    });
+
+    const betEventCount = new Map();
+    lineTracking.forEach(t => { if (t.betId) betEventCount.set(t.betId,(betEventCount.get(t.betId)||0)+1); });
+
+    const result = [];
+    lineTracking.forEach((t) => {
+      if (t.statusHistory.length > 1) {
+        t.statusHistory.sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+        const statuses = t.statusHistory.map(h=>h.newStatus);
+        if ([...new Set(statuses)].length > 1) {
+          let finalBetStatus = 'N/A';
+          if (t.betId && betStatusTracking.has(t.betId)) {
+            const bs = betStatusTracking.get(t.betId).sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+            if (bs.length) finalBetStatus = bs[bs.length-1].status;
+          }
+          result.push({
+            betId: t.betId||'N/A', purchaseId: t.purchaseId||'',
+            eventName: t.eventName, sport: t.branchName, league: t.leagueName, market: t.eventTypeName,
+            siteId: t.siteId, statusHistory: statuses, betStatus: finalBetStatus,
+            firstSettlementTime: t.statusHistory[0].dateUTC,
+            lastUpdateTime: t.statusHistory[t.statusHistory.length-1].dateUTC,
+            totalEventsInBet: t.betId ? Math.max(betEventCount.get(t.betId)||1, betNumberOfLines.get(t.betId)||1) : 1
+          });
+        }
+      }
+    });
+    return result;
+  }
+
+  function _saAnalyzeCancellations(data) {
+    const lineTracking = new Map(), betStatusTracking = new Map(), betNumberOfLines = new Map();
+    const records = data.filter(r => r.operationType === 'credit_customer' || r.operationType === 'debit_customer')
+                        .sort((a,b)=>new Date(a.creationdate)-new Date(b.creationdate));
+
+    records.forEach(record => {
+      if (!record.reqparams) return;
+      try {
+        const xml = _saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Purchase')].forEach(p => {
+          const n = parseInt(p.getAttribute('NumberOfLines')||'0');
+          if (n>0) [...p.getElementsByTagName('Selection')].forEach(s=>
+            [...s.getElementsByTagName('Change')].forEach(c=>{
+              const b=c.getElementsByTagName('Bet')[0];
+              if(b){const bid=b.getAttribute('ID');if(bid&&bid!=='0')betNumberOfLines.set(bid,Math.max(betNumberOfLines.get(bid)||0,n));}
+            }));
+        });
+        [...xml.getElementsByTagName('Selection')].forEach(sel=>
+          [...sel.getElementsByTagName('Change')].forEach(chg=>{
+            const b=chg.getElementsByTagName('Bet')[0];
+            if(!b)return;
+            const bid=b.getAttribute('ID'),status=b.getAttribute('NewStatus'),dateUTC=chg.getAttribute('DateUTC');
+            if(bid&&bid!=='0'&&status&&dateUTC){
+              if(!betStatusTracking.has(bid))betStatusTracking.set(bid,[]);
+              betStatusTracking.get(bid).push({status,dateUTC});
+            }
+          }));
+      } catch(e){}
+    });
+
+    records.forEach(record=>{
+      if(!record.reqparams)return;
+      try{
+        const xml=_saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Selection')].forEach(sel=>{
+          const lineId=sel.getAttribute('LineID'),eventName=sel.getAttribute('EventName');
+          if(!lineId||!eventName)return;
+          const purchaseEl=sel.parentNode?.parentNode;
+          const purchaseId=purchaseEl?.getAttribute('PurchaseID')||_saGetPurchaseId(record);
+          [...sel.getElementsByTagName('Change')].forEach(chg=>{
+            const newStatus=chg.getAttribute('NewStatus'),dateUTC=chg.getAttribute('DateUTC');
+            const b=chg.getElementsByTagName('Bet')[0];
+            const betId=b?b.getAttribute('ID'):'';
+            if(!lineTracking.has(lineId))lineTracking.set(lineId,{
+              eventName,branchName:sel.getAttribute('BranchName')||'',leagueName:sel.getAttribute('LeagueName')||'',
+              eventTypeName:sel.getAttribute('EventTypeName')||'',siteId:record.siteid,statusHistory:[],
+              betId:betId&&betId!=='0'?betId:'',purchaseId
+            });
+            const t=lineTracking.get(lineId);
+            t.statusHistory.push({newStatus,dateUTC});
+            if(betId&&betId!=='0'&&!t.betId)t.betId=betId;
+            if(purchaseId&&!t.purchaseId)t.purchaseId=purchaseId;
+          });
+        });
+      }catch(e){}
+    });
+
+    const betEventCount=new Map();
+    lineTracking.forEach(t=>{if(t.betId)betEventCount.set(t.betId,(betEventCount.get(t.betId)||0)+1);});
+
+    const result=[];
+    lineTracking.forEach(t=>{
+      if(t.statusHistory.length>0){
+        t.statusHistory.sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+        const last=t.statusHistory[t.statusHistory.length-1];
+        if(last.newStatus==='Canceled'){
+          let finalBetStatus='N/A';
+          if(t.betId&&betStatusTracking.has(t.betId)){
+            const bs=betStatusTracking.get(t.betId).sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+            if(bs.length)finalBetStatus=bs[bs.length-1].status;
+          }
+          result.push({
+            betId:t.betId||'N/A',purchaseId:t.purchaseId||'',
+            eventName:t.eventName,sport:t.branchName,league:t.leagueName,market:t.eventTypeName,
+            siteId:t.siteId,eventStatus:'Canceled',betStatus:finalBetStatus,
+            updateTime:last.dateUTC,
+            totalEventsInBet:t.betId?Math.max(betEventCount.get(t.betId)||1,betNumberOfLines.get(t.betId)||1):1
+          });
+        }
+      }
+    });
+    return result;
+  }
+
+  function _saGenerateResettlementReports(data, customReasons) {
+    const reasonOpts = _saGetResettlementReasons();
+    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    if (!data.length) return { english:'No resettlement records.', chinese:'无重新结算记录。', korean:'무 재정산 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
+
+    const isMulti = data.some(d=>d.totalEventsInBet>1);
+    const enSubj = isMulti ? (data.length>1?'The selections have':'The selection has') : 'The bet has';
+    const cnSubj = isMulti?'线注':'注单', krSubj = isMulti?'라인':'베팅';
+
+    let en=`Thank you for waiting. ${enSubj} been resettled but BO needs 5-10 mins to be updated. Please check again then. Thank you.${nameSuffix}\n\n`;
+    let cn=`${cnSubj}已重新结算，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。${nameSuffix}\n\n`;
+    let kr=`기다려 주셔서 감사합니다. ${krSubj}이 재정산되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.${nameSuffix}\n\n`;
+    let enEO='',cnEO='',krEO='';
+
+    data.forEach((item,i)=>{
+      const rk = customReasons&&customReasons[i]!==undefined ? customReasons[i] : _saResettlementReason;
+      const rt = reasonOpts[rk] || reasonOpts[''];
+      const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
+      const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Resettlement History: ${_saTranslateHistory(item.statusHistory,'english')}\nBet Status: ${item.betStatus}\nFirst Settlement Time: ${_saFormatDateTime(item.firstSettlementTime)}\nLast Update Time: ${_saFormatDateTime(item.lastUpdateTime)}\nReason for Resettlement: ${rt.english}`;
+      const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事重新结算历史：${_saTranslateHistory(item.statusHistory,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n第一次结算时间：${_saFormatDateTime(item.firstSettlementTime)}\n最后更新时间：${_saFormatDateTime(item.lastUpdateTime)}\n重新结算原因：${rt.chinese}`;
+      const krB=`베팅 번호: ${item.betId}\n${kf}: ${item.eventName}\n경기 재정산 내역: ${_saTranslateHistory(item.statusHistory,'korean')}\n베팅 상태: ${_saTranslateStatus(item.betStatus,'korean')}\n첫 번째 정산 시간: ${_saFormatDateTime(item.firstSettlementTime)}\n마지막 업데이트 시간: ${_saFormatDateTime(item.lastUpdateTime)}\n재정산 사유: ${rt.korean}`;
+      en+=enB; cn+=cnB; kr+=krB; enEO+=enB; cnEO+=cnB; krEO+=krB;
+      if(i<data.length-1){en+='\n\n';cn+='\n\n';kr+='\n\n';enEO+='\n\n';cnEO+='\n\n';krEO+='\n\n';}
+    });
+    return {english:en,chinese:cn,korean:kr,englishEventOnly:enEO,chineseEventOnly:cnEO,koreanEventOnly:krEO};
+  }
+
+  function _saGenerateCancellationReports(data, customReasons) {
+    const reasonOpts = _saGetCancellationReasons();
+    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    if (!data.length) return { english:'No cancellation records.', chinese:'无取消记录。', korean:'무 취소 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
+
+    const isMulti = data.some(d=>d.totalEventsInBet>1);
+    const enSubj = isMulti?(data.length>1?'The selections have':'The selection has'):'The bet has';
+    const cnSubj=isMulti?'线注':'注单', krSubj=isMulti?'라인':'베팅';
+
+    let en=`Thank you for waiting. ${enSubj} been canceled but BO needs 5-10 mins to be updated. Please check again then. Thank you.${nameSuffix}\n\n`;
+    let cn=`${cnSubj}已取消，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。${nameSuffix}\n\n`;
+    let kr=`기다려 주셔서 감사합니다. ${krSubj}이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.${nameSuffix}\n\n`;
+    let enEO='',cnEO='',krEO='';
+
+    data.forEach((item,i)=>{
+      const rk=customReasons&&customReasons[i]!==undefined?customReasons[i]:_saCancellationReason;
+      const rt=reasonOpts[rk]||reasonOpts[''];
+      const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
+      const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Status: ${item.eventStatus}\nBet Status: ${item.betStatus}\nUpdate Time: ${_saFormatDateTime(item.updateTime)}\nReason of Cancelation: ${rt.english}`;
+      const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事状态：${_saTranslateStatus(item.eventStatus,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n更新时间：${_saFormatDateTime(item.updateTime)}\n取消原因：${rt.chinese}`;
+      const krB=`베팅 ID: ${item.betId}\n${kf}: ${item.eventName}\n이벤트 상태: ${_saTranslateStatus(item.eventStatus,'korean')}\n베팅 상태: ${_saTranslateStatus(item.betStatus,'korean')}\n업데이트 시간: ${_saFormatDateTime(item.updateTime)}\n취소 사유: ${rt.korean}`;
+      en+=enB; cn+=cnB; kr+=krB; enEO+=enB; cnEO+=cnB; krEO+=krB;
+      if(i<data.length-1){en+='\n\n';cn+='\n\n';kr+='\n\n';enEO+='\n\n';cnEO+='\n\n';krEO+='\n\n';}
+    });
+    return {english:en,chinese:cn,korean:kr,englishEventOnly:enEO,chineseEventOnly:cnEO,koreanEventOnly:krEO};
+  }
+
+  function _saEsc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function _saCopyText(text, btn) {
+    navigator.clipboard.writeText(text).catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    });
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '✓ 已複製';
+      btn.style.opacity = '0.7';
+      setTimeout(()=>{ btn.textContent=orig; btn.style.opacity=''; }, 1200);
+    }
+  }
+
+  function _saShowStatus(msg, isError) {
+    _saError = isError ? msg : '';
+    _saCopyStatus = isError ? '' : msg;
+    _saRenderStatus();
+  }
+
+  function _saRenderStatus() {
+    const el = document.getElementById('sa-status');
+    if (!el) return;
+    if (_saError) {
+      el.innerHTML = `<div style="background:var(--red-bg);border:1px solid rgba(220,38,38,0.3);color:var(--red);padding:8px 12px;border-radius:6px;font-size:12px">⚠ ${_saEsc(_saError)}</div>`;
+    } else if (_saCopyStatus) {
+      el.innerHTML = `<div style="background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);padding:8px 12px;border-radius:6px;font-size:12px">✓ ${_saEsc(_saCopyStatus)}</div>`;
+      setTimeout(()=>{ _saCopyStatus=''; _saRenderStatus(); }, 2000);
+    } else {
+      el.innerHTML = '';
+    }
+  }
+
+  function _saHandleAnalyze() {
+    const ta = document.getElementById('sa-json-input');
+    if (!ta) return;
+    _saJsonData = ta.value;
+    if (!_saJsonData.trim()) { _saShowStatus('请输入数据', true); return; }
+    _saLoading = true;
+    _saError = '';
+    _saPerEventReasons = {};
+    _saShowPerEventReasons = false;
+    _saRenderLeft();
+
+    try {
+      let safeJson = _saJsonData.trim();
+      let prev;
+      do { prev=safeJson; safeJson=safeJson.replace(/([\[,:\s])(\d{16,})([\],\s}])/g,'$1"$2"$3'); } while(safeJson!==prev);
+      const parsed = JSON.parse(safeJson);
+      const data = Array.isArray(parsed) ? parsed : (parsed.apiRequests ? parsed.apiRequests : null);
+      if (!data) throw new Error('请输入JSON数组格式的Seamless tool数据 (apiRequests)');
+
+      let analyzedData, reports;
+      if (_saAnalysisType === 'resettlement') {
+        analyzedData = _saAnalyzeResettlements(data);
+        reports = _saGenerateResettlementReports(analyzedData, null);
+      } else {
+        analyzedData = _saAnalyzeCancellations(data);
+        reports = _saGenerateCancellationReports(analyzedData, null);
+      }
+      reports.analyzedData = analyzedData;
+      reports.eventCount = analyzedData.length;
+      if (analyzedData.length > 0 && analyzedData[0].siteId) {
+        reports.operator = _saOperatorMap[analyzedData[0].siteId] || '';
+      }
+      _saResults = reports;
+
+      if (analyzedData.length > 0) {
+        const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: reports };
+        _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
+        localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
+      }
+      _saShowStatus('', false);
+    } catch(e) {
+      _saShowStatus('解析错误: ' + e.message, true);
+      _saResults = null;
+    }
+    _saLoading = false;
+    _saRenderLeft();
+    _saRenderResults();
+  }
+
+  function _saPasteAndUpdate() {
+    if (_saResults && _saResults.analyzedData && _saResults.analyzedData.length > 0) {
+      const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: _saResults };
+      _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
+      localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
+    }
+    _saResults = null; _saError = ''; _saCopyStatus = '';
+    _saPerEventReasons = {}; _saShowPerEventReasons = false;
+    _saResettlementReason = ''; _saCancellationReason = '';
+    const ta = document.getElementById('sa-json-input');
+    if (ta) ta.value = '';
+
+    navigator.clipboard.readText().then(text => {
+      if (ta) { ta.value = text; _saJsonData = text; }
+      _saHandleAnalyze();
+    }).catch(()=>{ _saShowStatus('无法读取剪贴板，请确认已授予权限', true); _saRenderStatus(); });
+  }
+
+  function _saHandleClear() {
+    _saResults = null; _saError = ''; _saCopyStatus = '';
+    _saJsonData = ''; _saPerEventReasons = {}; _saShowPerEventReasons = false;
+    const ta = document.getElementById('sa-json-input');
+    if (ta) ta.value = '';
+    _saRenderLeft(); _saRenderResults(); _saRenderStatus();
+  }
+
+  function _saRegenerateWithCustomReasons() {
+    if (!_saResults || !_saResults.analyzedData) return;
+    let reports;
+    if (_saAnalysisType === 'resettlement') {
+      reports = _saGenerateResettlementReports(_saResults.analyzedData, _saPerEventReasons);
+    } else {
+      reports = _saGenerateCancellationReports(_saResults.analyzedData, _saPerEventReasons);
+    }
+    reports.analyzedData = _saResults.analyzedData;
+    reports.eventCount = _saResults.eventCount;
+    reports.operator = _saResults.operator;
+    _saResults = reports;
+    _saRenderResults();
+    _saShowStatus('报告已重新生成', false);
+  }
+
+  function _saCopyResult(lang, btn) {
+    if (!_saResults || !_saResults[lang]) return;
+    _saCopyText(_saResults[lang].replace(/[\r\n]+$/, ''), btn);
+  }
+
+  function _saCopyEventOnly(lang, btn) {
+    const key = lang + 'EventOnly';
+    if (!_saResults || !_saResults[key]) return;
+    _saCopyText(_saResults[key].replace(/[\r\n]+$/, ''), btn);
+  }
+
+  function _saCopyTableData(btn) {
+    if (!_saResults || !_saResults.analyzedData) return;
+    const rows = _saResults.analyzedData.map((item, i) => {
+      const operator = _saResults.operator || (_saOperatorMap[item.siteId] || '');
+      return [operator, item.purchaseId || item.betId || '', '', item.sport||'', item.league||'', item.eventName||'', item.market||'', _saUserName].join('\t');
+    });
+    _saCopyText(rows.join('\n'), btn);
+  }
+
+  function _saToggleType() {
+    _saAnalysisType = _saAnalysisType === 'resettlement' ? 'cancellation' : 'resettlement';
+    if (_saResults && _saResults.analyzedData) {
+      const ta = document.getElementById('sa-json-input');
+      if (ta && ta.value.trim()) _saHandleAnalyze();
+    }
+    _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
+  }
+
+  function _saSelectReason(key) {
+    _saSetCurrentReason(key);
+    _saShowReasonPanel = false;
+    if (_saResults && _saResults.analyzedData && _saResults.analyzedData.length > 0) {
+      _saPerEventReasons = {};
+      _saRegenerateWithCustomReasons();
+    }
+    _saRenderLeft(); _saRenderActionBtns();
+  }
+
+  function _saRestoreHistory(rec) {
+    _saAnalysisType = rec.analysisType;
+    _saResults = rec.results;
+    _saShowHistoryPanel = false;
+    _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
+  }
+
+  function _saDeleteHistory(id) {
+    _saQueryHistory = _saQueryHistory.filter(r => r.id !== id);
+    localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
+    _saRenderActionBtns();
+  }
+
+  function _saReasonOptionsHtml(currentVal, forType) {
+    const opts = forType === 'resettlement' ? _saGetResettlementReasons() : _saGetCancellationReasons();
+    const defaults = forType === 'resettlement' ? SA_DEFAULT_RESETTLEMENT_REASONS : SA_DEFAULT_CANCELLATION_REASONS;
+    return Object.keys(opts).map(k => {
+      const r = opts[k];
+      const isCustom = k !== '' && k !== '_custom_fill' && !defaults[k];
+      let label;
+      if (k === '') label = '确认后提供 (预设)';
+      else if (k === '_custom_fill') label = '✏️ 自行填写 (留空)';
+      else label = (isCustom ? '⭐ ' : '') + (r.english || k);
+      return `<option value="${_saEsc(k)}" ${currentVal===k?'selected':''}>${_saEsc(label)}</option>`;
+    }).join('');
+  }
+
+  function _saRenderLeft() {
+    const el = document.getElementById('sa-left-panel');
+    if (!el) return;
+
+    const curReason = _saCurrentReason();
+
+    el.innerHTML = `
+      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:14px">📄 分析設置</div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">分析類型</label>
+        <select onchange="_saAnalysisType=this.value;_saRenderLeft();_saRenderResults();_saRenderActionBtns()"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+          <option value="resettlement" ${_saAnalysisType==='resettlement'?'selected':''}>重新結算記錄</option>
+          <option value="cancellation" ${_saAnalysisType==='cancellation'?'selected':''}>取消記錄</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">${_saAnalysisType==='resettlement'?'重新结算原因':'取消原因'}</label>
+        <select onchange="_saSetCurrentReason(this.value);if(_saResults&&_saResults.analyzedData){_saPerEventReasons={};_saRegenerateWithCustomReasons();}_saRenderLeft();_saRenderActionBtns()"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+          ${_saReasonOptionsHtml(curReason, _saAnalysisType)}
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">👤 绑定名字</label>
+        <input type="text" value="${_saEsc(_saUserName)}" placeholder="例如: Sunny"
+          oninput="_saUserName=this.value;localStorage.setItem('${SA_PREFIX}userName',this.value)"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+        ${_saUserName ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">示例: Thank you for waiting... - <b>${_saEsc(_saUserName)}</b></div>` : ''}
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">數據輸入 <span style="font-weight:400;color:var(--text-muted)">(Seamless Tool apiRequests JSON)</span></label>
+        <textarea id="sa-json-input" placeholder="請貼上 Seamless Tool JSON 數據..." rows="10"
+          style="font-family:monospace;font-size:11px;resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-pri);outline:none;line-height:1.5"
+          >${_saEsc(_saJsonData)}</textarea>
+      </div>
+      <div id="sa-status"></div>
+      <div style="display:flex;gap:8px;margin-top:2px">
+        <button onclick="_saHandleAnalyze()" ${_saLoading?'disabled':''} class="btn-copy-reply" style="flex:1;margin:0;font-size:13px">
+          ${_saLoading?'分析中...':'開始分析'}
+        </button>
+        <button onclick="_saPasteAndUpdate()" class="btn-import-json" style="flex:1;font-size:13px;padding:8px 10px;background:var(--orange-bg);border-color:rgba(196,149,106,0.4);color:var(--orange)">
+          📋 貼上並更新
+        </button>
+        <button onclick="_saHandleClear()" class="btn-popup-sec" style="flex:1;font-size:13px;padding:8px 10px">
+          🗑 清空
+        </button>
+      </div>`;
+
+    _saRenderStatus();
+  }
+
+  function _saRenderResults() {
+    const el = document.getElementById('sa-results-area');
+    if (!el) return;
+
+    if (!_saResults) {
+      el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:24px 0;text-align:center">請輸入數據並點擊「開始分析」</div>`;
+      return;
+    }
+
+    let perEventHtml = '';
+    if (_saResults.eventCount > 1) {
+      if (!_saShowPerEventReasons) {
+        perEventHtml = `<div style="background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--blue)">📝 ${_saResults.eventCount} 場賽事</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">目前所有賽事使用相同原因</div>
+          </div>
+          <button onclick="_saShowPerEventReasons=true;const init={};for(let i=0;i<_saResults.eventCount;i++)init[i]=_saCurrentReason();_saPerEventReasons=init;_saRenderResults()"
+            class="btn-popup-sec" style="font-size:11px;padding:5px 10px;white-space:nowrap">🔧 個別設定</button>
+        </div>`;
+      } else {
+        const items = _saResults.analyzedData.map((item,i) => {
+          const curKey = _saPerEventReasons[i] !== undefined ? _saPerEventReasons[i] : _saCurrentReason();
+          return `<div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:8px 10px">
+            <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:5px">Event ${i+1}: ${_saEsc(item.eventName)}</div>
+            <select onchange="_saPerEventReasons[${i}]=this.value"
+              style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+              ${_saReasonOptionsHtml(curKey, _saAnalysisType)}
+            </select>
+          </div>`;
+        }).join('');
+        perEventHtml = `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-sec)">為每場賽事設定原因</div>
+            <button onclick="_saShowPerEventReasons=false;_saRenderResults()" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer">收起 ▲</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">${items}</div>
+          <button onclick="_saRegenerateWithCustomReasons()" class="btn-copy-reply" style="width:100%;margin:8px 0 0;font-size:12px">🔄 重新生成報告</button>
+        </div>`;
+      }
+    }
+
+    const copyBtns = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+      <button onclick="_saCopyResult('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 英文</button>
+      <button onclick="_saCopyEventOnly('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:var(--blue);border:1px solid var(--blue-light);border-radius:6px;cursor:pointer">📄 賽事 EN</button>
+      <button onclick="_saCopyResult('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#16a34a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 中文</button>
+      <button onclick="_saCopyEventOnly('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#16a34a;border:1px solid rgba(22,163,74,0.3);border-radius:6px;cursor:pointer">📄 賽事 中</button>
+      <button onclick="_saCopyResult('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#7c3aed;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 韓文</button>
+      <button onclick="_saCopyEventOnly('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#7c3aed;border:1px solid rgba(124,58,237,0.3);border-radius:6px;cursor:pointer">📄 賽事 한</button>
+      <button onclick="_saCopyTableData(this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#d97706;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 表格數據</button>
+    </div>`;
+
+    const resultBlock = (lang, label) => `<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
+      <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;max-height:130px;overflow-y:auto">
+        <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[lang]||'')}</pre>
+      </div>
+    </div>`;
+
+    el.innerHTML = perEventHtml + copyBtns + resultBlock('english','English') + resultBlock('chinese','中文') + resultBlock('korean','한국어');
+  }
+
+  function _saRenderActionBtns() {
+    const el = document.getElementById('sa-action-btns');
+    if (!el) return;
+
+    const typeColor = _saAnalysisType === 'resettlement' ? '#d97706' : '#dc2626';
+    const typeLabel = _saAnalysisType === 'resettlement' ? '重' : '取';
+    const typeTitle = _saAnalysisType === 'resettlement' ? '重新結算（點擊切換為取消）' : '取消（點擊切換為重新結算）';
+    const curReason = _saCurrentReason();
+    const reasonOpts = _saCurrentReasonOptions();
+
+    const rPanelHtml = _saShowReasonPanel ? `
+      <div style="position:absolute;top:calc(100% + 6px);right:0;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:12px;z-index:100">
+        <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">⚡ 快速選擇原因</div>
+        <div style="max-height:260px;overflow-y:auto;overflow-x:hidden">
+        ${Object.keys(reasonOpts).map(k=>{
+          const r=reasonOpts[k];
+          const isActive=curReason===k;
+          const defaults=_saAnalysisType==='resettlement'?SA_DEFAULT_RESETTLEMENT_REASONS:SA_DEFAULT_CANCELLATION_REASONS;
+          const isCustom=k!==''&&k!=='_custom_fill'&&!defaults[k];
+          let label;
+          if(k==='')label='确认后提供 (预设)';
+          else if(k==='_custom_fill')label='✏️ 自行填写';
+          else label=(isCustom?'⭐ ':'')+r.english;
+          return `<button onclick="_saSelectReason('${k.replace(/'/g,"\\'")}')"
+            style="width:100%;text-align:left;padding:6px 8px;font-size:11px;border-radius:6px;border:${isActive?'2px solid var(--blue)':'1px solid var(--border-light)'};background:${isActive?'var(--blue-bg)':'var(--surface2)'};color:var(--text-pri);cursor:pointer;margin-bottom:3px;font-weight:${isActive?700:400}">
+            ${isActive?'✓ ':''}${_saEsc(label)}
+          </button>`;
+        }).join('')}
+        </div>
+      </div>` : '';
+
+    const hPanelHtml = _saShowHistoryPanel ? `
+      <div style="position:absolute;top:calc(100% + 6px);right:0;width:260px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:12px;z-index:100">
+        <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">🕐 最近查詢（最多5筆）</div>
+        ${_saQueryHistory.length===0?'<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px 0">尚無記錄</div>':
+          (_saQueryHistory.length>0?`<button onclick="_saQueryHistory=[];localStorage.setItem('${SA_PREFIX}queryHistory','[]');_saRenderActionBtns()"
+            style="width:100%;margin-bottom:8px;padding:5px;font-size:11px;border-radius:5px;border:1px solid rgba(220,38,38,0.3);background:var(--red-bg);color:var(--red);cursor:pointer;font-weight:600">🗑 清除全部</button>`:'')
+          +_saQueryHistory.map(rec=>{
+            const d=new Date(rec.timestamp);
+            const timeStr=`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            const typeTag=rec.analysisType==='resettlement'?'重新結算':'取消';
+            const cnt=rec.results?.eventCount||0;
+            const pids=(rec.results?.analyzedData||[]).map(e=>e.purchaseId).filter(Boolean);
+            const pidDisplay=pids.length===0?'':(pids.slice(0,3).join(', ')+(pids.length>3?` …等${pids.length}筆`:''));
+            return `<div style="border:1px solid var(--border-light);border-radius:6px;padding:8px;background:var(--surface2);margin-bottom:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${pidDisplay?'3px':'4px'}">
+                <div style="display:flex;gap:4px;align-items:center">
+                  <span style="font-size:10px;color:var(--text-muted)">${timeStr}</span>
+                  <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:${rec.analysisType==='resettlement'?'var(--orange-bg)':'var(--red-bg)'};color:${rec.analysisType==='resettlement'?'var(--orange)':'var(--red)'};font-weight:600">${typeTag}</span>
+                  <span style="font-size:10px;color:var(--text-muted)">${cnt}筆</span>
+                </div>
+                <button onclick="_saDeleteHistory(${rec.id})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:0;line-height:1">✕</button>
+              </div>
+              ${pidDisplay?`<div style="font-size:10px;color:var(--text-sec);margin-bottom:4px;word-break:break-all">🎫 ${_saEsc(pidDisplay)}</div>`:''}
+              <button onclick="_saRestoreHistory(${JSON.stringify(rec).replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
+                style="width:100%;padding:4px;font-size:11px;border-radius:5px;border:1px solid var(--blue-light);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-weight:600">↩ 還原</button>
+            </div>`;
+          }).join('')
+        }
+      </div>` : '';
+
+    el.innerHTML = `
+      <div style="position:relative">
+        ${rPanelHtml}
+        <button onclick="event.stopPropagation();_saShowReasonPanel=!_saShowReasonPanel;_saShowHistoryPanel=false;_saRenderActionBtns()"
+          title="快速選擇原因"
+          style="width:34px;height:34px;border-radius:50%;background:${_saShowReasonPanel?'var(--blue)':'#6366f1'};color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">R</button>
+      </div>
+      <div style="position:relative">
+        ${hPanelHtml}
+        <button onclick="event.stopPropagation();_saShowHistoryPanel=!_saShowHistoryPanel;_saShowReasonPanel=false;_saRenderActionBtns()"
+          title="查詢歷史"
+          style="width:34px;height:34px;border-radius:50%;background:${_saShowHistoryPanel?'#0d9488':'#14b8a6'};color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;position:relative">
+          H
+          ${_saQueryHistory.length>0?`<span style="position:absolute;top:-3px;right:-3px;background:#ef4444;color:white;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">${_saQueryHistory.length}</span>`:''}
+        </button>
+      </div>
+      <button onclick="_saToggleType()" title="${_saEsc(typeTitle)}"
+        style="width:34px;height:34px;border-radius:50%;background:${typeColor};color:white;border:none;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">${_saEsc(typeLabel)}</button>
+      <button onclick="_saShowReasonManager=true;_saRenderReasonManager()" title="管理自訂原因"
+        style="width:34px;height:34px;border-radius:50%;background:var(--surface2);color:var(--text-sec);border:1px solid var(--border);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚙️</button>`;
+  }
+
+  function _saRenderReasonManager() {
+    let existing = document.getElementById('sa-reason-manager-overlay');
+    if (!_saShowReasonManager) { if (existing) existing.remove(); return; }
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.id = 'sa-reason-manager-overlay';
+      existing.className = 'popup-overlay';
+      document.body.appendChild(existing);
+      existing.addEventListener('click', e => { if (e.target === existing) { _saShowReasonManager=false; _saRenderReasonManager(); } });
+    }
+
+    const type = _saManagingReasonType;
+    const customReasons = type === 'resettlement' ? _saCustomResettlementReasons : _saCustomCancellationReasons;
+    const defaults = type === 'resettlement' ? SA_DEFAULT_RESETTLEMENT_REASONS : SA_DEFAULT_CANCELLATION_REASONS;
+
+    const reasonItems = Object.keys(customReasons).map(k => {
+      const r = customReasons[k];
+      const isEditing = _saEditingReason && _saEditingReason.key === k;
+      if (isEditing) {
+        return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--surface)">
+          <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:8px">編輯原因</div>
+          <input type="text" value="${_saEsc(_saEditingReason.english)}" placeholder="英文" oninput="_saEditingReason.english=this.value"
+            style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface2);color:var(--text-pri);outline:none;box-sizing:border-box">
+          <input type="text" value="${_saEsc(_saEditingReason.chinese)}" placeholder="中文" oninput="_saEditingReason.chinese=this.value"
+            style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface2);color:var(--text-pri);outline:none;box-sizing:border-box">
+          <input type="text" value="${_saEsc(_saEditingReason.korean)}" placeholder="韓文" oninput="_saEditingReason.korean=this.value"
+            style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:8px;background:var(--surface2);color:var(--text-pri);outline:none;box-sizing:border-box">
+          <div style="display:flex;gap:6px">
+            <button onclick="_saSaveEditReason()" class="btn-copy-reply" style="flex:1;margin:0;font-size:12px;padding:6px">保存</button>
+            <button onclick="_saEditingReason=null;_saRenderReasonManager()" class="btn-popup-sec" style="flex:1;font-size:12px;padding:6px">取消</button>
+          </div>
+        </div>`;
+      }
+      if (_saDeleteConfirmKey === k) {
+        return `<div style="border:1px solid rgba(220,38,38,0.3);border-radius:8px;padding:12px;background:var(--red-bg)">
+          <div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:8px">確定要刪除嗎？</div>
+          <div style="font-size:11px;color:var(--text-sec);margin-bottom:8px">EN: ${_saEsc(r.english)}</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="_saDeleteReason('${_saEsc(k)}')" style="flex:1;padding:6px;font-size:12px;border-radius:6px;border:none;background:var(--red);color:white;cursor:pointer;font-weight:600">確認刪除</button>
+            <button onclick="_saDeleteConfirmKey=null;_saRenderReasonManager()" class="btn-popup-sec" style="flex:1;font-size:12px;padding:6px">取消</button>
+          </div>
+        </div>`;
+      }
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--surface)">
+        <div style="font-size:11px;margin-bottom:6px"><span style="font-weight:600">EN:</span> ${_saEsc(r.english)}</div>
+        <div style="font-size:11px;margin-bottom:6px"><span style="font-weight:600">中:</span> ${_saEsc(r.chinese)}</div>
+        <div style="font-size:11px;margin-bottom:8px"><span style="font-weight:600">KR:</span> ${_saEsc(r.korean)}</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="_saEditingReason={key:'${_saEsc(k)}',english:'${_saEsc(r.english)}',chinese:'${_saEsc(r.chinese)}',korean:'${_saEsc(r.korean)}'};_saRenderReasonManager()"
+            style="flex:1;padding:5px;font-size:11px;border-radius:5px;border:none;background:var(--blue);color:white;cursor:pointer">✏️ 編輯</button>
+          <button onclick="_saDeleteConfirmKey='${_saEsc(k)}';_saRenderReasonManager()"
+            style="flex:1;padding:5px;font-size:11px;border-radius:5px;border:none;background:var(--red);color:white;cursor:pointer">✕ 刪除</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    existing.innerHTML = `
+      <div class="popup-card msg-popup" style="max-width:460px;width:92%;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border-light);flex-shrink:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text-pri)">⚙️ 管理自訂原因</div>
+          <button onclick="_saShowReasonManager=false;_saRenderReasonManager()" style="background:none;border:none;font-size:18px;color:var(--text-muted);cursor:pointer;line-height:1">×</button>
+        </div>
+        <div style="padding:14px 16px;overflow-y:auto;flex:1">
+          <div class="form-group" style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--text-sec);font-weight:600">原因類型</label>
+            <select onchange="_saManagingReasonType=this.value;_saEditingReason=null;_saDeleteConfirmKey=null;_saRenderReasonManager()"
+              style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+              <option value="resettlement" ${type==='resettlement'?'selected':''}>重新結算原因</option>
+              <option value="cancellation" ${type==='cancellation'?'selected':''}>取消原因</option>
+            </select>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:8px;padding:12px;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">➕ 新增原因</div>
+            <input id="sa-new-en" type="text" placeholder="英文" value="${_saEsc(_saNewReason.english)}" oninput="_saNewReason.english=this.value"
+              style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface);color:var(--text-pri);outline:none;box-sizing:border-box">
+            <input id="sa-new-cn" type="text" placeholder="中文" value="${_saEsc(_saNewReason.chinese)}" oninput="_saNewReason.chinese=this.value"
+              style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface);color:var(--text-pri);outline:none;box-sizing:border-box">
+            <input id="sa-new-kr" type="text" placeholder="韓文" value="${_saEsc(_saNewReason.korean)}" oninput="_saNewReason.korean=this.value"
+              style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:8px;background:var(--surface);color:var(--text-pri);outline:none;box-sizing:border-box">
+            <button onclick="_saAddReason()" class="btn-copy-reply" style="width:100%;margin:0;font-size:12px">➕ 新增並保存</button>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">📋 自訂原因列表</div>
+          ${Object.keys(customReasons).length===0
+            ? '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:16px 0;background:var(--surface2);border-radius:6px">尚無自訂原因</div>'
+            : `<div style="display:flex;flex-direction:column;gap:8px">${reasonItems}</div>`}
+        </div>
+      </div>`;
+  }
+
+  function _saAddReason() {
+    if (!_saNewReason.english || !_saNewReason.chinese || !_saNewReason.korean) { alert('請填寫完整的原因資訊'); return; }
+    const key = 'custom_' + Date.now();
+    const entry = { english: _saNewReason.english.charAt(0).toUpperCase() + _saNewReason.english.slice(1), chinese: _saNewReason.chinese, korean: _saNewReason.korean };
+    if (_saManagingReasonType === 'resettlement') {
+      _saCustomResettlementReasons = { ..._saCustomResettlementReasons, [key]: entry };
+      localStorage.setItem(SA_PREFIX+'customResettlementReasons', JSON.stringify(_saCustomResettlementReasons));
+    } else {
+      _saCustomCancellationReasons = { ..._saCustomCancellationReasons, [key]: entry };
+      localStorage.setItem(SA_PREFIX+'customCancellationReasons', JSON.stringify(_saCustomCancellationReasons));
+    }
+    _saNewReason = { english:'', chinese:'', korean:'' };
+    _saRenderReasonManager();
+  }
+
+  function _saSaveEditReason() {
+    if (!_saEditingReason || !_saEditingReason.english || !_saEditingReason.chinese || !_saEditingReason.korean) { alert('請填寫完整'); return; }
+    const entry = { english: _saEditingReason.english.charAt(0).toUpperCase()+_saEditingReason.english.slice(1), chinese: _saEditingReason.chinese, korean: _saEditingReason.korean };
+    if (_saManagingReasonType === 'resettlement') {
+      _saCustomResettlementReasons = { ..._saCustomResettlementReasons, [_saEditingReason.key]: entry };
+      localStorage.setItem(SA_PREFIX+'customResettlementReasons', JSON.stringify(_saCustomResettlementReasons));
+    } else {
+      _saCustomCancellationReasons = { ..._saCustomCancellationReasons, [_saEditingReason.key]: entry };
+      localStorage.setItem(SA_PREFIX+'customCancellationReasons', JSON.stringify(_saCustomCancellationReasons));
+    }
+    _saEditingReason = null;
+    _saRenderReasonManager();
+  }
+
+  function _saDeleteReason(key) {
+    if (_saManagingReasonType === 'resettlement') {
+      const u = { ..._saCustomResettlementReasons }; delete u[key]; _saCustomResettlementReasons = u;
+      localStorage.setItem(SA_PREFIX+'customResettlementReasons', JSON.stringify(u));
+    } else {
+      const u = { ..._saCustomCancellationReasons }; delete u[key]; _saCustomCancellationReasons = u;
+      localStorage.setItem(SA_PREFIX+'customCancellationReasons', JSON.stringify(u));
+    }
+    _saDeleteConfirmKey = null;
+    _saRenderReasonManager();
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('tabbtn-' + tab).classList.add('active');
+    if (tab === 'analyzer') {
+      _saRenderLeft();
+      _saRenderResults();
+      _saRenderActionBtns();
+      document.addEventListener('click', _saHandleOutsideClick, { once: false });
+    } else {
+      document.removeEventListener('click', _saHandleOutsideClick);
+    }
+  }
+
+  function _saHandleOutsideClick(e) {
+    const actionBtns = document.getElementById('sa-action-btns');
+    if (actionBtns && !actionBtns.contains(e.target)) {
+      if (_saShowReasonPanel || _saShowHistoryPanel) {
+        _saShowReasonPanel = false; _saShowHistoryPanel = false;
+        _saRenderActionBtns();
+      }
+    }
+  }
+
+  function _saFetchOperatorMap() {
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/15DINgZQ54kGwWjmGfk7BW5xu26XIZnuMvHTdw6IQObk/export?format=csv';
+    fetch(SHEET_URL)
+      .then(r => r.ok ? r.text() : Promise.reject('fetch failed'))
+      .then(csv => {
+        const map = {};
+        csv.split(/\r?\n/).forEach(line => {
+          if (!line.trim()) return;
+          const parts = line.split(',');
+          const name = (parts[0]||'').trim().replace(/^"|"$/g,'');
+          const id = parseInt((parts[1]||'').trim().replace(/^"|"$/g,''));
+          if (name && !isNaN(id) && id > 0) map[id] = name;
+        });
+        if (Object.keys(map).length > 10) {
+          _saOperatorMap = map;
+          localStorage.setItem(SA_PREFIX+'operatorMapCache', JSON.stringify({ data: map, ts: Date.now() }));
+        }
+      }).catch(()=>{});
+  }
+
+  // Load cached operator map
+  (function() {
+    try {
+      const cache = localStorage.getItem(SA_PREFIX+'operatorMapCache');
+      if (cache) {
+        const { data, ts } = JSON.parse(cache);
+        if (Date.now() - ts < 86400000) { _saOperatorMap = data; return; }
+      }
+    } catch(e) {}
+    _saFetchOperatorMap();
+  })();
+
 </script>
 </body>
 </html>
