@@ -927,6 +927,15 @@
       .card-body { flex-wrap: wrap; }
       .record-actions { flex-direction: row; }
     }
+
+    /* ── Tab navigation ── */
+    .tab-nav { display: flex; gap: 2px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tab-btn { padding: 10px 18px; font-size: 13px; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+    .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab-btn:hover:not(.active) { color: var(--text-sec); }
+    .tab-content { display: none; }
+    .tab-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+    @media (max-width: 700px) { #sa-grid { grid-template-columns: 1fr !important; } }
   </style>
 </head>
 <body>
@@ -945,6 +954,11 @@
   <input class="agent-name-input" id="agent-name" type="text" placeholder="你的名字" oninput="saveAgentName()" />
 </div>
 
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('reminder')" id="tabbtn-reminder">📋 提醒工具</button>
+  <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
+</div>
+<div id="tab-reminder" class="tab-content active">
 <div class="container">
   <div class="main-layout">
 
@@ -1025,6 +1039,20 @@
       </div>
     </div>
 
+  </div>
+</div>
+</div>
+
+<div id="tab-analyzer" class="tab-content">
+  <div style="max-width:1100px;width:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start" id="sa-grid">
+    <div class="card" id="sa-left-panel" style="padding:16px"></div>
+    <div class="card" id="sa-right-panel" style="padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri)">✓ 分析結果</div>
+        <div style="display:flex;gap:6px;align-items:center" id="sa-action-btns"></div>
+      </div>
+      <div id="sa-results-area"></div>
+    </div>
   </div>
 </div>
 
@@ -3773,6 +3801,892 @@
       _closeMsgCompose();
     });
   }
+  // ── Settlement Analyzer ──
+  const SA_PREFIX = 'sa_';
+  const SA_DEFAULT_OPERATOR_MAP = {
+    20550:'hapigou',20549:'DFGROUPS',20547:'TRG001',20541:'Winboxwlt',20540:'Bitsler',20539:'ExoLabs',20538:'unicasino00',20537:'AluminisSL',20531:'INSERTGAMESL',20528:'100panalo',20529:'S5Game',20526:'QueenNinja',20525:'BCGameth',20523:'Filbet',20521:'GlobalTech',20515:'QuantumPlay',20516:'HighendKO',20511:'998v2',20502:'TopOne',20504:'NextralSL',20500:'Aone33my',20498:'BGJWLT',20497:'AIXSWL',20496:'BGJSL',20494:'OXPLAY',20493:'Betkuku',20492:'Liboasia',20491:'IBIresell',20490:'MClubCredit',20488:'ZenithEU',20485:'KZsports',20482:'88Wager',20481:'INFVN8',20478:'V9Betsb',20477:'RICHAPI',20475:'LogicX1',20474:'APBsolution',20473:'Neftsoft',20471:'AMBsuperSL',20470:'FUNGOIT',20469:'GAMTING',20468:'IDNUPPRO',20464:'Deejay',20459:'GROUPIG',20457:'UFAGOAT',20455:'GplayGUFAPlus',20448:'MPOAIXTW',20445:'Nexiux',20444:'WGS1688',20437:'Casinoplus',20428:'BITWIN',20427:'TitanHubWLT',20426:'Aluminis',20423:'GA8888',20417:'GrandEUR',20416:'SuperswanZT3',20415:'Lazer7',20413:'BETEAST',20412:'Ambnsb',20407:'TitanHubSL',20408:'HappyAce',20405:'Speedix',20402:'BCGAME',20410:'GMAGTOP',20400:'Totocloud',20393:'COPSports',20382:'Royalplay',20376:'GP416IB88',20369:'Honorlink',20372:'VedaGaming',20362:'2UPiogroup',20361:'Dragonfly',20360:'SUPBIT',20355:'SuperswanZT2',20346:'RubyGame',20344:'HT88tech',20343:'SharpSports',20342:'LiveSports',20341:'YuanSports',20340:'IGGroupSL',20339:'IGGroupWLT',20337:'gwtech',20323:'StarbetWlt',20321:'caerus88',20319:'ezbet1',20316:'SuperSwanZF1',20394:'LOTO188betSL',20313:'Superswansl',20311:'Expimz',20300:'SplusSL',20299:'SplusWLT',20298:'AMBFeed',20293:'EZbetV2',20290:'DGnine',20287:'XIMAX2',20285:'MSports',20273:'BT1wallet',20272:'BT1seamless',20268:'SEAGwlt',20266:'GBETsportsl',20265:'7Lucky',20262:'w88seamless',20256:'DCsunrise',20254:'LUCASPORTS',20253:'NYSPORTS',25009:'Wcbgcsl',20244:'Wcpop1sl',20243:'Wcctpsl',20242:'Wcctpwlt',20241:'Wcpop1wlt',20219:'KzingSW',20217:'Dawoobet',25000:'BW88SL',20208:'RaiseTechSL',20200:'SLTest',20198:'EZbetSports',20195:'WDBwlt',20191:'UGSportSL',20189:'NJCGROUPSL',20188:'BetEnjoy (Winka)',20182:'GSCFTW',20177:'RTNJCWLT',20171:'RTSeinLuckyCoLtd',20166:'RTnova88',20144:'XTadmin',20142:'368Cash',20130:'LDSports',20129:'AISports',20123:'WDBBSPORT',20121:'BTTB2B',20101:'Theonebet',20091:'TechPlay',20087:'M88bsports',20082:'Superswanwlt',20078:'Fun88Sandbox',20075:'X2DYNAMIC',20070:'FB88Bet',20063:'ManbetX',20059:'Kzing88',20058:'AEWL88',20056:'Big88com',20029:'24TechSLM',20027:'777WLT',20024:'GPlayG',20022:'EMCBet',20020:'Aplus777',322:'SgameTV',321:'BtiAsiaWlt',315:'RaiseTechWLT',285:'JBOSPORTS',266:'TCGaming',228:'24Tech',219:'Five88',213:'Fun88asia',188:'10BetKRSM',141:'BTT',65:'W88SL'
+  };
+
+  let _saAnalysisType = 'resettlement';
+  let _saResettlementReason = '';
+  let _saCancellationReason = '';
+  let _saUserName = localStorage.getItem(SA_PREFIX+'userName') || '';
+  let _saJsonData = '';
+  let _saResults = null;
+  let _saError = '';
+  let _saCopyStatus = '';
+  let _saLoading = false;
+  let _saPerEventReasons = {};
+  let _saShowPerEventReasons = false;
+  let _saShowReasonPanel = false;
+  let _saShowHistoryPanel = false;
+  let _saShowReasonManager = false;
+  let _saManagingReasonType = 'resettlement';
+  let _saQueryHistory = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'queryHistory') || '[]'); } catch(e) { return []; } })();
+  let _saCustomResettlementReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customResettlementReasons') || '{}'); } catch(e) { return {}; } })();
+  let _saCustomCancellationReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customCancellationReasons') || '{}'); } catch(e) { return {}; } })();
+  let _saOperatorMap = { ...SA_DEFAULT_OPERATOR_MAP };
+  let _saNewReason = { english: '', chinese: '', korean: '' };
+  let _saEditingReason = null;
+  let _saDeleteConfirmKey = null;
+
+  const SA_DEFAULT_RESETTLEMENT_REASONS = {
+    '': { english: 'Will provide after confirming', chinese: '确认后提供', korean: '확인 후 제공하겠습니다' },
+    '_custom_fill': { english: '', chinese: '', korean: '' },
+    'feed_provider': { english: 'Wrong info from feed', chinese: '供应商赛果有误', korean: '공급업체 경기 결과 오류' },
+    'system_error': { english: 'System error', chinese: '系统错误', korean: '시스템 오류' },
+    'official_score': { english: 'Official score changed', chinese: '官方赛果更新', korean: '공식 경기 결과 변경됨' },
+    'under_investigation': { english: 'Under investigation', chinese: '调查中', korean: '조사 중' },
+  };
+  const SA_DEFAULT_CANCELLATION_REASONS = {
+    '': { english: 'Will provide after confirming', chinese: '确认后提供', korean: '확인 후 제공하겠습니다' },
+    '_custom_fill': { english: '', chinese: '', korean: '' },
+    'player_retired': { english: 'Player retired', chinese: '选手退赛', korean: '기권' },
+    'postponed': { english: 'Postponed', chinese: '延期', korean: '연기' },
+    'not_played': { english: 'Not played', chinese: '赛事未进行', korean: '경기 미실시' },
+    'walkover': { english: 'Walkover', chinese: '不战而胜', korean: '부전승' },
+  };
+
+  function _saGetResettlementReasons() { return { ...SA_DEFAULT_RESETTLEMENT_REASONS, ..._saCustomResettlementReasons }; }
+  function _saGetCancellationReasons() { return { ...SA_DEFAULT_CANCELLATION_REASONS, ..._saCustomCancellationReasons }; }
+  function _saCurrentReasonOptions() { return _saAnalysisType === 'resettlement' ? _saGetResettlementReasons() : _saGetCancellationReasons(); }
+  function _saCurrentReason() { return _saAnalysisType === 'resettlement' ? _saResettlementReason : _saCancellationReason; }
+  function _saSetCurrentReason(v) { if (_saAnalysisType === 'resettlement') _saResettlementReason = v; else _saCancellationReason = v; }
+
+  function _saParseXML(str) {
+    return new DOMParser().parseFromString(str, 'text/xml');
+  }
+
+  function _saGetPurchaseId(record) {
+    if (!record.queryparams) return '';
+    try {
+      const p = JSON.parse(record.queryparams);
+      return p.purchase_id || '';
+    } catch(e) {
+      try { return new URLSearchParams(record.queryparams).get('purchase_id') || ''; } catch(e2) { return ''; }
+    }
+  }
+
+  const SA_STATUS_TRANSLATIONS = {
+    chinese: { Won:'赢', Lost:'输', Canceled:'取消', 'Half Won':'半赢', 'Half Lost':'半输', Opened:'未结算', Draw:'平局', Declined:'拒绝', Cashout:'提前结算' },
+    korean:  { Won:'승리', Lost:'패', Canceled:'취소', 'Half Won':'반승', 'Half Lost':'반패', Opened:'진행중 베팅', Draw:'무승부', Declined:'거부됨', Cashout:'캐시아웃' }
+  };
+
+  function _saTranslateStatus(status, lang) {
+    if (lang === 'english') return status;
+    return SA_STATUS_TRANSLATIONS[lang]?.[status] || status;
+  }
+
+  function _saTranslateHistory(hist, lang) {
+    return hist.map(s => _saTranslateStatus(s, lang)).join(' → ');
+  }
+
+  function _saFormatDateTime(dt) {
+    if (!dt || dt === 'N/A') return 'N/A';
+    try {
+      let s = String(dt);
+      if (!s.includes('Z') && !s.includes('+') && !/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-\d{2}/.test(s)) s += 'Z';
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return 'N/A';
+      const pad = n => String(n).padStart(2,'0');
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} (UTC+0)`;
+    } catch(e) { return 'N/A'; }
+  }
+
+  function _saAnalyzeResettlements(data) {
+    const lineTracking = new Map(), betStatusTracking = new Map(), betNumberOfLines = new Map();
+    const records = data.filter(r => r.operationType === 'credit_customer' || r.operationType === 'debit_customer')
+                        .sort((a,b) => new Date(a.creationdate) - new Date(b.creationdate));
+
+    records.forEach(record => {
+      if (!record.reqparams) return;
+      try {
+        const xml = _saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Purchase')].forEach(p => {
+          const n = parseInt(p.getAttribute('NumberOfLines')||'0');
+          if (n > 0) [...p.getElementsByTagName('Selection')].forEach(s =>
+            [...s.getElementsByTagName('Change')].forEach(c => {
+              const b = c.getElementsByTagName('Bet')[0];
+              if (b) { const bid = b.getAttribute('ID'); if (bid&&bid!=='0') betNumberOfLines.set(bid, Math.max(betNumberOfLines.get(bid)||0, n)); }
+            }));
+        });
+        [...xml.getElementsByTagName('Selection')].forEach(sel =>
+          [...sel.getElementsByTagName('Change')].forEach(chg => {
+            const b = chg.getElementsByTagName('Bet')[0];
+            if (!b) return;
+            const bid = b.getAttribute('ID'), status = b.getAttribute('NewStatus'), dateUTC = chg.getAttribute('DateUTC');
+            if (bid&&bid!=='0'&&status&&dateUTC) {
+              if (!betStatusTracking.has(bid)) betStatusTracking.set(bid,[]);
+              betStatusTracking.get(bid).push({ status, dateUTC });
+            }
+          }));
+      } catch(e) {}
+    });
+
+    records.forEach(record => {
+      if (!record.reqparams) return;
+      try {
+        const xml = _saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Selection')].forEach(sel => {
+          const lineId = sel.getAttribute('LineID'), eventName = sel.getAttribute('EventName');
+          if (!lineId||!eventName) return;
+          const purchaseEl = sel.parentNode?.parentNode;
+          const purchaseId = purchaseEl?.getAttribute('PurchaseID') || _saGetPurchaseId(record);
+          [...sel.getElementsByTagName('Change')].forEach(chg => {
+            const oldStatus = chg.getAttribute('OldStatus'), newStatus = chg.getAttribute('NewStatus'), dateUTC = chg.getAttribute('DateUTC');
+            const b = chg.getElementsByTagName('Bet')[0];
+            const betId = b ? b.getAttribute('ID') : '';
+            if (!lineTracking.has(lineId)) lineTracking.set(lineId, {
+              eventName, branchName: sel.getAttribute('BranchName')||'', leagueName: sel.getAttribute('LeagueName')||'',
+              eventTypeName: sel.getAttribute('EventTypeName')||'', siteId: record.siteid, statusHistory: [],
+              betId: betId&&betId!=='0'?betId:'', purchaseId
+            });
+            const t = lineTracking.get(lineId);
+            t.statusHistory.push({ oldStatus, newStatus, dateUTC });
+            if (betId&&betId!=='0'&&!t.betId) t.betId = betId;
+            if (purchaseId&&!t.purchaseId) t.purchaseId = purchaseId;
+          });
+        });
+      } catch(e) {}
+    });
+
+    const betEventCount = new Map();
+    lineTracking.forEach(t => { if (t.betId) betEventCount.set(t.betId,(betEventCount.get(t.betId)||0)+1); });
+
+    const result = [];
+    lineTracking.forEach((t) => {
+      if (t.statusHistory.length > 1) {
+        t.statusHistory.sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+        const statuses = t.statusHistory.map(h=>h.newStatus);
+        if ([...new Set(statuses)].length > 1) {
+          let finalBetStatus = 'N/A';
+          if (t.betId && betStatusTracking.has(t.betId)) {
+            const bs = betStatusTracking.get(t.betId).sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+            if (bs.length) finalBetStatus = bs[bs.length-1].status;
+          }
+          result.push({
+            betId: t.betId||'N/A', purchaseId: t.purchaseId||'',
+            eventName: t.eventName, sport: t.branchName, league: t.leagueName, market: t.eventTypeName,
+            siteId: t.siteId, statusHistory: statuses, betStatus: finalBetStatus,
+            firstSettlementTime: t.statusHistory[0].dateUTC,
+            lastUpdateTime: t.statusHistory[t.statusHistory.length-1].dateUTC,
+            totalEventsInBet: t.betId ? Math.max(betEventCount.get(t.betId)||1, betNumberOfLines.get(t.betId)||1) : 1
+          });
+        }
+      }
+    });
+    return result;
+  }
+
+  function _saAnalyzeCancellations(data) {
+    const lineTracking = new Map(), betStatusTracking = new Map(), betNumberOfLines = new Map();
+    const records = data.filter(r => r.operationType === 'credit_customer' || r.operationType === 'debit_customer')
+                        .sort((a,b)=>new Date(a.creationdate)-new Date(b.creationdate));
+
+    records.forEach(record => {
+      if (!record.reqparams) return;
+      try {
+        const xml = _saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Purchase')].forEach(p => {
+          const n = parseInt(p.getAttribute('NumberOfLines')||'0');
+          if (n>0) [...p.getElementsByTagName('Selection')].forEach(s=>
+            [...s.getElementsByTagName('Change')].forEach(c=>{
+              const b=c.getElementsByTagName('Bet')[0];
+              if(b){const bid=b.getAttribute('ID');if(bid&&bid!=='0')betNumberOfLines.set(bid,Math.max(betNumberOfLines.get(bid)||0,n));}
+            }));
+        });
+        [...xml.getElementsByTagName('Selection')].forEach(sel=>
+          [...sel.getElementsByTagName('Change')].forEach(chg=>{
+            const b=chg.getElementsByTagName('Bet')[0];
+            if(!b)return;
+            const bid=b.getAttribute('ID'),status=b.getAttribute('NewStatus'),dateUTC=chg.getAttribute('DateUTC');
+            if(bid&&bid!=='0'&&status&&dateUTC){
+              if(!betStatusTracking.has(bid))betStatusTracking.set(bid,[]);
+              betStatusTracking.get(bid).push({status,dateUTC});
+            }
+          }));
+      } catch(e){}
+    });
+
+    records.forEach(record=>{
+      if(!record.reqparams)return;
+      try{
+        const xml=_saParseXML(record.reqparams);
+        [...xml.getElementsByTagName('Selection')].forEach(sel=>{
+          const lineId=sel.getAttribute('LineID'),eventName=sel.getAttribute('EventName');
+          if(!lineId||!eventName)return;
+          const purchaseEl=sel.parentNode?.parentNode;
+          const purchaseId=purchaseEl?.getAttribute('PurchaseID')||_saGetPurchaseId(record);
+          [...sel.getElementsByTagName('Change')].forEach(chg=>{
+            const newStatus=chg.getAttribute('NewStatus'),dateUTC=chg.getAttribute('DateUTC');
+            const b=chg.getElementsByTagName('Bet')[0];
+            const betId=b?b.getAttribute('ID'):'';
+            if(!lineTracking.has(lineId))lineTracking.set(lineId,{
+              eventName,branchName:sel.getAttribute('BranchName')||'',leagueName:sel.getAttribute('LeagueName')||'',
+              eventTypeName:sel.getAttribute('EventTypeName')||'',siteId:record.siteid,statusHistory:[],
+              betId:betId&&betId!=='0'?betId:'',purchaseId
+            });
+            const t=lineTracking.get(lineId);
+            t.statusHistory.push({newStatus,dateUTC});
+            if(betId&&betId!=='0'&&!t.betId)t.betId=betId;
+            if(purchaseId&&!t.purchaseId)t.purchaseId=purchaseId;
+          });
+        });
+      }catch(e){}
+    });
+
+    const betEventCount=new Map();
+    lineTracking.forEach(t=>{if(t.betId)betEventCount.set(t.betId,(betEventCount.get(t.betId)||0)+1);});
+
+    const result=[];
+    lineTracking.forEach(t=>{
+      if(t.statusHistory.length>0){
+        t.statusHistory.sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+        const last=t.statusHistory[t.statusHistory.length-1];
+        if(last.newStatus==='Canceled'){
+          let finalBetStatus='N/A';
+          if(t.betId&&betStatusTracking.has(t.betId)){
+            const bs=betStatusTracking.get(t.betId).sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+            if(bs.length)finalBetStatus=bs[bs.length-1].status;
+          }
+          result.push({
+            betId:t.betId||'N/A',purchaseId:t.purchaseId||'',
+            eventName:t.eventName,sport:t.branchName,league:t.leagueName,market:t.eventTypeName,
+            siteId:t.siteId,eventStatus:'Canceled',betStatus:finalBetStatus,
+            updateTime:last.dateUTC,
+            totalEventsInBet:t.betId?Math.max(betEventCount.get(t.betId)||1,betNumberOfLines.get(t.betId)||1):1
+          });
+        }
+      }
+    });
+    return result;
+  }
+
+  function _saGenerateResettlementReports(data, customReasons) {
+    const reasonOpts = _saGetResettlementReasons();
+    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    if (!data.length) return { english:'No resettlement records.', chinese:'无重新结算记录。', korean:'무 재정산 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
+
+    const isMulti = data.some(d=>d.totalEventsInBet>1);
+    const enSubj = isMulti ? (data.length>1?'The selections have':'The selection has') : 'The bet has';
+    const cnSubj = isMulti?'线注':'注单', krSubj = isMulti?'라인':'베팅';
+
+    let en=`Thank you for waiting. ${enSubj} been resettled but BO needs 5-10 mins to be updated. Please check again then. Thank you.${nameSuffix}\n\n`;
+    let cn=`${cnSubj}已重新结算，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。${nameSuffix}\n\n`;
+    let kr=`기다려 주셔서 감사합니다. ${krSubj}이 재정산되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.${nameSuffix}\n\n`;
+    let enEO='',cnEO='',krEO='';
+
+    data.forEach((item,i)=>{
+      const rk = customReasons&&customReasons[i]!==undefined ? customReasons[i] : _saResettlementReason;
+      const rt = reasonOpts[rk] || reasonOpts[''];
+      const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
+      const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Resettlement History: ${_saTranslateHistory(item.statusHistory,'english')}\nBet Status: ${item.betStatus}\nFirst Settlement Time: ${_saFormatDateTime(item.firstSettlementTime)}\nLast Update Time: ${_saFormatDateTime(item.lastUpdateTime)}\nReason for Resettlement: ${rt.english}`;
+      const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事重新结算历史：${_saTranslateHistory(item.statusHistory,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n第一次结算时间：${_saFormatDateTime(item.firstSettlementTime)}\n最后更新时间：${_saFormatDateTime(item.lastUpdateTime)}\n重新结算原因：${rt.chinese}`;
+      const krB=`베팅 번호: ${item.betId}\n${kf}: ${item.eventName}\n경기 재정산 내역: ${_saTranslateHistory(item.statusHistory,'korean')}\n베팅 상태: ${_saTranslateStatus(item.betStatus,'korean')}\n첫 번째 정산 시간: ${_saFormatDateTime(item.firstSettlementTime)}\n마지막 업데이트 시간: ${_saFormatDateTime(item.lastUpdateTime)}\n재정산 사유: ${rt.korean}`;
+      en+=enB; cn+=cnB; kr+=krB; enEO+=enB; cnEO+=cnB; krEO+=krB;
+      if(i<data.length-1){en+='\n\n';cn+='\n\n';kr+='\n\n';enEO+='\n\n';cnEO+='\n\n';krEO+='\n\n';}
+    });
+    return {english:en,chinese:cn,korean:kr,englishEventOnly:enEO,chineseEventOnly:cnEO,koreanEventOnly:krEO};
+  }
+
+  function _saGenerateCancellationReports(data, customReasons) {
+    const reasonOpts = _saGetCancellationReasons();
+    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    if (!data.length) return { english:'No cancellation records.', chinese:'无取消记录。', korean:'무 취소 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
+
+    const isMulti = data.some(d=>d.totalEventsInBet>1);
+    const enSubj = isMulti?(data.length>1?'The selections have':'The selection has'):'The bet has';
+    const cnSubj=isMulti?'线注':'注单', krSubj=isMulti?'라인':'베팅';
+
+    let en=`Thank you for waiting. ${enSubj} been canceled but BO needs 5-10 mins to be updated. Please check again then. Thank you.${nameSuffix}\n\n`;
+    let cn=`${cnSubj}已取消，后台更新需要5-10分钟，烦请贵司稍等刷新查看，谢谢。${nameSuffix}\n\n`;
+    let kr=`기다려 주셔서 감사합니다. ${krSubj}이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.${nameSuffix}\n\n`;
+    let enEO='',cnEO='',krEO='';
+
+    data.forEach((item,i)=>{
+      const rk=customReasons&&customReasons[i]!==undefined?customReasons[i]:_saCancellationReason;
+      const rt=reasonOpts[rk]||reasonOpts[''];
+      const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
+      const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Status: ${item.eventStatus}\nBet Status: ${item.betStatus}\nUpdate Time: ${_saFormatDateTime(item.updateTime)}\nReason of Cancelation: ${rt.english}`;
+      const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事状态：${_saTranslateStatus(item.eventStatus,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n更新时间：${_saFormatDateTime(item.updateTime)}\n取消原因：${rt.chinese}`;
+      const krB=`베팅 ID: ${item.betId}\n${kf}: ${item.eventName}\n이벤트 상태: ${_saTranslateStatus(item.eventStatus,'korean')}\n베팅 상태: ${_saTranslateStatus(item.betStatus,'korean')}\n업데이트 시간: ${_saFormatDateTime(item.updateTime)}\n취소 사유: ${rt.korean}`;
+      en+=enB; cn+=cnB; kr+=krB; enEO+=enB; cnEO+=cnB; krEO+=krB;
+      if(i<data.length-1){en+='\n\n';cn+='\n\n';kr+='\n\n';enEO+='\n\n';cnEO+='\n\n';krEO+='\n\n';}
+    });
+    return {english:en,chinese:cn,korean:kr,englishEventOnly:enEO,chineseEventOnly:cnEO,koreanEventOnly:krEO};
+  }
+
+  function _saEsc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function _saCopyText(text, btn) {
+    navigator.clipboard.writeText(text).catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    });
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '✓ 已複製';
+      btn.style.opacity = '0.7';
+      setTimeout(()=>{ btn.textContent=orig; btn.style.opacity=''; }, 1200);
+    }
+  }
+
+  function _saShowStatus(msg, isError) {
+    _saError = isError ? msg : '';
+    _saCopyStatus = isError ? '' : msg;
+    _saRenderStatus();
+  }
+
+  function _saRenderStatus() {
+    const el = document.getElementById('sa-status');
+    if (!el) return;
+    if (_saError) {
+      el.innerHTML = `<div style="background:var(--red-bg);border:1px solid rgba(220,38,38,0.3);color:var(--red);padding:8px 12px;border-radius:6px;font-size:12px">⚠ ${_saEsc(_saError)}</div>`;
+    } else if (_saCopyStatus) {
+      el.innerHTML = `<div style="background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);padding:8px 12px;border-radius:6px;font-size:12px">✓ ${_saEsc(_saCopyStatus)}</div>`;
+      setTimeout(()=>{ _saCopyStatus=''; _saRenderStatus(); }, 2000);
+    } else {
+      el.innerHTML = '';
+    }
+  }
+
+  function _saHandleAnalyze() {
+    const ta = document.getElementById('sa-json-input');
+    if (!ta) return;
+    _saJsonData = ta.value;
+    if (!_saJsonData.trim()) { _saShowStatus('请输入数据', true); return; }
+    _saLoading = true;
+    _saError = '';
+    _saPerEventReasons = {};
+    _saShowPerEventReasons = false;
+    _saRenderLeft();
+
+    try {
+      let safeJson = _saJsonData.trim();
+      let prev;
+      do { prev=safeJson; safeJson=safeJson.replace(/([\[,:\s])(\d{16,})([\],\s}])/g,'$1"$2"$3'); } while(safeJson!==prev);
+      const parsed = JSON.parse(safeJson);
+      const data = Array.isArray(parsed) ? parsed : (parsed.apiRequests ? parsed.apiRequests : null);
+      if (!data) throw new Error('请输入JSON数组格式的Seamless tool数据 (apiRequests)');
+
+      let analyzedData, reports;
+      if (_saAnalysisType === 'resettlement') {
+        analyzedData = _saAnalyzeResettlements(data);
+        reports = _saGenerateResettlementReports(analyzedData, null);
+      } else {
+        analyzedData = _saAnalyzeCancellations(data);
+        reports = _saGenerateCancellationReports(analyzedData, null);
+      }
+      reports.analyzedData = analyzedData;
+      reports.eventCount = analyzedData.length;
+      if (analyzedData.length > 0 && analyzedData[0].siteId) {
+        reports.operator = _saOperatorMap[analyzedData[0].siteId] || '';
+      }
+      _saResults = reports;
+
+      if (analyzedData.length > 0) {
+        const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: reports };
+        _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
+        localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
+      }
+      _saShowStatus('', false);
+    } catch(e) {
+      _saShowStatus('解析错误: ' + e.message, true);
+      _saResults = null;
+    }
+    _saLoading = false;
+    _saRenderLeft();
+    _saRenderResults();
+  }
+
+  function _saPasteAndUpdate() {
+    if (_saResults && _saResults.analyzedData && _saResults.analyzedData.length > 0) {
+      const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: _saResults };
+      _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
+      localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
+    }
+    _saResults = null; _saError = ''; _saCopyStatus = '';
+    _saPerEventReasons = {}; _saShowPerEventReasons = false;
+    _saResettlementReason = ''; _saCancellationReason = '';
+    const ta = document.getElementById('sa-json-input');
+    if (ta) ta.value = '';
+
+    navigator.clipboard.readText().then(text => {
+      if (ta) { ta.value = text; _saJsonData = text; }
+      _saHandleAnalyze();
+    }).catch(()=>{ _saShowStatus('无法读取剪贴板，请确认已授予权限', true); _saRenderStatus(); });
+  }
+
+  function _saHandleClear() {
+    _saResults = null; _saError = ''; _saCopyStatus = '';
+    _saJsonData = ''; _saPerEventReasons = {}; _saShowPerEventReasons = false;
+    const ta = document.getElementById('sa-json-input');
+    if (ta) ta.value = '';
+    _saRenderLeft(); _saRenderResults(); _saRenderStatus();
+  }
+
+  function _saRegenerateWithCustomReasons() {
+    if (!_saResults || !_saResults.analyzedData) return;
+    let reports;
+    if (_saAnalysisType === 'resettlement') {
+      reports = _saGenerateResettlementReports(_saResults.analyzedData, _saPerEventReasons);
+    } else {
+      reports = _saGenerateCancellationReports(_saResults.analyzedData, _saPerEventReasons);
+    }
+    reports.analyzedData = _saResults.analyzedData;
+    reports.eventCount = _saResults.eventCount;
+    reports.operator = _saResults.operator;
+    _saResults = reports;
+    _saRenderResults();
+    _saShowStatus('报告已重新生成', false);
+  }
+
+  function _saCopyResult(lang, btn) {
+    if (!_saResults || !_saResults[lang]) return;
+    _saCopyText(_saResults[lang].replace(/[\r\n]+$/, ''), btn);
+  }
+
+  function _saCopyEventOnly(lang, btn) {
+    const key = lang + 'EventOnly';
+    if (!_saResults || !_saResults[key]) return;
+    _saCopyText(_saResults[key].replace(/[\r\n]+$/, ''), btn);
+  }
+
+  function _saCopyTableData(btn) {
+    if (!_saResults || !_saResults.analyzedData) return;
+    const rows = _saResults.analyzedData.map((item, i) => {
+      const operator = _saResults.operator || (_saOperatorMap[item.siteId] || '');
+      return [operator, item.purchaseId || item.betId || '', '', item.sport||'', item.league||'', item.eventName||'', item.market||'', _saUserName].join('\t');
+    });
+    _saCopyText(rows.join('\n'), btn);
+  }
+
+  function _saToggleType() {
+    _saAnalysisType = _saAnalysisType === 'resettlement' ? 'cancellation' : 'resettlement';
+    if (_saResults && _saResults.analyzedData) {
+      const ta = document.getElementById('sa-json-input');
+      if (ta && ta.value.trim()) _saHandleAnalyze();
+    }
+    _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
+  }
+
+  function _saSelectReason(key) {
+    _saSetCurrentReason(key);
+    _saShowReasonPanel = false;
+    if (_saResults && _saResults.analyzedData && _saResults.analyzedData.length > 0) {
+      _saPerEventReasons = {};
+      _saRegenerateWithCustomReasons();
+    }
+    _saRenderLeft(); _saRenderActionBtns();
+  }
+
+  function _saRestoreHistory(rec) {
+    _saAnalysisType = rec.analysisType;
+    _saResults = rec.results;
+    _saShowHistoryPanel = false;
+    _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
+  }
+
+  function _saDeleteHistory(id) {
+    _saQueryHistory = _saQueryHistory.filter(r => r.id !== id);
+    localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
+    _saRenderActionBtns();
+  }
+
+  function _saReasonOptionsHtml(currentVal, forType) {
+    const opts = forType === 'resettlement' ? _saGetResettlementReasons() : _saGetCancellationReasons();
+    const defaults = forType === 'resettlement' ? SA_DEFAULT_RESETTLEMENT_REASONS : SA_DEFAULT_CANCELLATION_REASONS;
+    return Object.keys(opts).map(k => {
+      const r = opts[k];
+      const isCustom = k !== '' && k !== '_custom_fill' && !defaults[k];
+      let label;
+      if (k === '') label = '确认后提供 (预设)';
+      else if (k === '_custom_fill') label = '✏️ 自行填写 (留空)';
+      else label = (isCustom ? '⭐ ' : '') + (r.english || k);
+      return `<option value="${_saEsc(k)}" ${currentVal===k?'selected':''}>${_saEsc(label)}</option>`;
+    }).join('');
+  }
+
+  function _saRenderLeft() {
+    const el = document.getElementById('sa-left-panel');
+    if (!el) return;
+
+    const curReason = _saCurrentReason();
+
+    el.innerHTML = `
+      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:14px">📄 分析設置</div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">分析類型</label>
+        <select onchange="_saAnalysisType=this.value;_saRenderLeft();_saRenderResults();_saRenderActionBtns()"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+          <option value="resettlement" ${_saAnalysisType==='resettlement'?'selected':''}>重新結算記錄</option>
+          <option value="cancellation" ${_saAnalysisType==='cancellation'?'selected':''}>取消記錄</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">${_saAnalysisType==='resettlement'?'重新结算原因':'取消原因'}</label>
+        <select onchange="_saSetCurrentReason(this.value);if(_saResults&&_saResults.analyzedData){_saPerEventReasons={};_saRegenerateWithCustomReasons();}_saRenderLeft();_saRenderActionBtns()"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+          ${_saReasonOptionsHtml(curReason, _saAnalysisType)}
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">👤 绑定名字</label>
+        <input type="text" value="${_saEsc(_saUserName)}" placeholder="例如: Sunny"
+          oninput="_saUserName=this.value;localStorage.setItem('${SA_PREFIX}userName',this.value)"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+        ${_saUserName ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">示例: Thank you for waiting... - <b>${_saEsc(_saUserName)}</b></div>` : ''}
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px;color:var(--text-sec);font-weight:600">數據輸入 <span style="font-weight:400;color:var(--text-muted)">(Seamless Tool apiRequests JSON)</span></label>
+        <textarea id="sa-json-input" placeholder="請貼上 Seamless Tool JSON 數據..." rows="10"
+          style="font-family:monospace;font-size:11px;resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-pri);outline:none;line-height:1.5"
+          >${_saEsc(_saJsonData)}</textarea>
+      </div>
+      <div id="sa-status"></div>
+      <div style="display:flex;gap:8px;margin-top:2px">
+        <button onclick="_saHandleAnalyze()" ${_saLoading?'disabled':''} class="btn-copy-reply" style="flex:1;margin:0;font-size:13px">
+          ${_saLoading?'分析中...':'開始分析'}
+        </button>
+        <button onclick="_saPasteAndUpdate()" class="btn-import-json" style="flex:1;font-size:13px;padding:8px 10px;background:var(--orange-bg);border-color:rgba(196,149,106,0.4);color:var(--orange)">
+          📋 貼上並更新
+        </button>
+        <button onclick="_saHandleClear()" class="btn-popup-sec" style="flex:1;font-size:13px;padding:8px 10px">
+          🗑 清空
+        </button>
+      </div>`;
+
+    _saRenderStatus();
+  }
+
+  function _saRenderResults() {
+    const el = document.getElementById('sa-results-area');
+    if (!el) return;
+
+    if (!_saResults) {
+      el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:24px 0;text-align:center">請輸入數據並點擊「開始分析」</div>`;
+      return;
+    }
+
+    let perEventHtml = '';
+    if (_saResults.eventCount > 1) {
+      if (!_saShowPerEventReasons) {
+        perEventHtml = `<div style="background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--blue)">📝 ${_saResults.eventCount} 場賽事</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">目前所有賽事使用相同原因</div>
+          </div>
+          <button onclick="_saShowPerEventReasons=true;const init={};for(let i=0;i<_saResults.eventCount;i++)init[i]=_saCurrentReason();_saPerEventReasons=init;_saRenderResults()"
+            class="btn-popup-sec" style="font-size:11px;padding:5px 10px;white-space:nowrap">🔧 個別設定</button>
+        </div>`;
+      } else {
+        const items = _saResults.analyzedData.map((item,i) => {
+          const curKey = _saPerEventReasons[i] !== undefined ? _saPerEventReasons[i] : _saCurrentReason();
+          return `<div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:8px 10px">
+            <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:5px">Event ${i+1}: ${_saEsc(item.eventName)}</div>
+            <select onchange="_saPerEventReasons[${i}]=this.value"
+              style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+              ${_saReasonOptionsHtml(curKey, _saAnalysisType)}
+            </select>
+          </div>`;
+        }).join('');
+        perEventHtml = `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-sec)">為每場賽事設定原因</div>
+            <button onclick="_saShowPerEventReasons=false;_saRenderResults()" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer">收起 ▲</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">${items}</div>
+          <button onclick="_saRegenerateWithCustomReasons()" class="btn-copy-reply" style="width:100%;margin:8px 0 0;font-size:12px">🔄 重新生成報告</button>
+        </div>`;
+      }
+    }
+
+    const copyBtns = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+      <button onclick="_saCopyResult('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 英文</button>
+      <button onclick="_saCopyEventOnly('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:var(--blue);border:1px solid var(--blue-light);border-radius:6px;cursor:pointer">📄 賽事 EN</button>
+      <button onclick="_saCopyResult('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#16a34a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 中文</button>
+      <button onclick="_saCopyEventOnly('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#16a34a;border:1px solid rgba(22,163,74,0.3);border-radius:6px;cursor:pointer">📄 賽事 中</button>
+      <button onclick="_saCopyResult('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#7c3aed;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 韓文</button>
+      <button onclick="_saCopyEventOnly('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#7c3aed;border:1px solid rgba(124,58,237,0.3);border-radius:6px;cursor:pointer">📄 賽事 한</button>
+      <button onclick="_saCopyTableData(this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#d97706;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 表格數據</button>
+    </div>`;
+
+    const resultBlock = (lang, label) => `<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
+      <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;max-height:130px;overflow-y:auto">
+        <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[lang]||'')}</pre>
+      </div>
+    </div>`;
+
+    el.innerHTML = perEventHtml + copyBtns + resultBlock('english','English') + resultBlock('chinese','中文') + resultBlock('korean','한국어');
+  }
+
+  function _saRenderActionBtns() {
+    const el = document.getElementById('sa-action-btns');
+    if (!el) return;
+
+    const typeColor = _saAnalysisType === 'resettlement' ? '#d97706' : '#dc2626';
+    const typeLabel = _saAnalysisType === 'resettlement' ? '重' : '取';
+    const typeTitle = _saAnalysisType === 'resettlement' ? '重新結算（點擊切換為取消）' : '取消（點擊切換為重新結算）';
+    const curReason = _saCurrentReason();
+    const reasonOpts = _saCurrentReasonOptions();
+
+    const rPanelHtml = _saShowReasonPanel ? `
+      <div style="position:absolute;top:calc(100% + 6px);right:0;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:12px;z-index:100">
+        <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">⚡ 快速選擇原因</div>
+        ${Object.keys(reasonOpts).map(k=>{
+          const r=reasonOpts[k];
+          const isActive=curReason===k;
+          const defaults=_saAnalysisType==='resettlement'?SA_DEFAULT_RESETTLEMENT_REASONS:SA_DEFAULT_CANCELLATION_REASONS;
+          const isCustom=k!==''&&k!=='_custom_fill'&&!defaults[k];
+          let label;
+          if(k==='')label='确认后提供 (预设)';
+          else if(k==='_custom_fill')label='✏️ 自行填写';
+          else label=(isCustom?'⭐ ':'')+r.english;
+          return `<button onclick="_saSelectReason('${k.replace(/'/g,"\\'")}')"
+            style="width:100%;text-align:left;padding:6px 8px;font-size:11px;border-radius:6px;border:${isActive?'2px solid var(--blue)':'1px solid var(--border-light)'};background:${isActive?'var(--blue-bg)':'var(--surface2)'};color:var(--text-pri);cursor:pointer;margin-bottom:3px;font-weight:${isActive?700:400}">
+            ${isActive?'✓ ':''}${_saEsc(label)}
+          </button>`;
+        }).join('')}
+      </div>` : '';
+
+    const hPanelHtml = _saShowHistoryPanel ? `
+      <div style="position:absolute;top:calc(100% + 6px);right:0;width:260px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:12px;z-index:100">
+        <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">🕐 最近查詢（最多5筆）</div>
+        ${_saQueryHistory.length===0?'<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px 0">尚無記錄</div>':
+          (_saQueryHistory.length>0?`<button onclick="_saQueryHistory=[];localStorage.setItem('${SA_PREFIX}queryHistory','[]');_saRenderActionBtns()"
+            style="width:100%;margin-bottom:8px;padding:5px;font-size:11px;border-radius:5px;border:1px solid rgba(220,38,38,0.3);background:var(--red-bg);color:var(--red);cursor:pointer;font-weight:600">🗑 清除全部</button>`:'')
+          +_saQueryHistory.map(rec=>{
+            const d=new Date(rec.timestamp);
+            const timeStr=`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            const typeTag=rec.analysisType==='resettlement'?'重新結算':'取消';
+            const cnt=rec.results?.eventCount||0;
+            return `<div style="border:1px solid var(--border-light);border-radius:6px;padding:8px;background:var(--surface2);margin-bottom:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="display:flex;gap:4px;align-items:center">
+                  <span style="font-size:10px;color:var(--text-muted)">${timeStr}</span>
+                  <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:${rec.analysisType==='resettlement'?'var(--orange-bg)':'var(--red-bg)'};color:${rec.analysisType==='resettlement'?'var(--orange)':'var(--red)'};font-weight:600">${typeTag}</span>
+                  <span style="font-size:10px;color:var(--text-muted)">${cnt}筆</span>
+                </div>
+                <button onclick="_saDeleteHistory(${rec.id})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:0;line-height:1">✕</button>
+              </div>
+              <button onclick="_saRestoreHistory(${JSON.stringify(rec).replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
+                style="width:100%;padding:4px;font-size:11px;border-radius:5px;border:1px solid var(--blue-light);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-weight:600">↩ 還原</button>
+            </div>`;
+          }).join('')
+        }
+      </div>` : '';
+
+    el.innerHTML = `
+      <div style="position:relative">
+        ${rPanelHtml}
+        <button onclick="_saShowReasonPanel=!_saShowReasonPanel;_saShowHistoryPanel=false;_saRenderActionBtns()"
+          title="快速選擇原因"
+          style="width:34px;height:34px;border-radius:50%;background:${_saShowReasonPanel?'var(--blue)':'#6366f1'};color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">R</button>
+      </div>
+      <div style="position:relative">
+        ${hPanelHtml}
+        <button onclick="_saShowHistoryPanel=!_saShowHistoryPanel;_saShowReasonPanel=false;_saRenderActionBtns()"
+          title="查詢歷史"
+          style="width:34px;height:34px;border-radius:50%;background:${_saShowHistoryPanel?'#0d9488':'#14b8a6'};color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;position:relative">
+          H
+          ${_saQueryHistory.length>0?`<span style="position:absolute;top:-3px;right:-3px;background:#ef4444;color:white;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">${_saQueryHistory.length}</span>`:''}
+        </button>
+      </div>
+      <button onclick="_saToggleType()" title="${_saEsc(typeTitle)}"
+        style="width:34px;height:34px;border-radius:50%;background:${typeColor};color:white;border:none;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">${_saEsc(typeLabel)}</button>
+      <button onclick="_saShowReasonManager=true;_saRenderReasonManager()" title="管理自訂原因"
+        style="width:34px;height:34px;border-radius:50%;background:var(--surface2);color:var(--text-sec);border:1px solid var(--border);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚙️</button>`;
+  }
+
+  function _saRenderReasonManager() {
+    let existing = document.getElementById('sa-reason-manager-overlay');
+    if (!_saShowReasonManager) { if (existing) existing.remove(); return; }
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.id = 'sa-reason-manager-overlay';
+      existing.className = 'popup-overlay';
+      document.body.appendChild(existing);
+      existing.addEventListener('click', e => { if (e.target === existing) { _saShowReasonManager=false; _saRenderReasonManager(); } });
+    }
+
+    const type = _saManagingReasonType;
+    const customReasons = type === 'resettlement' ? _saCustomResettlementReasons : _saCustomCancellationReasons;
+    const defaults = type === 'resettlement' ? SA_DEFAULT_RESETTLEMENT_REASONS : SA_DEFAULT_CANCELLATION_REASONS;
+
+    const reasonItems = Object.keys(customReasons).map(k => {
+      const r = customReasons[k];
+      const isEditing = _saEditingReason && _saEditingReason.key === k;
+      if (isEditing) {
+        return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--surface)">
+          <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:8px">編輯原因</div>
+          <input type="text" value="${_saEsc(_saEditingReason.english)}" placeholder="英文" oninput="_saEditingReason.english=this.value"
+            style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface2);color:var(--text-pri);outline:none;box-sizing:border-box">
+          <input type="text" value="${_saEsc(_saEditingReason.chinese)}" placeholder="中文" oninput="_saEditingReason.chinese=this.value"
+            style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface2);color:var(--text-pri);outline:none;box-sizing:border-box">
+          <input type="text" value="${_saEsc(_saEditingReason.korean)}" placeholder="韓文" oninput="_saEditingReason.korean=this.value"
+            style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:8px;background:var(--surface2);color:var(--text-pri);outline:none;box-sizing:border-box">
+          <div style="display:flex;gap:6px">
+            <button onclick="_saSaveEditReason()" class="btn-copy-reply" style="flex:1;margin:0;font-size:12px;padding:6px">保存</button>
+            <button onclick="_saEditingReason=null;_saRenderReasonManager()" class="btn-popup-sec" style="flex:1;font-size:12px;padding:6px">取消</button>
+          </div>
+        </div>`;
+      }
+      if (_saDeleteConfirmKey === k) {
+        return `<div style="border:1px solid rgba(220,38,38,0.3);border-radius:8px;padding:12px;background:var(--red-bg)">
+          <div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:8px">確定要刪除嗎？</div>
+          <div style="font-size:11px;color:var(--text-sec);margin-bottom:8px">EN: ${_saEsc(r.english)}</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="_saDeleteReason('${_saEsc(k)}')" style="flex:1;padding:6px;font-size:12px;border-radius:6px;border:none;background:var(--red);color:white;cursor:pointer;font-weight:600">確認刪除</button>
+            <button onclick="_saDeleteConfirmKey=null;_saRenderReasonManager()" class="btn-popup-sec" style="flex:1;font-size:12px;padding:6px">取消</button>
+          </div>
+        </div>`;
+      }
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--surface)">
+        <div style="font-size:11px;margin-bottom:6px"><span style="font-weight:600">EN:</span> ${_saEsc(r.english)}</div>
+        <div style="font-size:11px;margin-bottom:6px"><span style="font-weight:600">中:</span> ${_saEsc(r.chinese)}</div>
+        <div style="font-size:11px;margin-bottom:8px"><span style="font-weight:600">KR:</span> ${_saEsc(r.korean)}</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="_saEditingReason={key:'${_saEsc(k)}',english:'${_saEsc(r.english)}',chinese:'${_saEsc(r.chinese)}',korean:'${_saEsc(r.korean)}'};_saRenderReasonManager()"
+            style="flex:1;padding:5px;font-size:11px;border-radius:5px;border:none;background:var(--blue);color:white;cursor:pointer">✏️ 編輯</button>
+          <button onclick="_saDeleteConfirmKey='${_saEsc(k)}';_saRenderReasonManager()"
+            style="flex:1;padding:5px;font-size:11px;border-radius:5px;border:none;background:var(--red);color:white;cursor:pointer">✕ 刪除</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    existing.innerHTML = `
+      <div class="popup-card msg-popup" style="max-width:460px;width:92%;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border-light);flex-shrink:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text-pri)">⚙️ 管理自訂原因</div>
+          <button onclick="_saShowReasonManager=false;_saRenderReasonManager()" style="background:none;border:none;font-size:18px;color:var(--text-muted);cursor:pointer;line-height:1">×</button>
+        </div>
+        <div style="padding:14px 16px;overflow-y:auto;flex:1">
+          <div class="form-group" style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--text-sec);font-weight:600">原因類型</label>
+            <select onchange="_saManagingReasonType=this.value;_saEditingReason=null;_saDeleteConfirmKey=null;_saRenderReasonManager()"
+              style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+              <option value="resettlement" ${type==='resettlement'?'selected':''}>重新結算原因</option>
+              <option value="cancellation" ${type==='cancellation'?'selected':''}>取消原因</option>
+            </select>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:8px;padding:12px;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">➕ 新增原因</div>
+            <input id="sa-new-en" type="text" placeholder="英文" value="${_saEsc(_saNewReason.english)}" oninput="_saNewReason.english=this.value"
+              style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface);color:var(--text-pri);outline:none;box-sizing:border-box">
+            <input id="sa-new-cn" type="text" placeholder="中文" value="${_saEsc(_saNewReason.chinese)}" oninput="_saNewReason.chinese=this.value"
+              style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:5px;background:var(--surface);color:var(--text-pri);outline:none;box-sizing:border-box">
+            <input id="sa-new-kr" type="text" placeholder="韓文" value="${_saEsc(_saNewReason.korean)}" oninput="_saNewReason.korean=this.value"
+              style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:8px;background:var(--surface);color:var(--text-pri);outline:none;box-sizing:border-box">
+            <button onclick="_saAddReason()" class="btn-copy-reply" style="width:100%;margin:0;font-size:12px">➕ 新增並保存</button>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-sec);margin-bottom:8px">📋 自訂原因列表</div>
+          ${Object.keys(customReasons).length===0
+            ? '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:16px 0;background:var(--surface2);border-radius:6px">尚無自訂原因</div>'
+            : `<div style="display:flex;flex-direction:column;gap:8px">${reasonItems}</div>`}
+        </div>
+      </div>`;
+  }
+
+  function _saAddReason() {
+    if (!_saNewReason.english || !_saNewReason.chinese || !_saNewReason.korean) { alert('請填寫完整的原因資訊'); return; }
+    const key = 'custom_' + Date.now();
+    const entry = { english: _saNewReason.english.charAt(0).toUpperCase() + _saNewReason.english.slice(1), chinese: _saNewReason.chinese, korean: _saNewReason.korean };
+    if (_saManagingReasonType === 'resettlement') {
+      _saCustomResettlementReasons = { ..._saCustomResettlementReasons, [key]: entry };
+      localStorage.setItem(SA_PREFIX+'customResettlementReasons', JSON.stringify(_saCustomResettlementReasons));
+    } else {
+      _saCustomCancellationReasons = { ..._saCustomCancellationReasons, [key]: entry };
+      localStorage.setItem(SA_PREFIX+'customCancellationReasons', JSON.stringify(_saCustomCancellationReasons));
+    }
+    _saNewReason = { english:'', chinese:'', korean:'' };
+    _saRenderReasonManager();
+  }
+
+  function _saSaveEditReason() {
+    if (!_saEditingReason || !_saEditingReason.english || !_saEditingReason.chinese || !_saEditingReason.korean) { alert('請填寫完整'); return; }
+    const entry = { english: _saEditingReason.english.charAt(0).toUpperCase()+_saEditingReason.english.slice(1), chinese: _saEditingReason.chinese, korean: _saEditingReason.korean };
+    if (_saManagingReasonType === 'resettlement') {
+      _saCustomResettlementReasons = { ..._saCustomResettlementReasons, [_saEditingReason.key]: entry };
+      localStorage.setItem(SA_PREFIX+'customResettlementReasons', JSON.stringify(_saCustomResettlementReasons));
+    } else {
+      _saCustomCancellationReasons = { ..._saCustomCancellationReasons, [_saEditingReason.key]: entry };
+      localStorage.setItem(SA_PREFIX+'customCancellationReasons', JSON.stringify(_saCustomCancellationReasons));
+    }
+    _saEditingReason = null;
+    _saRenderReasonManager();
+  }
+
+  function _saDeleteReason(key) {
+    if (_saManagingReasonType === 'resettlement') {
+      const u = { ..._saCustomResettlementReasons }; delete u[key]; _saCustomResettlementReasons = u;
+      localStorage.setItem(SA_PREFIX+'customResettlementReasons', JSON.stringify(u));
+    } else {
+      const u = { ..._saCustomCancellationReasons }; delete u[key]; _saCustomCancellationReasons = u;
+      localStorage.setItem(SA_PREFIX+'customCancellationReasons', JSON.stringify(u));
+    }
+    _saDeleteConfirmKey = null;
+    _saRenderReasonManager();
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('tabbtn-' + tab).classList.add('active');
+    if (tab === 'analyzer') {
+      _saRenderLeft();
+      _saRenderResults();
+      _saRenderActionBtns();
+      document.addEventListener('click', _saHandleOutsideClick, { once: false });
+    } else {
+      document.removeEventListener('click', _saHandleOutsideClick);
+    }
+  }
+
+  function _saHandleOutsideClick(e) {
+    const actionBtns = document.getElementById('sa-action-btns');
+    if (actionBtns && !actionBtns.contains(e.target)) {
+      if (_saShowReasonPanel || _saShowHistoryPanel) {
+        _saShowReasonPanel = false; _saShowHistoryPanel = false;
+        _saRenderActionBtns();
+      }
+    }
+  }
+
+  function _saFetchOperatorMap() {
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/15DINgZQ54kGwWjmGfk7BW5xu26XIZnuMvHTdw6IQObk/export?format=csv';
+    fetch(SHEET_URL)
+      .then(r => r.ok ? r.text() : Promise.reject('fetch failed'))
+      .then(csv => {
+        const map = {};
+        csv.split(/\r?\n/).forEach(line => {
+          if (!line.trim()) return;
+          const parts = line.split(',');
+          const name = (parts[0]||'').trim().replace(/^"|"$/g,'');
+          const id = parseInt((parts[1]||'').trim().replace(/^"|"$/g,''));
+          if (name && !isNaN(id) && id > 0) map[id] = name;
+        });
+        if (Object.keys(map).length > 10) {
+          _saOperatorMap = map;
+          localStorage.setItem(SA_PREFIX+'operatorMapCache', JSON.stringify({ data: map, ts: Date.now() }));
+        }
+      }).catch(()=>{});
+  }
+
+  // Load cached operator map
+  (function() {
+    try {
+      const cache = localStorage.getItem(SA_PREFIX+'operatorMapCache');
+      if (cache) {
+        const { data, ts } = JSON.parse(cache);
+        if (Date.now() - ts < 86400000) { _saOperatorMap = data; return; }
+      }
+    } catch(e) {}
+    _saFetchOperatorMap();
+  })();
+
 </script>
 </body>
 </html>
