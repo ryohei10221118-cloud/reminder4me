@@ -4317,21 +4317,6 @@
     el.innerHTML = `
       <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:14px">📄 分析設置</div>
       <div class="form-group">
-        <label style="font-size:12px;color:var(--text-sec);font-weight:600">分析類型</label>
-        <select onchange="_saAnalysisType=this.value;_saRenderLeft();_saRenderResults();_saRenderActionBtns()"
-          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
-          <option value="resettlement" ${_saAnalysisType==='resettlement'?'selected':''}>重新結算記錄</option>
-          <option value="cancellation" ${_saAnalysisType==='cancellation'?'selected':''}>取消記錄</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label style="font-size:12px;color:var(--text-sec);font-weight:600">${_saAnalysisType==='resettlement'?'重新结算原因':'取消原因'}</label>
-        <select onchange="_saSetCurrentReason(this.value);if(_saResults&&_saResults.analyzedData){_saPerEventReasons={};_saRegenerateWithCustomReasons();}_saRenderLeft();_saRenderActionBtns()"
-          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
-          ${_saReasonOptionsHtml(curReason, _saAnalysisType)}
-        </select>
-      </div>
-      <div class="form-group">
         <label style="font-size:12px;color:var(--text-sec);font-weight:600">👤 绑定名字</label>
         <input type="text" value="${_saEsc(_saUserName)}" placeholder="例如: Sunny"
           oninput="_saUserName=this.value;localStorage.setItem('${SA_PREFIX}userName',this.value)"
@@ -4405,11 +4390,11 @@
     const copyBtns = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
       <button onclick="_saCopyResult('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 英文</button>
       <button onclick="_saCopyEventOnly('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:var(--blue);border:1px solid var(--blue-light);border-radius:6px;cursor:pointer">📄 賽事 EN</button>
-      <button onclick="_saCopyResult('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#16a34a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 中文</button>
-      <button onclick="_saCopyEventOnly('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#16a34a;border:1px solid rgba(22,163,74,0.3);border-radius:6px;cursor:pointer">📄 賽事 中</button>
-      <button onclick="_saCopyResult('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#7c3aed;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 韓文</button>
-      <button onclick="_saCopyEventOnly('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#7c3aed;border:1px solid rgba(124,58,237,0.3);border-radius:6px;cursor:pointer">📄 賽事 한</button>
-      <button onclick="_saCopyTableData(this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#d97706;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 表格數據</button>
+      <button onclick="_saCopyResult('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 中文</button>
+      <button onclick="_saCopyEventOnly('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:var(--green);border:1px solid var(--green-border);border-radius:6px;cursor:pointer">📄 賽事 中</button>
+      <button onclick="_saCopyResult('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#9b8ab5;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 韓文</button>
+      <button onclick="_saCopyEventOnly('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#9b8ab5;border:1px solid rgba(155,138,181,0.4);border-radius:6px;cursor:pointer">📄 賽事 한</button>
+      <button onclick="_saCopyTableData(this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--orange);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 表格數據</button>
     </div>`;
 
     const resultBlock = (lang, label) => `<div style="margin-bottom:10px">
