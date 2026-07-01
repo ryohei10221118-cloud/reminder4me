@@ -4281,7 +4281,9 @@
     _saRenderLeft(); _saRenderActionBtns();
   }
 
-  function _saRestoreHistory(rec) {
+  function _saRestoreHistory(id) {
+    const rec = _saQueryHistory.find(r => r.id === id);
+    if (!rec) return;
     _saAnalysisType = rec.analysisType;
     _saResults = rec.results;
     _saShowHistoryPanel = false;
@@ -4343,6 +4345,10 @@
       </div>`;
 
     _saRenderStatus();
+    const ta = document.getElementById('sa-json-input');
+    if (ta) {
+      ta.addEventListener('paste', () => { setTimeout(_saHandleAnalyze, 50); });
+    }
   }
 
   function _saRenderResults() {
@@ -4461,7 +4467,7 @@
                 <button onclick="_saDeleteHistory(${rec.id})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:0;line-height:1">✕</button>
               </div>
               ${pidDisplay?`<div style="font-size:10px;color:var(--text-sec);margin-bottom:4px;word-break:break-all">🎫 ${_saEsc(pidDisplay)}</div>`:''}
-              <button onclick="_saRestoreHistory(${JSON.stringify(rec).replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
+              <button onclick="_saRestoreHistory(${rec.id})"
                 style="width:100%;padding:4px;font-size:11px;border-radius:5px;border:1px solid var(--blue-light);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-weight:600">↩ 還原</button>
             </div>`;
           }).join('')
