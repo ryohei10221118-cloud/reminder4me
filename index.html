@@ -934,7 +934,7 @@
     .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
     .tab-btn:hover:not(.active) { color: var(--text-sec); }
     .tab-content { display: none; }
-    .tab-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+    .tab-content.active { display: block; }
     @media (max-width: 700px) { #sa-grid { grid-template-columns: 1fr !important; } }
   </style>
 </head>
@@ -957,6 +957,7 @@
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('reminder')" id="tabbtn-reminder">📋 提醒工具</button>
   <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
+  <span id="sa-idle-indicator" style="display:none;font-size:11px;color:var(--text-muted);align-self:center;padding-left:6px"></span>
 </div>
 <div id="tab-reminder" class="tab-content active">
 <div class="container">
@@ -3829,6 +3830,10 @@
   var _saNewReason = { english: '', chinese: '', korean: '' };
   var _saEditingReason = null;
   var _saDeleteConfirmKey = null;
+  var _saPreviewLang = 'english';
+  var _saIdleTimer = null;
+  var _saIdleSecs = 0;
+  var SA_IDLE_SECS = 90;
 
   const SA_DEFAULT_RESETTLEMENT_REASONS = {
     '': { english: 'Will provide after confirming', chinese: '确认后提供', korean: '확인 후 제공하겠습니다' },
@@ -4396,14 +4401,19 @@
       <button onclick="_saCopyTableData(this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--orange);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 表格數據</button>
     </div>`;
 
-    const resultBlock = (lang, label) => `<div style="margin-bottom:10px">
-      <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
-      <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;max-height:130px;overflow-y:auto">
-        <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[lang]||'')}</pre>
-      </div>
-    </div>`;
+    const langTabs = [['english','English'],['chinese','中文'],['korean','한국어']].map(([lang,lbl])=>`
+      <button onclick="event.stopPropagation();_saPreviewLang='${lang}';_saRenderResults()"
+        style="padding:3px 10px;font-size:11px;border-radius:5px;border:1px solid ${_saPreviewLang===lang?'var(--blue)':'var(--border-light)'};background:${_saPreviewLang===lang?'var(--blue-bg)':'var(--surface2)'};color:${_saPreviewLang===lang?'var(--blue)':'var(--text-sec)'};cursor:pointer;font-weight:${_saPreviewLang===lang?700:400}">
+        ${lbl}
+      </button>`).join('');
 
-    el.innerHTML = perEventHtml + copyBtns + resultBlock('english','English') + resultBlock('chinese','中文') + resultBlock('korean','한국어');
+    const previewHtml = `
+      <div style="display:flex;gap:4px;margin-bottom:6px">${langTabs}</div>
+      <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;max-height:180px;overflow-y:auto">
+        <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[_saPreviewLang]||'')}</pre>
+      </div>`;
+
+    el.innerHTML = perEventHtml + copyBtns + previewHtml;
   }
 
   function _saRenderActionBtns() {
@@ -4619,6 +4629,30 @@
     _saRenderReasonManager();
   }
 
+  function _saStartIdleTimer() {
+    clearInterval(_saIdleTimer);
+    _saIdleSecs = SA_IDLE_SECS;
+    _saUpdateIdleIndicator();
+    _saIdleTimer = setInterval(() => {
+      _saIdleSecs--;
+      _saUpdateIdleIndicator();
+      if (_saIdleSecs <= 0) { clearInterval(_saIdleTimer); _saIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _saClearIdleTimer() {
+    clearInterval(_saIdleTimer); _saIdleTimer = null; _saIdleSecs = 0; _saUpdateIdleIndicator();
+  }
+
+  function _saUpdateIdleIndicator() {
+    const el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_saIdleSecs > 0) { el.textContent = `↩ ${_saIdleSecs}s`; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _saOnAnalyzerActivity() { _saStartIdleTimer(); }
+
   function switchTab(tab) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -4629,8 +4663,18 @@
       _saRenderResults();
       _saRenderActionBtns();
       document.addEventListener('click', _saHandleOutsideClick, { once: false });
+      const tabEl = document.getElementById('tab-analyzer');
+      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
+      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
+      tabEl.addEventListener('click', _saOnAnalyzerActivity);
+      tabEl.addEventListener('keydown', _saOnAnalyzerActivity);
+      _saStartIdleTimer();
     } else {
       document.removeEventListener('click', _saHandleOutsideClick);
+      _saClearIdleTimer();
+      const tabEl = document.getElementById('tab-analyzer');
+      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
+      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
     }
   }
 
