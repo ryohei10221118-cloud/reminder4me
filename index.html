@@ -4191,7 +4191,7 @@
       _saResults = reports;
 
       if (!skipHistory && analyzedData.length > 0) {
-        const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: reports };
+        const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: reports, rawJson: _saJsonData };
         _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
         localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
       }
@@ -4207,7 +4207,7 @@
 
   function _saPasteAndUpdate() {
     if (_saResults && _saResults.analyzedData && _saResults.analyzedData.length > 0) {
-      const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: _saResults };
+      const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: _saResults, rawJson: _saJsonData };
       _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
       localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
     }
@@ -4291,8 +4291,12 @@
     if (!rec) return;
     _saAnalysisType = rec.analysisType;
     _saResults = rec.results;
+    _saJsonData = rec.rawJson || '';
     _saShowHistoryPanel = false;
-    _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
+    _saRenderLeft();
+    const ta = document.getElementById('sa-json-input');
+    if (ta && _saJsonData) ta.value = _saJsonData;
+    _saRenderResults(); _saRenderActionBtns();
   }
 
   function _saDeleteHistory(id) {
