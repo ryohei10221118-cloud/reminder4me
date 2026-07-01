@@ -4464,8 +4464,10 @@
             const timeStr=`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
             const typeTag=rec.analysisType==='resettlement'?'重新結算':'取消';
             const cnt=rec.results?.eventCount||0;
+            const pids=(rec.results?.analyzedData||[]).map(e=>e.purchaseId).filter(Boolean);
+            const pidDisplay=pids.length===0?'':(pids.slice(0,3).join(', ')+(pids.length>3?` …等${pids.length}筆`:''));
             return `<div style="border:1px solid var(--border-light);border-radius:6px;padding:8px;background:var(--surface2);margin-bottom:6px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${pidDisplay?'3px':'4px'}">
                 <div style="display:flex;gap:4px;align-items:center">
                   <span style="font-size:10px;color:var(--text-muted)">${timeStr}</span>
                   <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:${rec.analysisType==='resettlement'?'var(--orange-bg)':'var(--red-bg)'};color:${rec.analysisType==='resettlement'?'var(--orange)':'var(--red)'};font-weight:600">${typeTag}</span>
@@ -4473,6 +4475,7 @@
                 </div>
                 <button onclick="_saDeleteHistory(${rec.id})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:0;line-height:1">✕</button>
               </div>
+              ${pidDisplay?`<div style="font-size:10px;color:var(--text-sec);margin-bottom:4px;word-break:break-all">🎫 ${_saEsc(pidDisplay)}</div>`:''}
               <button onclick="_saRestoreHistory(${JSON.stringify(rec).replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
                 style="width:100%;padding:4px;font-size:11px;border-radius:5px;border:1px solid var(--blue-light);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-weight:600">↩ 還原</button>
             </div>`;
