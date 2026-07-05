@@ -4799,7 +4799,9 @@
   var _ctBrand = '';
 
   function _ctToUTC8(dateStr) {
-    var d = new Date(dateStr);
+    if (!dateStr) return null;
+    var s = String(dateStr);
+    var d = s.endsWith('Z') ? new Date(s) : new Date(s + 'Z');
     if (isNaN(d.getTime())) return null;
     return new Date(d.getTime() + 8 * 3600000);
   }
@@ -4831,22 +4833,17 @@
     return map[s] !== undefined ? map[s] : 'Unknown';
   }
 
-  function _ctExtractDoneTime(data, raw) {
+  function _ctExtractDoneTime(data) {
     if (data.SettlementHistory && Array.isArray(data.SettlementHistory) && data.SettlementHistory.length > 0) {
       var last = data.SettlementHistory[data.SettlementHistory.length - 1];
-      var d = last.DateUpdated || last.UpdateDate || last.Date;
-      if (d) {
-        var utc8 = _ctToUTC8(d);
+      if (last.DateUpdated) {
+        var utc8 = _ctToUTC8(last.DateUpdated);
         if (utc8) return ('0'+utc8.getUTCHours()).slice(-2) + ':' + ('0'+utc8.getUTCMinutes()).slice(-2);
       }
     }
-    var matches = (raw || '').match(/"UpdateDate"\s*:\s*"([^"]+)"/g);
-    if (matches && matches.length > 0) {
-      var lastMatch = matches[matches.length - 1].match(/"UpdateDate"\s*:\s*"([^"]+)"/);
-      if (lastMatch) {
-        var utc8b = _ctToUTC8(lastMatch[1]);
-        if (utc8b) return ('0'+utc8b.getUTCHours()).slice(-2) + ':' + ('0'+utc8b.getUTCMinutes()).slice(-2);
-      }
+    if (data.UpdateDate) {
+      var utc8b = _ctToUTC8(data.UpdateDate);
+      if (utc8b) return ('0'+utc8b.getUTCHours()).slice(-2) + ':' + ('0'+utc8b.getUTCMinutes()).slice(-2);
     }
     return '';
   }
@@ -4873,20 +4870,27 @@
       return;
     }
 
-    // Extract ticket date (UTC+8)
-    var rawDate = data.CreatedDate || data.BetDate || data.Date || data.CreatedAt || '';
-    if (rawDate) {
-      var dd = _ctToUTC8(rawDate);
-      _ctDate = dd ? dd.getUTCFullYear() + '-' + ('0'+(dd.getUTCMonth()+1)).slice(-2) + '-' + ('0'+dd.getUTCDate()).slice(-2) : String(rawDate).slice(0,10);
-    } else { _ctDate = ''; }
+    var selections = data.Selections || [];
 
-    // Extract brand/operator
-    _ctBrand = data.OperatorName || data.BrandName || data.ClientName || data.SiteName || data.Operator || data.AgentName || '';
+    // Find SelectionIndex values merged into 0VS combined selections (skip those individual legs)
+    var mergedIndices = {};
+    selections.forEach(function(sel) {
+      var selId = sel.SelectionId || '';
+      if (selId.indexOf('0VS') === 0) {
+        selId.substring(3).split('|').forEach(function(p) {
+          var n = parseInt(p); if (!isNaN(n)) mergedIndices[n] = true;
+        });
+      }
+    });
 
-    var selections = data.Selections || (data.data && data.data.Selections) || [];
-    _ctRows = selections.map(function(sel, i) {
-      // Event date → format as "YYYY-MM-DD HH:MM:SS"
-      var rawEd = sel.EventDate || sel.StartDate || sel.EventStartTime || sel.MatchDate || sel.StartTime || '';
+    _ctRows = [];
+    var _ctRowIdx = 0;
+    selections.forEach(function(sel) {
+      var selId = sel.SelectionId || '';
+      if (Object.keys(mergedIndices).length > 0 && selId.indexOf('0VS') !== 0 && mergedIndices[sel.SelectionIndex]) return;
+
+      // StartEventDate → UTC+8 "YYYY-MM-DD HH:MM:SS"
+      var rawEd = sel.StartEventDate || '';
       var edStr = '';
       if (rawEd) {
         var edUtc8 = _ctToUTC8(rawEd);
@@ -4899,24 +4903,25 @@
                   ('0'+edUtc8.getUTCSeconds()).slice(-2);
         } else { edStr = String(rawEd); }
       }
-      return {
-        idx: i,
-        selectionId: sel.SelectionId || '',
-        sport: sel.SportName || sel.Sport || sel.CategoryName || sel.Category || '',
-        league: sel.TournamentName || sel.LeagueName || sel.CompetitionName || sel.League || sel.Tournament || '',
+
+      _ctRows.push({
+        idx: _ctRowIdx++,
+        selectionId: selId,
+        sport: sel.SportName || '',
+        league: sel.LeagueName || '',
         eventDate: edStr,
-        event: sel.EventName || sel.MatchName || sel.Name || '',
-        market: sel.MarketName || sel.MarketType || sel.BetType || '',
-        selection: sel.SelectionName || sel.OutcomeName || sel.Selection || '',
+        event: sel.EventName || '',
+        market: sel.MarketTypeName || '',
+        selection: sel.SelectionName || sel.OutcomeName || '',
         odds: sel.Price !== undefined ? sel.Price : (sel.Odds !== undefined ? sel.Odds : ''),
         status: sel.SelectionStatus !== undefined ? sel.SelectionStatus : -1,
         isLive: sel.IsLive === true,
-        combined: (sel.SelectionId || '').indexOf('0VS') === 0,
+        combined: selId.indexOf('0VS') === 0,
         checked: true
-      };
+      });
     });
 
-    _ctDoneTime = _ctExtractDoneTime(data, raw);
+    _ctDoneTime = _ctExtractDoneTime(data);
 
     var reqEl = document.getElementById('ct-req-time');
     if (reqEl && !reqEl.value) {
@@ -5009,36 +5014,40 @@
 
   function _ctBuildExcel() {
     var checked = _ctGetChecked();
+    if (checked.length === 0) return '(No selections checked)';
+
     var reason = _ctGetReason('en');
-    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '';
-    var doneTime = _ctDoneTime || '';
-    var tid = _ctTicketId || '';
+    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '__:__';
+    var doneTime = _ctDoneTime || '__:__';
+    var tid = _ctTicketId || '________';
+    var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim() || '________';
 
-    // One line per selection: Sport    League    Prematch/Live    EventDate    EventName    Market
-    var selLines = checked.map(function(r) {
-      var type = r.isLive ? 'Live' : 'Prematch';
-      var parts = [r.sport, r.league, type, r.eventDate, r.event, r.market].filter(Boolean);
-      return parts.join('    ');
-    }).join('\n');
+    // Today's date in UTC+8 (same as original tool)
+    var utc8now = new Date(new Date().getTime() + 8 * 3600000);
+    var todayDate = utc8now.getUTCFullYear() + '-' +
+                    ('0'+(utc8now.getUTCMonth()+1)).slice(-2) + '-' +
+                    ('0'+utc8now.getUTCDate()).slice(-2);
 
-    // Event info block (goes into one spreadsheet cell)
-    var eventInfo = selLines;
-    if (reqTime) eventInfo += '\n' + reqTime + ' pls cancel (' + reason + ')';
-    if (doneTime) eventInfo += '\n' + doneTime + ' Done as requested';
+    // Each selection: tab-separated fields on its own line (matches original)
+    var dataLines = checked.map(function(r) {
+      return r.sport + '\t' + r.league + '\t' + (r.isLive ? 'Live' : 'Prematch') + '\t' + r.eventDate + '\t' + r.event + '\t' + r.market;
+    });
 
-    // Tab-separated: Date | Brand | TicketId | cancel please | EventInfoBlock | CS name
-    // → columns B C D E F G of tracking sheet (A=row#, H=Type filled manually)
-    var csName = getAgentName();
-    return (_ctDate || '') + '\t' + (_ctBrand || '') + '\t' + tid + '\tcancel please\t' + eventInfo + '\t' + csName;
+    var note = reqTime + ' pls cancel (' + reason + ')\n' + doneTime + ' Done as requested';
+    var cellContent = dataLines.join('\n') + '\n\n' + note;
+    // CSV-quote the cell content (escape any " inside)
+    var escaped = cellContent.replace(/"/g, '""');
+
+    // B=Date  C=GroupName  D=TicketId  E=(empty, cancel please dropdown)  F=quoted event block
+    return todayDate + '\t' + groupName + '\t' + tid + '\t\t"' + escaped + '"';
   }
 
   function _ctBuildFirstReply() {
     var checked = _ctGetChecked();
     var tid = _ctTicketId || '';
-    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
-    var target = isPartial ? 'line' : 'bet';
+    var isFullCancel = _ctRows.length > 0 && checked.length === _ctRows.length;
+    var cancelPhrase = isFullCancel ? 'pls cancel the bet, op request' : 'pls cancel the selection, op request';
 
-    // Unique event names, one per line
     var seen = {};
     var events = [];
     checked.forEach(function(r) {
@@ -5046,18 +5055,14 @@
     });
 
     var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim();
-    return tid + '\n' +
-           events.join('\n') + '\n' +
-           'pls cancel the ' + target + ', op request\n' +
-           (groupName || _ctBrand || '');
+    return tid + '\n' + events.join('\n') + '\n' + cancelPhrase + '\n' + (groupName || '');
   }
 
   function _ctBuildFinalReply() {
     var checked = _ctGetChecked();
     var tid = _ctTicketId || '';
-    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
+    var isFullCancel = _ctRows.length > 0 && checked.length === _ctRows.length;
 
-    // Unique event names, one per line
     var seen = {};
     var events = [];
     checked.forEach(function(r) {
@@ -5065,10 +5070,9 @@
     });
 
     var agentName = getAgentName();
-    // Partial: line cancelled + bet settled; Full: bet cancelled
-    var krMsg = isPartial
-      ? '기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '')
-      : '기다려 주셔서 감사합니다. 베팅이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '');
+    var krMsg = isFullCancel
+      ? '기다려 주셔서 감사합니다. 베팅이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '')
+      : '기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '');
 
     return tid + '\n' + events.join('\n') + '\n\n' + krMsg;
   }
