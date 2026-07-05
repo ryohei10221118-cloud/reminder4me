@@ -5085,7 +5085,7 @@
       });
       var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim();
       if (eventNames.length > 0) {
-        try { addRecord(eventNames, [_ctTicketId], 'set pls', groupName, '', 'kr'); } catch(e) {}
+        try { addRecord(eventNames, [_ctTicketId], 'op cancel request', groupName, '', 'kr'); } catch(e) {}
       }
       var orig = btn.textContent; btn.textContent = '✓ Copied';
       setTimeout(function(){ btn.textContent = orig; }, 1500);
