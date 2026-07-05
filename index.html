@@ -4917,7 +4917,7 @@
         status: sel.SelectionStatus !== undefined ? sel.SelectionStatus : -1,
         isLive: sel.IsLive === true,
         combined: selId.indexOf('0VS') === 0,
-        checked: true
+        checked: sel.SelectionStatus === 0
       });
     });
 
