@@ -2560,7 +2560,7 @@
     );
 
     if (matched.length) {
-      _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses);
+      _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses, betInfos);
       return;
     }
 
@@ -2594,7 +2594,7 @@
       </button>`;
     }).join('');
 
-    _pendingMergeData = { overlay, matched, ticketId, eventNames, eventStatuses };
+    _pendingMergeData = { overlay, matched, ticketId, eventNames, eventStatuses, betInfos };
 
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--border);max-width:480px;width:92%">
@@ -2626,9 +2626,9 @@
   }
   function _doSeparate() {
     if (!_pendingMergeData) return;
-    const { overlay, ticketId, eventNames, eventStatuses } = _pendingMergeData;
+    const { overlay, ticketId, eventNames, eventStatuses, betInfos } = _pendingMergeData;
     _pendingMergeData = null;
-    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses);
+    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses, betInfos);
   }
 
   // ── Record CRUD ──
