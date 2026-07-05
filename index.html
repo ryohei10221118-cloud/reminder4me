@@ -957,6 +957,7 @@
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('reminder')" id="tabbtn-reminder">📋 提醒工具</button>
   <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
+  <button class="tab-btn" onclick="switchTab('cancel')" id="tabbtn-cancel">✂️ 取消請求</button>
   <span id="sa-idle-indicator" style="display:none;font-size:11px;color:var(--text-muted);align-self:center;padding-left:6px"></span>
 </div>
 <div id="tab-reminder" class="tab-content active">
@@ -1053,6 +1054,65 @@
         <div style="display:flex;gap:6px;align-items:center" id="sa-action-btns"></div>
       </div>
       <div id="sa-results-area"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-cancel" class="tab-content">
+  <div style="max-width:1100px;width:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+    <!-- Left: JSON input + selection table -->
+    <div class="card" style="padding:16px;min-width:0">
+      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:12px">✂️ 取消請求 — JSON 輸入</div>
+      <textarea id="ct-json-input" onpaste="setTimeout(_ctExtract,0)" placeholder="貼上 Kraken JSON..." style="width:100%;box-sizing:border-box;height:180px;font-size:11px;font-family:monospace;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px;padding:8px;resize:vertical"></textarea>
+      <!-- Ticket info bar -->
+      <div id="ct-ticket-info" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg-secondary);border-radius:6px;font-size:12px;gap:12px;flex-wrap:wrap;align-items:center">
+        <span>🎫 Ticket: <strong id="ct-ticket-id-display" style="color:var(--text-pri)"></strong></span>
+        <span style="color:var(--text-muted)">完成時間: <strong id="ct-done-time-display" style="color:var(--text-pri)"></strong></span>
+      </div>
+      <!-- Selection table -->
+      <div id="ct-table-area"></div>
+    </div>
+    <!-- Right: Controls + preview -->
+    <div class="card" style="padding:16px;min-width:0">
+      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:12px">⚙️ 取消設定</div>
+      <!-- Group name -->
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Agent Group</div>
+        <input id="ct-group-name" type="text" placeholder="Group name..." oninput="_ctUpdatePreview()" style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+      </div>
+      <!-- Request time -->
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Request Time (HH:MM)</div>
+          <input id="ct-req-time" type="text" placeholder="HH:MM" maxlength="5" oninput="_ctUpdatePreview()" style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+        </div>
+        <button onclick="_ctFillNowTime()" style="padding:6px 12px;font-size:12px;background:var(--bg-secondary);color:var(--text-sec);border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-bottom:0">Now</button>
+      </div>
+      <!-- Cancel reason -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">取消原因</div>
+        <select id="ct-reason" onchange="_ctHandleReasonChange()" style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+          <option value="postponed">postponed match, 24 hours rule</option>
+          <option value="noinfo">no info over 3 hours</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input id="ct-custom-reason" type="text" placeholder="自定義原因..." oninput="_ctUpdatePreview()" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+      </div>
+      <!-- Action buttons -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button onclick="_ctCopyAll(this)" style="padding:6px 12px;font-size:12px;background:var(--orange);color:white;border:none;border-radius:6px;cursor:pointer">📊 Excel</button>
+        <button onclick="_ctCopyFirstReply(this)" style="padding:6px 12px;font-size:12px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer">📋 First Reply</button>
+        <button onclick="_ctCopyFinalReply(this)" style="padding:6px 12px;font-size:12px;background:#9b8ab5;color:white;border:none;border-radius:6px;cursor:pointer">📋 Final Reply</button>
+        <button onclick="_ctClear()" style="padding:6px 10px;font-size:12px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:6px;cursor:pointer" title="清除">🗑</button>
+      </div>
+      <!-- Preview tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:8px">
+        <button id="ct-ptab-excel" onclick="_ctSwitchPreviewTab('excel')" style="padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;background:var(--blue);color:white;border:1px solid var(--blue)">Excel</button>
+        <button id="ct-ptab-first" onclick="_ctSwitchPreviewTab('first')" style="padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-sec);border:1px solid var(--border)">First Reply</button>
+        <button id="ct-ptab-final" onclick="_ctSwitchPreviewTab('final')" style="padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-sec);border:1px solid var(--border)">Final Reply</button>
+      </div>
+      <!-- Preview area -->
+      <div id="ct-preview-area"><pre style="font-size:11px;white-space:pre-wrap;word-break:break-all;background:var(--bg-secondary);border-radius:6px;padding:10px;max-height:300px;overflow-y:auto;margin:0;color:var(--text-muted)">（請先貼入 JSON）</pre></div>
     </div>
   </div>
 </div>
@@ -4723,6 +4783,343 @@
     } catch(e) {}
     _saFetchOperatorMap();
   })();
+
+  // ══════════════════════════════════════════
+  //  ✂️ Cancel Tool (_ct*)
+  // ══════════════════════════════════════════
+
+  var _ctRows = [];
+  var _ctTicketId = '';
+  var _ctDoneTime = '';
+  var _ctRequestTime = '';
+  var _ctReason = 'postponed';
+  var _ctCustomReason = '';
+  var _ctPreviewTab = 'excel';
+
+  function _ctToUTC8(dateStr) {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return new Date(d.getTime() + 8 * 3600000);
+  }
+
+  function _ctTimeUTC8() {
+    var d = _ctToUTC8(new Date().toISOString());
+    if (!d) return '';
+    return ('0'+d.getUTCHours()).slice(-2) + ':' + ('0'+d.getUTCMinutes()).slice(-2);
+  }
+
+  function _ctFillNowTime() {
+    var t = _ctTimeUTC8();
+    var el = document.getElementById('ct-req-time');
+    if (el) { el.value = t; _ctRequestTime = t; }
+    _ctUpdatePreview();
+  }
+
+  function _ctHandleReasonChange() {
+    var sel = document.getElementById('ct-reason');
+    var cust = document.getElementById('ct-custom-reason');
+    if (!sel || !cust) return;
+    _ctReason = sel.value;
+    cust.style.display = _ctReason === 'custom' ? '' : 'none';
+    _ctUpdatePreview();
+  }
+
+  function _ctStatusLabel(s) {
+    var map = {0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled'};
+    return map[s] !== undefined ? map[s] : 'Unknown';
+  }
+
+  function _ctExtractDoneTime(data, raw) {
+    if (data.SettlementHistory && Array.isArray(data.SettlementHistory) && data.SettlementHistory.length > 0) {
+      var last = data.SettlementHistory[data.SettlementHistory.length - 1];
+      var d = last.DateUpdated || last.UpdateDate || last.Date;
+      if (d) {
+        var utc8 = _ctToUTC8(d);
+        if (utc8) return ('0'+utc8.getUTCHours()).slice(-2) + ':' + ('0'+utc8.getUTCMinutes()).slice(-2);
+      }
+    }
+    var matches = (raw || '').match(/"UpdateDate"\s*:\s*"([^"]+)"/g);
+    if (matches && matches.length > 0) {
+      var lastMatch = matches[matches.length - 1].match(/"UpdateDate"\s*:\s*"([^"]+)"/);
+      if (lastMatch) {
+        var utc8b = _ctToUTC8(lastMatch[1]);
+        if (utc8b) return ('0'+utc8b.getUTCHours()).slice(-2) + ':' + ('0'+utc8b.getUTCMinutes()).slice(-2);
+      }
+    }
+    return '';
+  }
+
+  function _ctExtract() {
+    var raw = (document.getElementById('ct-json-input') || {}).value || '';
+    raw = raw.trim();
+    if (!raw) {
+      _ctRows = []; _ctTicketId = ''; _ctDoneTime = '';
+      document.getElementById('ct-ticket-info').style.display = 'none';
+      document.getElementById('ct-table-area').innerHTML = '';
+      _ctUpdatePreview();
+      return;
+    }
+    var tidMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
+    _ctTicketId = tidMatch ? tidMatch[1] : '';
+
+    var data;
+    try { data = JSON.parse(raw); } catch(e) {
+      _ctRows = []; _ctTicketId = ''; _ctDoneTime = '';
+      document.getElementById('ct-ticket-info').style.display = 'none';
+      document.getElementById('ct-table-area').innerHTML = '<div style="color:var(--text-muted);font-size:12px;margin-top:8px">⚠ JSON 解析失敗</div>';
+      _ctUpdatePreview();
+      return;
+    }
+
+    var selections = data.Selections || (data.data && data.data.Selections) || [];
+    _ctRows = selections.map(function(sel, i) {
+      return {
+        idx: i,
+        selectionId: sel.SelectionId || '',
+        sport: sel.SportName || sel.Sport || '',
+        event: sel.EventName || sel.MatchName || sel.Name || '',
+        market: sel.MarketName || sel.MarketType || sel.BetType || '',
+        selection: sel.SelectionName || sel.OutcomeName || sel.Selection || '',
+        odds: sel.Price !== undefined ? sel.Price : (sel.Odds !== undefined ? sel.Odds : ''),
+        status: sel.SelectionStatus !== undefined ? sel.SelectionStatus : -1,
+        isLive: sel.IsLive === true,
+        combined: (sel.SelectionId || '').indexOf('0VS') === 0,
+        checked: true
+      };
+    });
+
+    _ctDoneTime = _ctExtractDoneTime(data, raw);
+
+    var reqEl = document.getElementById('ct-req-time');
+    if (reqEl && !reqEl.value) {
+      var t = _ctTimeUTC8();
+      reqEl.value = t;
+      _ctRequestTime = t;
+    }
+
+    var infoEl = document.getElementById('ct-ticket-info');
+    if (infoEl) {
+      infoEl.style.display = _ctTicketId ? 'flex' : 'none';
+      var tidEl = document.getElementById('ct-ticket-id-display');
+      var dtEl = document.getElementById('ct-done-time-display');
+      if (tidEl) tidEl.textContent = _ctTicketId;
+      if (dtEl) dtEl.textContent = _ctDoneTime || '—';
+    }
+
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
+
+  function _ctRenderTable() {
+    var el = document.getElementById('ct-table-area');
+    if (!el) return;
+    if (_ctRows.length === 0) { el.innerHTML = ''; return; }
+
+    var allChecked = _ctRows.every(function(r){ return r.checked; });
+    var rows = _ctRows.map(function(r, i) {
+      var statusLabel = _ctStatusLabel(r.status);
+      var typeLabel = r.isLive ? '🔴 Live' : 'Pre';
+      var evtShort = (r.event||r.selectionId||'').length > 22 ? (r.event||r.selectionId).slice(0,22)+'…' : (r.event||r.selectionId||'—');
+      var mktShort = (r.market||'').length > 18 ? r.market.slice(0,18)+'…' : (r.market||'—');
+      var selShort = (r.selection||'').length > 16 ? r.selection.slice(0,16)+'…' : (r.selection||'—');
+      return '<tr style="font-size:11px;border-bottom:1px solid var(--border)">' +
+        '<td style="padding:4px 8px"><input type="checkbox"'+(r.checked?' checked':'')+' onchange="_ctToggleRow('+i+')"></td>' +
+        '<td style="padding:3px 6px" title="'+_ctEsc(r.event)+'">'+_ctEsc(evtShort)+'</td>' +
+        '<td style="padding:3px 6px" title="'+_ctEsc(r.market)+'">'+_ctEsc(mktShort)+'</td>' +
+        '<td style="padding:3px 6px" title="'+_ctEsc(r.selection)+'">'+_ctEsc(selShort)+'</td>' +
+        '<td style="padding:3px 6px;text-align:right;white-space:nowrap">'+(r.odds!==''?r.odds:'—')+'</td>' +
+        '<td style="padding:3px 6px;white-space:nowrap">'+statusLabel+'</td>' +
+        '<td style="padding:3px 6px;white-space:nowrap;color:'+(r.isLive?'var(--orange)':'var(--text-muted)')+'">'+typeLabel+'</td>' +
+        '</tr>';
+    }).join('');
+
+    el.innerHTML = '<div style="margin-top:10px;overflow-x:auto">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+      '<thead><tr style="background:var(--bg-secondary);font-size:11px">' +
+      '<th style="padding:4px 8px"><input type="checkbox"'+(allChecked?' checked':'')+' onchange="_ctToggleAll(this.checked)"></th>' +
+      '<th style="padding:4px 6px;text-align:left">賽事</th>' +
+      '<th style="padding:4px 6px;text-align:left">市場</th>' +
+      '<th style="padding:4px 6px;text-align:left">選擇</th>' +
+      '<th style="padding:4px 6px;text-align:right">賠率</th>' +
+      '<th style="padding:4px 6px;text-align:left">狀態</th>' +
+      '<th style="padding:4px 6px;text-align:left">類型</th>' +
+      '</tr></thead>' +
+      '<tbody>'+rows+'</tbody>' +
+      '</table></div>';
+  }
+
+  function _ctEsc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function _ctToggleRow(idx) {
+    if (_ctRows[idx]) { _ctRows[idx].checked = !_ctRows[idx].checked; }
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
+
+  function _ctToggleAll(checked) {
+    _ctRows.forEach(function(r){ r.checked = !!checked; });
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
+
+  function _ctGetChecked() {
+    return _ctRows.filter(function(r){ return r.checked; });
+  }
+
+  function _ctGetReason(lang) {
+    if (_ctReason === 'postponed') {
+      return lang === 'kr' ? '경기 연기, 24시간 규정' : 'postponed match, 24 hours rule';
+    }
+    if (_ctReason === 'noinfo') {
+      return lang === 'kr' ? '3시간 이상 정보 없음' : 'no info over 3 hours';
+    }
+    var c = (document.getElementById('ct-custom-reason') || {}).value || _ctCustomReason || '';
+    return c;
+  }
+
+  function _ctBuildExcel() {
+    var checked = _ctGetChecked();
+    var reason = _ctGetReason('en');
+    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '';
+    var doneTime = _ctDoneTime || '—';
+    var tid = _ctTicketId || '—';
+
+    var header = 'SQLTicketId\tCancel Reason\tRequest Time\tDone Time\n' +
+                 tid + '\t' + reason + '\t' + reqTime + '\t' + doneTime + '\n';
+    var tblHeader = '\n#\tSelection ID\tEvent\tMarket\tSelection\tOdds\tStatus\tType';
+    var tblRows = checked.map(function(r, i) {
+      return '\n' + (i+1) + '\t' + r.selectionId + '\t' + r.event + '\t' + r.market +
+             '\t' + r.selection + '\t' + (r.odds !== '' ? r.odds : '—') +
+             '\t' + _ctStatusLabel(r.status) + '\t' + (r.isLive ? 'Live' : 'Prematch');
+    }).join('');
+
+    return header + tblHeader + tblRows;
+  }
+
+  function _ctBuildFirstReply() {
+    var checked = _ctGetChecked();
+    var reason = _ctGetReason('en');
+    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '';
+    var tid = _ctTicketId || '—';
+    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
+
+    var selLines = checked.map(function(r, i) {
+      var parts = [];
+      if (r.selectionId) parts.push('ID: ' + r.selectionId);
+      if (r.event)       parts.push(r.event);
+      if (r.market)      parts.push(r.market);
+      if (r.selection)   parts.push(r.selection);
+      if (r.odds !== '') parts.push('@ ' + r.odds);
+      parts.push('(' + (r.isLive ? 'Live' : 'Prematch') + ')');
+      return (i+1) + '. ' + parts.join(' | ');
+    }).join('\n');
+
+    return 'Hi Team,\n\nPlease ' + (isPartial ? 'partially ' : '') + 'cancel the following bet.\n\n' +
+           'Ticket ID: ' + tid + '\n' +
+           'Cancel Reason: ' + reason + '\n' +
+           'Request Time: ' + (reqTime || '—') + ' (UTC+8)' +
+           (isPartial ? '\nNote: Partial cancellation — only the selections listed below.' : '') +
+           '\n\nSelections:\n' + (selLines || '(none selected)') +
+           '\n\nThank you.';
+  }
+
+  function _ctBuildFinalReply() {
+    var reason = _ctGetReason('kr');
+    var doneTime = _ctDoneTime || '—';
+    var tid = _ctTicketId || '—';
+
+    return '안녕하세요,\n\n요청하신 베팅 취소가 완료되었습니다.\n\n' +
+           '- 티켓 ID: ' + tid + '\n' +
+           '- 취소 사유: ' + reason + '\n' +
+           '- 완료 시간: ' + doneTime + ' (UTC+8)\n\n' +
+           '감사합니다.';
+  }
+
+  function _ctUpdatePreview() {
+    var el = document.getElementById('ct-preview-area');
+    if (!el) return;
+    var content = '';
+    if (_ctPreviewTab === 'excel') content = _ctBuildExcel();
+    else if (_ctPreviewTab === 'first') content = _ctBuildFirstReply();
+    else content = _ctBuildFinalReply();
+
+    var safeContent = _ctEsc(content);
+    el.innerHTML = '<pre style="font-size:11px;white-space:pre-wrap;word-break:break-all;background:var(--bg-secondary);border-radius:6px;padding:10px;max-height:300px;overflow-y:auto;margin:0">' +
+      (safeContent || '<span style="color:var(--text-muted)">（請先貼入 JSON）</span>') + '</pre>';
+  }
+
+  function _ctSwitchPreviewTab(tab) {
+    _ctPreviewTab = tab;
+    ['excel','first','final'].forEach(function(t) {
+      var btn = document.getElementById('ct-ptab-'+t);
+      if (!btn) return;
+      if (t === tab) {
+        btn.style.background = 'var(--blue)'; btn.style.color = 'white'; btn.style.border = '1px solid var(--blue)';
+      } else {
+        btn.style.background = 'transparent'; btn.style.color = 'var(--text-sec)'; btn.style.border = '1px solid var(--border)';
+      }
+    });
+    _ctUpdatePreview();
+  }
+
+  function _ctCopyAll(btn) {
+    var text = _ctBuildExcel();
+    if (!text.trim() || !_ctTicketId) { alert('請先貼入 JSON'); return; }
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent; btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    });
+  }
+
+  function _ctCopyFirstReply(btn) {
+    if (!_ctTicketId) { alert('請先貼入 JSON'); return; }
+    var text = _ctBuildFirstReply();
+    navigator.clipboard.writeText(text).then(function() {
+      var checked = _ctGetChecked();
+      var eventNames = [];
+      var seen = {};
+      checked.forEach(function(r) {
+        if (r.event && !seen[r.event]) { seen[r.event] = true; eventNames.push(r.event); }
+      });
+      var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim();
+      if (eventNames.length > 0) {
+        try { addRecord(eventNames, [_ctTicketId], 'set pls', groupName, '', 'kr'); } catch(e) {}
+      }
+      var orig = btn.textContent; btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    });
+  }
+
+  function _ctCopyFinalReply(btn) {
+    if (!_ctTicketId) { alert('請先貼入 JSON'); return; }
+    var text = _ctBuildFinalReply();
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent; btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    });
+  }
+
+  function _ctClear() {
+    _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctRequestTime = '';
+    var jsonEl = document.getElementById('ct-json-input');
+    if (jsonEl) jsonEl.value = '';
+    var reqEl = document.getElementById('ct-req-time');
+    if (reqEl) reqEl.value = '';
+    var groupEl = document.getElementById('ct-group-name');
+    if (groupEl) groupEl.value = '';
+    var custEl = document.getElementById('ct-custom-reason');
+    if (custEl) { custEl.style.display = 'none'; custEl.value = ''; }
+    var reasonEl = document.getElementById('ct-reason');
+    if (reasonEl) { reasonEl.value = 'postponed'; _ctReason = 'postponed'; }
+    var infoEl = document.getElementById('ct-ticket-info');
+    if (infoEl) infoEl.style.display = 'none';
+    _ctPreviewTab = 'excel';
+    _ctSwitchPreviewTab('excel');
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
 
 </script>
 </body>
