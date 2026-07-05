@@ -4722,23 +4722,28 @@
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
     document.getElementById('tabbtn-' + tab).classList.add('active');
+    // Always clean up both tabs' listeners/timers before setting up the active one
+    document.removeEventListener('click', _saHandleOutsideClick);
+    _saClearIdleTimer();
+    const saTab = document.getElementById('tab-analyzer');
+    saTab.removeEventListener('click', _saOnAnalyzerActivity);
+    saTab.removeEventListener('keydown', _saOnAnalyzerActivity);
+    const ctTab = document.getElementById('tab-cancel');
+    ctTab.removeEventListener('click', _ctOnCancelActivity);
+    ctTab.removeEventListener('keydown', _ctOnCancelActivity);
+    _ctClearIdleTimer();
     if (tab === 'analyzer') {
       _saRenderLeft();
       _saRenderResults();
       _saRenderActionBtns();
       document.addEventListener('click', _saHandleOutsideClick, { once: false });
-      const tabEl = document.getElementById('tab-analyzer');
-      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
-      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
-      tabEl.addEventListener('click', _saOnAnalyzerActivity);
-      tabEl.addEventListener('keydown', _saOnAnalyzerActivity);
+      saTab.addEventListener('click', _saOnAnalyzerActivity);
+      saTab.addEventListener('keydown', _saOnAnalyzerActivity);
       _saStartIdleTimer();
-    } else {
-      document.removeEventListener('click', _saHandleOutsideClick);
-      _saClearIdleTimer();
-      const tabEl = document.getElementById('tab-analyzer');
-      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
-      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
+    } else if (tab === 'cancel') {
+      ctTab.addEventListener('click', _ctOnCancelActivity);
+      ctTab.addEventListener('keydown', _ctOnCancelActivity);
+      _ctStartIdleTimer();
     }
   }
 
@@ -4797,6 +4802,8 @@
   var _ctPreviewTab = 'excel';
   var _ctDate = '';
   var _ctBrand = '';
+  var _ctIdleTimer = null;
+  var _ctIdleSecs = 0;
 
   function _ctToUTC8(dateStr) {
     if (!dateStr) return null;
@@ -4805,6 +4812,30 @@
     if (isNaN(d.getTime())) return null;
     return new Date(d.getTime() + 8 * 3600000);
   }
+
+  function _ctStartIdleTimer() {
+    clearInterval(_ctIdleTimer);
+    _ctIdleSecs = 60;
+    _ctUpdateIdleIndicator();
+    _ctIdleTimer = setInterval(function() {
+      _ctIdleSecs--;
+      _ctUpdateIdleIndicator();
+      if (_ctIdleSecs <= 0) { clearInterval(_ctIdleTimer); _ctIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _ctClearIdleTimer() {
+    clearInterval(_ctIdleTimer); _ctIdleTimer = null; _ctIdleSecs = 0; _ctUpdateIdleIndicator();
+  }
+
+  function _ctUpdateIdleIndicator() {
+    var el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_ctIdleSecs > 0) { el.textContent = '↩ ' + _ctIdleSecs + 's'; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _ctOnCancelActivity() { _ctStartIdleTimer(); }
 
   function _ctTimeUTC8() {
     var d = _ctToUTC8(new Date().toISOString());
