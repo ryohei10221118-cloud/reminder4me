@@ -5026,8 +5026,10 @@
     if (reqTime) eventInfo += '\n' + reqTime + ' pls cancel (' + reason + ')';
     if (doneTime) eventInfo += '\n' + doneTime + ' Done as requested';
 
-    // Tab-separated row: Date | Brand | TicketId | EventInfoBlock
-    return (_ctDate || '') + '\t' + (_ctBrand || '') + '\t' + tid + '\t' + eventInfo;
+    // Tab-separated: Date | Brand | TicketId | cancel please | EventInfoBlock | CS name
+    // → columns B C D E F G of tracking sheet (A=row#, H=Type filled manually)
+    var csName = getAgentName();
+    return (_ctDate || '') + '\t' + (_ctBrand || '') + '\t' + tid + '\tcancel please\t' + eventInfo + '\t' + csName;
   }
 
   function _ctBuildFirstReply() {
@@ -5043,10 +5045,11 @@
       if (r.event && !seen[r.event]) { seen[r.event] = true; events.push(r.event); }
     });
 
+    var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim();
     return tid + '\n' +
            events.join('\n') + '\n' +
            'pls cancel the ' + target + ', op request\n' +
-           (_ctBrand || '');
+           (groupName || _ctBrand || '');
   }
 
   function _ctBuildFinalReply() {
