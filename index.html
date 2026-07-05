@@ -5032,29 +5032,19 @@
 
   function _ctBuildFirstReply() {
     var checked = _ctGetChecked();
-    var reason = _ctGetReason('en');
-    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '';
-    var tid = _ctTicketId || '—';
-    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
+    var tid = _ctTicketId || '';
 
-    var selLines = checked.map(function(r, i) {
-      var parts = [];
-      if (r.selectionId) parts.push('ID: ' + r.selectionId);
-      if (r.event)       parts.push(r.event);
-      if (r.market)      parts.push(r.market);
-      if (r.selection)   parts.push(r.selection);
-      if (r.odds !== '') parts.push('@ ' + r.odds);
-      parts.push('(' + (r.isLive ? 'Live' : 'Prematch') + ')');
-      return (i+1) + '. ' + parts.join(' | ');
-    }).join('\n');
+    // Unique event names, one per line
+    var seen = {};
+    var events = [];
+    checked.forEach(function(r) {
+      if (r.event && !seen[r.event]) { seen[r.event] = true; events.push(r.event); }
+    });
 
-    return 'Hi Team,\n\nPlease ' + (isPartial ? 'partially ' : '') + 'cancel the following bet.\n\n' +
-           'Ticket ID: ' + tid + '\n' +
-           'Cancel Reason: ' + reason + '\n' +
-           'Request Time: ' + (reqTime || '—') + ' (UTC+8)' +
-           (isPartial ? '\nNote: Partial cancellation — only the selections listed below.' : '') +
-           '\n\nSelections:\n' + (selLines || '(none selected)') +
-           '\n\nThank you.';
+    return tid + '\n' +
+           events.join('\n') + '\n' +
+           'pls cancel the selection, op request\n' +
+           (_ctBrand || '');
   }
 
   function _ctBuildFinalReply() {
