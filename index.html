@@ -4795,6 +4795,8 @@
   var _ctReason = 'postponed';
   var _ctCustomReason = '';
   var _ctPreviewTab = 'excel';
+  var _ctDate = '';
+  var _ctBrand = '';
 
   function _ctToUTC8(dateStr) {
     var d = new Date(dateStr);
@@ -4853,7 +4855,7 @@
     var raw = (document.getElementById('ct-json-input') || {}).value || '';
     raw = raw.trim();
     if (!raw) {
-      _ctRows = []; _ctTicketId = ''; _ctDoneTime = '';
+      _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctDate = ''; _ctBrand = '';
       document.getElementById('ct-ticket-info').style.display = 'none';
       document.getElementById('ct-table-area').innerHTML = '';
       _ctUpdatePreview();
@@ -4864,19 +4866,45 @@
 
     var data;
     try { data = JSON.parse(raw); } catch(e) {
-      _ctRows = []; _ctTicketId = ''; _ctDoneTime = '';
+      _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctDate = ''; _ctBrand = '';
       document.getElementById('ct-ticket-info').style.display = 'none';
       document.getElementById('ct-table-area').innerHTML = '<div style="color:var(--text-muted);font-size:12px;margin-top:8px">⚠ JSON 解析失敗</div>';
       _ctUpdatePreview();
       return;
     }
 
+    // Extract ticket date (UTC+8)
+    var rawDate = data.CreatedDate || data.BetDate || data.Date || data.CreatedAt || '';
+    if (rawDate) {
+      var dd = _ctToUTC8(rawDate);
+      _ctDate = dd ? dd.getUTCFullYear() + '-' + ('0'+(dd.getUTCMonth()+1)).slice(-2) + '-' + ('0'+dd.getUTCDate()).slice(-2) : String(rawDate).slice(0,10);
+    } else { _ctDate = ''; }
+
+    // Extract brand/operator
+    _ctBrand = data.OperatorName || data.BrandName || data.ClientName || data.SiteName || data.Operator || data.AgentName || '';
+
     var selections = data.Selections || (data.data && data.data.Selections) || [];
     _ctRows = selections.map(function(sel, i) {
+      // Event date → format as "YYYY-MM-DD HH:MM:SS"
+      var rawEd = sel.EventDate || sel.StartDate || sel.EventStartTime || sel.MatchDate || sel.StartTime || '';
+      var edStr = '';
+      if (rawEd) {
+        var edUtc8 = _ctToUTC8(rawEd);
+        if (edUtc8) {
+          edStr = edUtc8.getUTCFullYear() + '-' +
+                  ('0'+(edUtc8.getUTCMonth()+1)).slice(-2) + '-' +
+                  ('0'+edUtc8.getUTCDate()).slice(-2) + ' ' +
+                  ('0'+edUtc8.getUTCHours()).slice(-2) + ':' +
+                  ('0'+edUtc8.getUTCMinutes()).slice(-2) + ':' +
+                  ('0'+edUtc8.getUTCSeconds()).slice(-2);
+        } else { edStr = String(rawEd); }
+      }
       return {
         idx: i,
         selectionId: sel.SelectionId || '',
-        sport: sel.SportName || sel.Sport || '',
+        sport: sel.SportName || sel.Sport || sel.CategoryName || sel.Category || '',
+        league: sel.TournamentName || sel.LeagueName || sel.CompetitionName || sel.League || sel.Tournament || '',
+        eventDate: edStr,
         event: sel.EventName || sel.MatchName || sel.Name || '',
         market: sel.MarketName || sel.MarketType || sel.BetType || '',
         selection: sel.SelectionName || sel.OutcomeName || sel.Selection || '',
@@ -4983,19 +5011,23 @@
     var checked = _ctGetChecked();
     var reason = _ctGetReason('en');
     var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '';
-    var doneTime = _ctDoneTime || '—';
-    var tid = _ctTicketId || '—';
+    var doneTime = _ctDoneTime || '';
+    var tid = _ctTicketId || '';
 
-    var header = 'SQLTicketId\tCancel Reason\tRequest Time\tDone Time\n' +
-                 tid + '\t' + reason + '\t' + reqTime + '\t' + doneTime + '\n';
-    var tblHeader = '\n#\tSelection ID\tEvent\tMarket\tSelection\tOdds\tStatus\tType';
-    var tblRows = checked.map(function(r, i) {
-      return '\n' + (i+1) + '\t' + r.selectionId + '\t' + r.event + '\t' + r.market +
-             '\t' + r.selection + '\t' + (r.odds !== '' ? r.odds : '—') +
-             '\t' + _ctStatusLabel(r.status) + '\t' + (r.isLive ? 'Live' : 'Prematch');
-    }).join('');
+    // One line per selection: Sport    League    Prematch/Live    EventDate    EventName    Market
+    var selLines = checked.map(function(r) {
+      var type = r.isLive ? 'Live' : 'Prematch';
+      var parts = [r.sport, r.league, type, r.eventDate, r.event, r.market].filter(Boolean);
+      return parts.join('    ');
+    }).join('\n');
 
-    return header + tblHeader + tblRows;
+    // Event info block (goes into one spreadsheet cell)
+    var eventInfo = selLines;
+    if (reqTime) eventInfo += '\n' + reqTime + ' pls cancel (' + reason + ')';
+    if (doneTime) eventInfo += '\n' + doneTime + ' Done as requested';
+
+    // Tab-separated row: Date | Brand | TicketId | EventInfoBlock
+    return (_ctDate || '') + '\t' + (_ctBrand || '') + '\t' + tid + '\t' + eventInfo;
   }
 
   function _ctBuildFirstReply() {
@@ -5102,7 +5134,7 @@
   }
 
   function _ctClear() {
-    _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctRequestTime = '';
+    _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctRequestTime = ''; _ctDate = ''; _ctBrand = '';
     var jsonEl = document.getElementById('ct-json-input');
     if (jsonEl) jsonEl.value = '';
     var reqEl = document.getElementById('ct-req-time');
