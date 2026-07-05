@@ -934,7 +934,7 @@
     .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
     .tab-btn:hover:not(.active) { color: var(--text-sec); }
     .tab-content { display: none; }
-    .tab-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+    .tab-content.active { display: block; }
     @media (max-width: 700px) { #sa-grid { grid-template-columns: 1fr !important; } }
   </style>
 </head>
@@ -957,6 +957,8 @@
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('reminder')" id="tabbtn-reminder">📋 提醒工具</button>
   <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
+  <button class="tab-btn" onclick="switchTab('cancel')" id="tabbtn-cancel">✂️ 取消請求</button>
+  <span id="sa-idle-indicator" style="display:none;font-size:11px;color:var(--text-muted);align-self:center;padding-left:6px"></span>
 </div>
 <div id="tab-reminder" class="tab-content active">
 <div class="container">
@@ -1045,13 +1047,72 @@
 
 <div id="tab-analyzer" class="tab-content">
   <div style="max-width:1100px;width:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start" id="sa-grid">
-    <div class="card" id="sa-left-panel" style="padding:16px"></div>
-    <div class="card" id="sa-right-panel" style="padding:16px">
+    <div class="card" id="sa-left-panel" style="padding:16px;min-width:0"></div>
+    <div class="card" id="sa-right-panel" style="padding:16px;min-width:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="font-size:14px;font-weight:700;color:var(--text-pri)">✓ 分析結果</div>
         <div style="display:flex;gap:6px;align-items:center" id="sa-action-btns"></div>
       </div>
       <div id="sa-results-area"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-cancel" class="tab-content">
+  <div style="max-width:1100px;width:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+    <!-- Left: JSON input + selection table -->
+    <div class="card" style="padding:16px;min-width:0">
+      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:12px">✂️ 取消請求 — JSON 輸入</div>
+      <textarea id="ct-json-input" onpaste="setTimeout(_ctExtract,0)" placeholder="貼上 Kraken JSON..." style="width:100%;box-sizing:border-box;height:180px;font-size:11px;font-family:monospace;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px;padding:8px;resize:vertical"></textarea>
+      <!-- Ticket info bar -->
+      <div id="ct-ticket-info" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg-secondary);border-radius:6px;font-size:12px;gap:12px;flex-wrap:wrap;align-items:center">
+        <span>🎫 Ticket: <strong id="ct-ticket-id-display" style="color:var(--text-pri)"></strong></span>
+        <span style="color:var(--text-muted)">完成時間: <strong id="ct-done-time-display" style="color:var(--text-pri)"></strong></span>
+      </div>
+      <!-- Selection table -->
+      <div id="ct-table-area"></div>
+    </div>
+    <!-- Right: Controls + preview -->
+    <div class="card" style="padding:16px;min-width:0">
+      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:12px">⚙️ 取消設定</div>
+      <!-- Group name -->
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Agent Group</div>
+        <input id="ct-group-name" type="text" placeholder="Group name..." oninput="_ctUpdatePreview()" style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+      </div>
+      <!-- Request time -->
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Request Time (HH:MM)</div>
+          <input id="ct-req-time" type="text" placeholder="HH:MM" maxlength="5" oninput="_ctUpdatePreview()" style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+        </div>
+        <button onclick="_ctFillNowTime()" style="padding:6px 12px;font-size:12px;background:var(--bg-secondary);color:var(--text-sec);border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-bottom:0">Now</button>
+      </div>
+      <!-- Cancel reason -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">取消原因</div>
+        <select id="ct-reason" onchange="_ctHandleReasonChange()" style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+          <option value="postponed">postponed match, 24 hours rule</option>
+          <option value="noinfo">no info over 3 hours</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input id="ct-custom-reason" type="text" placeholder="自定義原因..." oninput="_ctUpdatePreview()" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;padding:6px 10px;font-size:13px;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px">
+      </div>
+      <!-- Action buttons -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button onclick="_ctCopyAll(this)" style="padding:6px 12px;font-size:12px;background:var(--orange);color:white;border:none;border-radius:6px;cursor:pointer">📊 Excel</button>
+        <button onclick="_ctCopyFirstReply(this)" style="padding:6px 12px;font-size:12px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer">📋 First Reply</button>
+        <button onclick="_ctCopyFinalReply(this)" style="padding:6px 12px;font-size:12px;background:#9b8ab5;color:white;border:none;border-radius:6px;cursor:pointer">📋 Final Reply</button>
+        <button onclick="_ctClear()" style="padding:6px 10px;font-size:12px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:6px;cursor:pointer" title="清除">🗑</button>
+      </div>
+      <!-- Preview tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:8px">
+        <button id="ct-ptab-excel" onclick="_ctSwitchPreviewTab('excel')" style="padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;background:var(--blue);color:white;border:1px solid var(--blue)">Excel</button>
+        <button id="ct-ptab-first" onclick="_ctSwitchPreviewTab('first')" style="padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-sec);border:1px solid var(--border)">First Reply</button>
+        <button id="ct-ptab-final" onclick="_ctSwitchPreviewTab('final')" style="padding:4px 10px;font-size:11px;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-sec);border:1px solid var(--border)">Final Reply</button>
+      </div>
+      <!-- Preview area -->
+      <div id="ct-preview-area"><pre style="font-size:11px;white-space:pre-wrap;word-break:break-all;background:var(--bg-secondary);border-radius:6px;padding:10px;max-height:300px;overflow-y:auto;margin:0;color:var(--text-muted)">（請先貼入 JSON）</pre></div>
     </div>
   </div>
 </div>
@@ -3829,6 +3890,10 @@
   var _saNewReason = { english: '', chinese: '', korean: '' };
   var _saEditingReason = null;
   var _saDeleteConfirmKey = null;
+  var _saPreviewLang = 'english';
+  var _saIdleTimer = null;
+  var _saIdleSecs = 0;
+  var SA_IDLE_SECS = 60;
 
   const SA_DEFAULT_RESETTLEMENT_REASONS = {
     '': { english: 'Will provide after confirming', chinese: '确认后提供', korean: '확인 후 제공하겠습니다' },
@@ -4064,7 +4129,7 @@
 
   function _saGenerateResettlementReports(data, customReasons) {
     const reasonOpts = _saGetResettlementReasons();
-    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    const nameSuffix = getAgentName() ? ` - ${getAgentName()}` : '';
     if (!data.length) return { english:'No resettlement records.', chinese:'无重新结算记录。', korean:'무 재정산 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
 
     const isMulti = data.some(d=>d.totalEventsInBet>1);
@@ -4091,7 +4156,7 @@
 
   function _saGenerateCancellationReports(data, customReasons) {
     const reasonOpts = _saGetCancellationReasons();
-    const nameSuffix = _saUserName ? ` - ${_saUserName}` : '';
+    const nameSuffix = getAgentName() ? ` - ${getAgentName()}` : '';
     if (!data.length) return { english:'No cancellation records.', chinese:'无取消记录。', korean:'무 취소 기록.', englishEventOnly:'', chineseEventOnly:'', koreanEventOnly:'' };
 
     const isMulti = data.some(d=>d.totalEventsInBet>1);
@@ -4151,7 +4216,7 @@
     }
   }
 
-  function _saHandleAnalyze() {
+  function _saHandleAnalyze(skipHistory) {
     const ta = document.getElementById('sa-json-input');
     if (!ta) return;
     _saJsonData = ta.value;
@@ -4185,8 +4250,8 @@
       }
       _saResults = reports;
 
-      if (analyzedData.length > 0) {
-        const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: reports };
+      if (!skipHistory && analyzedData.length > 0) {
+        const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: reports, rawJson: _saJsonData };
         _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
         localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
       }
@@ -4202,7 +4267,7 @@
 
   function _saPasteAndUpdate() {
     if (_saResults && _saResults.analyzedData && _saResults.analyzedData.length > 0) {
-      const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: _saResults };
+      const rec = { id: Date.now(), timestamp: new Date().toISOString(), analysisType: _saAnalysisType, results: _saResults, rawJson: _saJsonData };
       _saQueryHistory = [rec, ..._saQueryHistory].slice(0, 5);
       localStorage.setItem(SA_PREFIX+'queryHistory', JSON.stringify(_saQueryHistory));
     }
@@ -4257,7 +4322,7 @@
     if (!_saResults || !_saResults.analyzedData) return;
     const rows = _saResults.analyzedData.map((item, i) => {
       const operator = _saResults.operator || (_saOperatorMap[item.siteId] || '');
-      return [operator, item.purchaseId || item.betId || '', '', item.sport||'', item.league||'', item.eventName||'', item.market||'', _saUserName].join('\t');
+      return [operator, item.purchaseId || item.betId || '', '', item.sport||'', item.league||'', item.eventName||'', item.market||'', getAgentName()].join('\t');
     });
     _saCopyText(rows.join('\n'), btn);
   }
@@ -4266,7 +4331,7 @@
     _saAnalysisType = _saAnalysisType === 'resettlement' ? 'cancellation' : 'resettlement';
     if (_saResults && _saResults.analyzedData) {
       const ta = document.getElementById('sa-json-input');
-      if (ta && ta.value.trim()) _saHandleAnalyze();
+      if (ta && ta.value.trim()) _saHandleAnalyze(true);
     }
     _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
   }
@@ -4281,11 +4346,17 @@
     _saRenderLeft(); _saRenderActionBtns();
   }
 
-  function _saRestoreHistory(rec) {
+  function _saRestoreHistory(id) {
+    const rec = _saQueryHistory.find(r => r.id === id);
+    if (!rec) return;
     _saAnalysisType = rec.analysisType;
     _saResults = rec.results;
+    _saJsonData = rec.rawJson || '';
     _saShowHistoryPanel = false;
-    _saRenderLeft(); _saRenderResults(); _saRenderActionBtns();
+    _saRenderLeft();
+    const ta = document.getElementById('sa-json-input');
+    if (ta && _saJsonData) ta.value = _saJsonData;
+    _saRenderResults(); _saRenderActionBtns();
   }
 
   function _saDeleteHistory(id) {
@@ -4317,31 +4388,9 @@
     el.innerHTML = `
       <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:14px">📄 分析設置</div>
       <div class="form-group">
-        <label style="font-size:12px;color:var(--text-sec);font-weight:600">分析類型</label>
-        <select onchange="_saAnalysisType=this.value;_saRenderLeft();_saRenderResults();_saRenderActionBtns()"
-          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
-          <option value="resettlement" ${_saAnalysisType==='resettlement'?'selected':''}>重新結算記錄</option>
-          <option value="cancellation" ${_saAnalysisType==='cancellation'?'selected':''}>取消記錄</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label style="font-size:12px;color:var(--text-sec);font-weight:600">${_saAnalysisType==='resettlement'?'重新结算原因':'取消原因'}</label>
-        <select onchange="_saSetCurrentReason(this.value);if(_saResults&&_saResults.analyzedData){_saPerEventReasons={};_saRegenerateWithCustomReasons();}_saRenderLeft();_saRenderActionBtns()"
-          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
-          ${_saReasonOptionsHtml(curReason, _saAnalysisType)}
-        </select>
-      </div>
-      <div class="form-group">
-        <label style="font-size:12px;color:var(--text-sec);font-weight:600">👤 绑定名字</label>
-        <input type="text" value="${_saEsc(_saUserName)}" placeholder="例如: Sunny"
-          oninput="_saUserName=this.value;localStorage.setItem('${SA_PREFIX}userName',this.value)"
-          style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
-        ${_saUserName ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">示例: Thank you for waiting... - <b>${_saEsc(_saUserName)}</b></div>` : ''}
-      </div>
-      <div class="form-group">
         <label style="font-size:12px;color:var(--text-sec);font-weight:600">數據輸入 <span style="font-weight:400;color:var(--text-muted)">(Seamless Tool apiRequests JSON)</span></label>
         <textarea id="sa-json-input" placeholder="請貼上 Seamless Tool JSON 數據..." rows="10"
-          style="font-family:monospace;font-size:11px;resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-pri);outline:none;line-height:1.5"
+          style="width:100%;font-family:monospace;font-size:11px;resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-pri);outline:none;line-height:1.5"
           >${_saEsc(_saJsonData)}</textarea>
       </div>
       <div id="sa-status"></div>
@@ -4358,6 +4407,10 @@
       </div>`;
 
     _saRenderStatus();
+    const ta = document.getElementById('sa-json-input');
+    if (ta) {
+      ta.addEventListener('paste', () => { setTimeout(_saHandleAnalyze, 50); });
+    }
   }
 
   function _saRenderResults() {
@@ -4405,21 +4458,26 @@
     const copyBtns = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
       <button onclick="_saCopyResult('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 英文</button>
       <button onclick="_saCopyEventOnly('english',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:var(--blue);border:1px solid var(--blue-light);border-radius:6px;cursor:pointer">📄 賽事 EN</button>
-      <button onclick="_saCopyResult('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#16a34a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 中文</button>
-      <button onclick="_saCopyEventOnly('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#16a34a;border:1px solid rgba(22,163,74,0.3);border-radius:6px;cursor:pointer">📄 賽事 中</button>
-      <button onclick="_saCopyResult('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#7c3aed;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 韓文</button>
-      <button onclick="_saCopyEventOnly('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#7c3aed;border:1px solid rgba(124,58,237,0.3);border-radius:6px;cursor:pointer">📄 賽事 한</button>
-      <button onclick="_saCopyTableData(this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#d97706;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 表格數據</button>
+      <button onclick="_saCopyResult('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 中文</button>
+      <button onclick="_saCopyEventOnly('chinese',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:var(--green);border:1px solid var(--green-border);border-radius:6px;cursor:pointer">📄 賽事 中</button>
+      <button onclick="_saCopyResult('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:#9b8ab5;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📋 韓文</button>
+      <button onclick="_saCopyEventOnly('korean',this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--surface);color:#9b8ab5;border:1px solid rgba(155,138,181,0.4);border-radius:6px;cursor:pointer">📄 賽事 한</button>
+      <button onclick="_saCopyTableData(this)" style="flex:1;min-width:100px;padding:6px 10px;font-size:11px;background:var(--orange);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 表格數據</button>
     </div>`;
 
-    const resultBlock = (lang, label) => `<div style="margin-bottom:10px">
-      <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
-      <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;max-height:130px;overflow-y:auto">
-        <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[lang]||'')}</pre>
-      </div>
-    </div>`;
+    const langTabs = [['english','English'],['chinese','中文'],['korean','한국어']].map(([lang,lbl])=>`
+      <button onclick="event.stopPropagation();_saPreviewLang='${lang}';_saRenderResults()"
+        style="padding:3px 10px;font-size:11px;border-radius:5px;border:1px solid ${_saPreviewLang===lang?'var(--blue)':'var(--border-light)'};background:${_saPreviewLang===lang?'var(--blue-bg)':'var(--surface2)'};color:${_saPreviewLang===lang?'var(--blue)':'var(--text-sec)'};cursor:pointer;font-weight:${_saPreviewLang===lang?700:400}">
+        ${lbl}
+      </button>`).join('');
 
-    el.innerHTML = perEventHtml + copyBtns + resultBlock('english','English') + resultBlock('chinese','中文') + resultBlock('korean','한국어');
+    const previewHtml = `
+      <div style="display:flex;gap:4px;margin-bottom:6px">${langTabs}</div>
+      <div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;max-height:180px;overflow-y:auto">
+        <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[_saPreviewLang]||'')}</pre>
+      </div>`;
+
+    el.innerHTML = perEventHtml + copyBtns + previewHtml;
   }
 
   function _saRenderActionBtns() {
@@ -4476,7 +4534,7 @@
                 <button onclick="_saDeleteHistory(${rec.id})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:0;line-height:1">✕</button>
               </div>
               ${pidDisplay?`<div style="font-size:10px;color:var(--text-sec);margin-bottom:4px;word-break:break-all">🎫 ${_saEsc(pidDisplay)}</div>`:''}
-              <button onclick="_saRestoreHistory(${JSON.stringify(rec).replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
+              <button onclick="_saRestoreHistory(${rec.id})"
                 style="width:100%;padding:4px;font-size:11px;border-radius:5px;border:1px solid var(--blue-light);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-weight:600">↩ 還原</button>
             </div>`;
           }).join('')
@@ -4635,6 +4693,30 @@
     _saRenderReasonManager();
   }
 
+  function _saStartIdleTimer() {
+    clearInterval(_saIdleTimer);
+    _saIdleSecs = SA_IDLE_SECS;
+    _saUpdateIdleIndicator();
+    _saIdleTimer = setInterval(() => {
+      _saIdleSecs--;
+      _saUpdateIdleIndicator();
+      if (_saIdleSecs <= 0) { clearInterval(_saIdleTimer); _saIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _saClearIdleTimer() {
+    clearInterval(_saIdleTimer); _saIdleTimer = null; _saIdleSecs = 0; _saUpdateIdleIndicator();
+  }
+
+  function _saUpdateIdleIndicator() {
+    const el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_saIdleSecs > 0) { el.textContent = `↩ ${_saIdleSecs}s`; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _saOnAnalyzerActivity() { _saStartIdleTimer(); }
+
   function switchTab(tab) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -4645,8 +4727,18 @@
       _saRenderResults();
       _saRenderActionBtns();
       document.addEventListener('click', _saHandleOutsideClick, { once: false });
+      const tabEl = document.getElementById('tab-analyzer');
+      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
+      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
+      tabEl.addEventListener('click', _saOnAnalyzerActivity);
+      tabEl.addEventListener('keydown', _saOnAnalyzerActivity);
+      _saStartIdleTimer();
     } else {
       document.removeEventListener('click', _saHandleOutsideClick);
+      _saClearIdleTimer();
+      const tabEl = document.getElementById('tab-analyzer');
+      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
+      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
     }
   }
 
@@ -4691,6 +4783,379 @@
     } catch(e) {}
     _saFetchOperatorMap();
   })();
+
+  // ══════════════════════════════════════════
+  //  ✂️ Cancel Tool (_ct*)
+  // ══════════════════════════════════════════
+
+  var _ctRows = [];
+  var _ctTicketId = '';
+  var _ctDoneTime = '';
+  var _ctRequestTime = '';
+  var _ctReason = 'postponed';
+  var _ctCustomReason = '';
+  var _ctPreviewTab = 'excel';
+  var _ctDate = '';
+  var _ctBrand = '';
+
+  function _ctToUTC8(dateStr) {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return new Date(d.getTime() + 8 * 3600000);
+  }
+
+  function _ctTimeUTC8() {
+    var d = _ctToUTC8(new Date().toISOString());
+    if (!d) return '';
+    return ('0'+d.getUTCHours()).slice(-2) + ':' + ('0'+d.getUTCMinutes()).slice(-2);
+  }
+
+  function _ctFillNowTime() {
+    var t = _ctTimeUTC8();
+    var el = document.getElementById('ct-req-time');
+    if (el) { el.value = t; _ctRequestTime = t; }
+    _ctUpdatePreview();
+  }
+
+  function _ctHandleReasonChange() {
+    var sel = document.getElementById('ct-reason');
+    var cust = document.getElementById('ct-custom-reason');
+    if (!sel || !cust) return;
+    _ctReason = sel.value;
+    cust.style.display = _ctReason === 'custom' ? '' : 'none';
+    _ctUpdatePreview();
+  }
+
+  function _ctStatusLabel(s) {
+    var map = {0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled'};
+    return map[s] !== undefined ? map[s] : 'Unknown';
+  }
+
+  function _ctExtractDoneTime(data, raw) {
+    if (data.SettlementHistory && Array.isArray(data.SettlementHistory) && data.SettlementHistory.length > 0) {
+      var last = data.SettlementHistory[data.SettlementHistory.length - 1];
+      var d = last.DateUpdated || last.UpdateDate || last.Date;
+      if (d) {
+        var utc8 = _ctToUTC8(d);
+        if (utc8) return ('0'+utc8.getUTCHours()).slice(-2) + ':' + ('0'+utc8.getUTCMinutes()).slice(-2);
+      }
+    }
+    var matches = (raw || '').match(/"UpdateDate"\s*:\s*"([^"]+)"/g);
+    if (matches && matches.length > 0) {
+      var lastMatch = matches[matches.length - 1].match(/"UpdateDate"\s*:\s*"([^"]+)"/);
+      if (lastMatch) {
+        var utc8b = _ctToUTC8(lastMatch[1]);
+        if (utc8b) return ('0'+utc8b.getUTCHours()).slice(-2) + ':' + ('0'+utc8b.getUTCMinutes()).slice(-2);
+      }
+    }
+    return '';
+  }
+
+  function _ctExtract() {
+    var raw = (document.getElementById('ct-json-input') || {}).value || '';
+    raw = raw.trim();
+    if (!raw) {
+      _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctDate = ''; _ctBrand = '';
+      document.getElementById('ct-ticket-info').style.display = 'none';
+      document.getElementById('ct-table-area').innerHTML = '';
+      _ctUpdatePreview();
+      return;
+    }
+    var tidMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
+    _ctTicketId = tidMatch ? tidMatch[1] : '';
+
+    var data;
+    try { data = JSON.parse(raw); } catch(e) {
+      _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctDate = ''; _ctBrand = '';
+      document.getElementById('ct-ticket-info').style.display = 'none';
+      document.getElementById('ct-table-area').innerHTML = '<div style="color:var(--text-muted);font-size:12px;margin-top:8px">⚠ JSON 解析失敗</div>';
+      _ctUpdatePreview();
+      return;
+    }
+
+    // Extract ticket date (UTC+8)
+    var rawDate = data.CreatedDate || data.BetDate || data.Date || data.CreatedAt || '';
+    if (rawDate) {
+      var dd = _ctToUTC8(rawDate);
+      _ctDate = dd ? dd.getUTCFullYear() + '-' + ('0'+(dd.getUTCMonth()+1)).slice(-2) + '-' + ('0'+dd.getUTCDate()).slice(-2) : String(rawDate).slice(0,10);
+    } else { _ctDate = ''; }
+
+    // Extract brand/operator
+    _ctBrand = data.OperatorName || data.BrandName || data.ClientName || data.SiteName || data.Operator || data.AgentName || '';
+
+    var selections = data.Selections || (data.data && data.data.Selections) || [];
+    _ctRows = selections.map(function(sel, i) {
+      // Event date → format as "YYYY-MM-DD HH:MM:SS"
+      var rawEd = sel.EventDate || sel.StartDate || sel.EventStartTime || sel.MatchDate || sel.StartTime || '';
+      var edStr = '';
+      if (rawEd) {
+        var edUtc8 = _ctToUTC8(rawEd);
+        if (edUtc8) {
+          edStr = edUtc8.getUTCFullYear() + '-' +
+                  ('0'+(edUtc8.getUTCMonth()+1)).slice(-2) + '-' +
+                  ('0'+edUtc8.getUTCDate()).slice(-2) + ' ' +
+                  ('0'+edUtc8.getUTCHours()).slice(-2) + ':' +
+                  ('0'+edUtc8.getUTCMinutes()).slice(-2) + ':' +
+                  ('0'+edUtc8.getUTCSeconds()).slice(-2);
+        } else { edStr = String(rawEd); }
+      }
+      return {
+        idx: i,
+        selectionId: sel.SelectionId || '',
+        sport: sel.SportName || sel.Sport || sel.CategoryName || sel.Category || '',
+        league: sel.TournamentName || sel.LeagueName || sel.CompetitionName || sel.League || sel.Tournament || '',
+        eventDate: edStr,
+        event: sel.EventName || sel.MatchName || sel.Name || '',
+        market: sel.MarketName || sel.MarketType || sel.BetType || '',
+        selection: sel.SelectionName || sel.OutcomeName || sel.Selection || '',
+        odds: sel.Price !== undefined ? sel.Price : (sel.Odds !== undefined ? sel.Odds : ''),
+        status: sel.SelectionStatus !== undefined ? sel.SelectionStatus : -1,
+        isLive: sel.IsLive === true,
+        combined: (sel.SelectionId || '').indexOf('0VS') === 0,
+        checked: true
+      };
+    });
+
+    _ctDoneTime = _ctExtractDoneTime(data, raw);
+
+    var reqEl = document.getElementById('ct-req-time');
+    if (reqEl && !reqEl.value) {
+      var t = _ctTimeUTC8();
+      reqEl.value = t;
+      _ctRequestTime = t;
+    }
+
+    var infoEl = document.getElementById('ct-ticket-info');
+    if (infoEl) {
+      infoEl.style.display = _ctTicketId ? 'flex' : 'none';
+      var tidEl = document.getElementById('ct-ticket-id-display');
+      var dtEl = document.getElementById('ct-done-time-display');
+      if (tidEl) tidEl.textContent = _ctTicketId;
+      if (dtEl) dtEl.textContent = _ctDoneTime || '—';
+    }
+
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
+
+  function _ctRenderTable() {
+    var el = document.getElementById('ct-table-area');
+    if (!el) return;
+    if (_ctRows.length === 0) { el.innerHTML = ''; return; }
+
+    var allChecked = _ctRows.every(function(r){ return r.checked; });
+    var rows = _ctRows.map(function(r, i) {
+      var statusLabel = _ctStatusLabel(r.status);
+      var typeLabel = r.isLive ? '🔴 Live' : 'Pre';
+      var evtShort = (r.event||r.selectionId||'').length > 22 ? (r.event||r.selectionId).slice(0,22)+'…' : (r.event||r.selectionId||'—');
+      var mktShort = (r.market||'').length > 18 ? r.market.slice(0,18)+'…' : (r.market||'—');
+      var selShort = (r.selection||'').length > 16 ? r.selection.slice(0,16)+'…' : (r.selection||'—');
+      return '<tr style="font-size:11px;border-bottom:1px solid var(--border)">' +
+        '<td style="padding:4px 8px"><input type="checkbox"'+(r.checked?' checked':'')+' onchange="_ctToggleRow('+i+')"></td>' +
+        '<td style="padding:3px 6px" title="'+_ctEsc(r.event)+'">'+_ctEsc(evtShort)+'</td>' +
+        '<td style="padding:3px 6px" title="'+_ctEsc(r.market)+'">'+_ctEsc(mktShort)+'</td>' +
+        '<td style="padding:3px 6px" title="'+_ctEsc(r.selection)+'">'+_ctEsc(selShort)+'</td>' +
+        '<td style="padding:3px 6px;text-align:right;white-space:nowrap">'+(r.odds!==''?r.odds:'—')+'</td>' +
+        '<td style="padding:3px 6px;white-space:nowrap">'+statusLabel+'</td>' +
+        '<td style="padding:3px 6px;white-space:nowrap;color:'+(r.isLive?'var(--orange)':'var(--text-muted)')+'">'+typeLabel+'</td>' +
+        '</tr>';
+    }).join('');
+
+    el.innerHTML = '<div style="margin-top:10px;overflow-x:auto">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+      '<thead><tr style="background:var(--bg-secondary);font-size:11px">' +
+      '<th style="padding:4px 8px"><input type="checkbox"'+(allChecked?' checked':'')+' onchange="_ctToggleAll(this.checked)"></th>' +
+      '<th style="padding:4px 6px;text-align:left">賽事</th>' +
+      '<th style="padding:4px 6px;text-align:left">市場</th>' +
+      '<th style="padding:4px 6px;text-align:left">選擇</th>' +
+      '<th style="padding:4px 6px;text-align:right">賠率</th>' +
+      '<th style="padding:4px 6px;text-align:left">狀態</th>' +
+      '<th style="padding:4px 6px;text-align:left">類型</th>' +
+      '</tr></thead>' +
+      '<tbody>'+rows+'</tbody>' +
+      '</table></div>';
+  }
+
+  function _ctEsc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function _ctToggleRow(idx) {
+    if (_ctRows[idx]) { _ctRows[idx].checked = !_ctRows[idx].checked; }
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
+
+  function _ctToggleAll(checked) {
+    _ctRows.forEach(function(r){ r.checked = !!checked; });
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
+
+  function _ctGetChecked() {
+    return _ctRows.filter(function(r){ return r.checked; });
+  }
+
+  function _ctGetReason(lang) {
+    if (_ctReason === 'postponed') {
+      return lang === 'kr' ? '경기 연기, 24시간 규정' : 'postponed match, 24 hours rule';
+    }
+    if (_ctReason === 'noinfo') {
+      return lang === 'kr' ? '3시간 이상 정보 없음' : 'no info over 3 hours';
+    }
+    var c = (document.getElementById('ct-custom-reason') || {}).value || _ctCustomReason || '';
+    return c;
+  }
+
+  function _ctBuildExcel() {
+    var checked = _ctGetChecked();
+    var reason = _ctGetReason('en');
+    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '';
+    var doneTime = _ctDoneTime || '';
+    var tid = _ctTicketId || '';
+
+    // One line per selection: Sport    League    Prematch/Live    EventDate    EventName    Market
+    var selLines = checked.map(function(r) {
+      var type = r.isLive ? 'Live' : 'Prematch';
+      var parts = [r.sport, r.league, type, r.eventDate, r.event, r.market].filter(Boolean);
+      return parts.join('    ');
+    }).join('\n');
+
+    // Event info block (goes into one spreadsheet cell)
+    var eventInfo = selLines;
+    if (reqTime) eventInfo += '\n' + reqTime + ' pls cancel (' + reason + ')';
+    if (doneTime) eventInfo += '\n' + doneTime + ' Done as requested';
+
+    // Tab-separated: Date | Brand | TicketId | cancel please | EventInfoBlock | CS name
+    // → columns B C D E F G of tracking sheet (A=row#, H=Type filled manually)
+    var csName = getAgentName();
+    return (_ctDate || '') + '\t' + (_ctBrand || '') + '\t' + tid + '\tcancel please\t' + eventInfo + '\t' + csName;
+  }
+
+  function _ctBuildFirstReply() {
+    var checked = _ctGetChecked();
+    var tid = _ctTicketId || '';
+    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
+    var target = isPartial ? 'line' : 'bet';
+
+    // Unique event names, one per line
+    var seen = {};
+    var events = [];
+    checked.forEach(function(r) {
+      if (r.event && !seen[r.event]) { seen[r.event] = true; events.push(r.event); }
+    });
+
+    var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim();
+    return tid + '\n' +
+           events.join('\n') + '\n' +
+           'pls cancel the ' + target + ', op request\n' +
+           (groupName || _ctBrand || '');
+  }
+
+  function _ctBuildFinalReply() {
+    var checked = _ctGetChecked();
+    var tid = _ctTicketId || '';
+    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
+
+    // Unique event names, one per line
+    var seen = {};
+    var events = [];
+    checked.forEach(function(r) {
+      if (r.event && !seen[r.event]) { seen[r.event] = true; events.push(r.event); }
+    });
+
+    var agentName = getAgentName();
+    // Partial: line cancelled + bet settled; Full: bet cancelled
+    var krMsg = isPartial
+      ? '기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '')
+      : '기다려 주셔서 감사합니다. 베팅이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '');
+
+    return tid + '\n' + events.join('\n') + '\n\n' + krMsg;
+  }
+
+  function _ctUpdatePreview() {
+    var el = document.getElementById('ct-preview-area');
+    if (!el) return;
+    var content = '';
+    if (_ctPreviewTab === 'excel') content = _ctBuildExcel();
+    else if (_ctPreviewTab === 'first') content = _ctBuildFirstReply();
+    else content = _ctBuildFinalReply();
+
+    var safeContent = _ctEsc(content);
+    el.innerHTML = '<pre style="font-size:11px;white-space:pre-wrap;word-break:break-all;background:var(--bg-secondary);border-radius:6px;padding:10px;max-height:300px;overflow-y:auto;margin:0">' +
+      (safeContent || '<span style="color:var(--text-muted)">（請先貼入 JSON）</span>') + '</pre>';
+  }
+
+  function _ctSwitchPreviewTab(tab) {
+    _ctPreviewTab = tab;
+    ['excel','first','final'].forEach(function(t) {
+      var btn = document.getElementById('ct-ptab-'+t);
+      if (!btn) return;
+      if (t === tab) {
+        btn.style.background = 'var(--blue)'; btn.style.color = 'white'; btn.style.border = '1px solid var(--blue)';
+      } else {
+        btn.style.background = 'transparent'; btn.style.color = 'var(--text-sec)'; btn.style.border = '1px solid var(--border)';
+      }
+    });
+    _ctUpdatePreview();
+  }
+
+  function _ctCopyAll(btn) {
+    var text = _ctBuildExcel();
+    if (!text.trim() || !_ctTicketId) { alert('請先貼入 JSON'); return; }
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent; btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    });
+  }
+
+  function _ctCopyFirstReply(btn) {
+    if (!_ctTicketId) { alert('請先貼入 JSON'); return; }
+    var text = _ctBuildFirstReply();
+    navigator.clipboard.writeText(text).then(function() {
+      var checked = _ctGetChecked();
+      var eventNames = [];
+      var seen = {};
+      checked.forEach(function(r) {
+        if (r.event && !seen[r.event]) { seen[r.event] = true; eventNames.push(r.event); }
+      });
+      var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim();
+      if (eventNames.length > 0) {
+        try { addRecord(eventNames, [_ctTicketId], 'op cancel request', groupName, '', 'kr'); } catch(e) {}
+      }
+      var orig = btn.textContent; btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    });
+  }
+
+  function _ctCopyFinalReply(btn) {
+    if (!_ctTicketId) { alert('請先貼入 JSON'); return; }
+    var text = _ctBuildFinalReply();
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent; btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    });
+  }
+
+  function _ctClear() {
+    _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctRequestTime = ''; _ctDate = ''; _ctBrand = '';
+    var jsonEl = document.getElementById('ct-json-input');
+    if (jsonEl) jsonEl.value = '';
+    var reqEl = document.getElementById('ct-req-time');
+    if (reqEl) reqEl.value = '';
+    var groupEl = document.getElementById('ct-group-name');
+    if (groupEl) groupEl.value = '';
+    var custEl = document.getElementById('ct-custom-reason');
+    if (custEl) { custEl.style.display = 'none'; custEl.value = ''; }
+    var reasonEl = document.getElementById('ct-reason');
+    if (reasonEl) { reasonEl.value = 'postponed'; _ctReason = 'postponed'; }
+    var infoEl = document.getElementById('ct-ticket-info');
+    if (infoEl) infoEl.style.display = 'none';
+    _ctPreviewTab = 'excel';
+    _ctSwitchPreviewTab('excel');
+    _ctRenderTable();
+    _ctUpdatePreview();
+  }
 
 </script>
 </body>
