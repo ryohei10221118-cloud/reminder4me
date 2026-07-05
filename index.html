@@ -5033,6 +5033,8 @@
   function _ctBuildFirstReply() {
     var checked = _ctGetChecked();
     var tid = _ctTicketId || '';
+    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
+    var target = isPartial ? 'line' : 'bet';
 
     // Unique event names, one per line
     var seen = {};
@@ -5043,20 +5045,29 @@
 
     return tid + '\n' +
            events.join('\n') + '\n' +
-           'pls cancel the selection, op request\n' +
+           'pls cancel the ' + target + ', op request\n' +
            (_ctBrand || '');
   }
 
   function _ctBuildFinalReply() {
-    var reason = _ctGetReason('kr');
-    var doneTime = _ctDoneTime || '—';
-    var tid = _ctTicketId || '—';
+    var checked = _ctGetChecked();
+    var tid = _ctTicketId || '';
+    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
 
-    return '안녕하세요,\n\n요청하신 베팅 취소가 완료되었습니다.\n\n' +
-           '- 티켓 ID: ' + tid + '\n' +
-           '- 취소 사유: ' + reason + '\n' +
-           '- 완료 시간: ' + doneTime + ' (UTC+8)\n\n' +
-           '감사합니다.';
+    // Unique event names, one per line
+    var seen = {};
+    var events = [];
+    checked.forEach(function(r) {
+      if (r.event && !seen[r.event]) { seen[r.event] = true; events.push(r.event); }
+    });
+
+    var agentName = getAgentName();
+    // Partial: line cancelled + bet settled; Full: bet cancelled
+    var krMsg = isPartial
+      ? '기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '')
+      : '기다려 주셔서 감사합니다. 베팅이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '');
+
+    return tid + '\n' + events.join('\n') + '\n\n' + krMsg;
   }
 
   function _ctUpdatePreview() {
