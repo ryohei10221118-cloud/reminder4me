@@ -2586,7 +2586,7 @@
     _renderJsonPasteState(overlay, `已新增注單 ${ticketId}`);
   }
 
-  function _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses) {
+  function _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses, betInfos) {
     const mergeRows = matched.map((g, mi) => {
       const label = g.eventNames.filter(Boolean).join(' / ');
       const tickets = g.orderNos.filter(Boolean).join(', ');
