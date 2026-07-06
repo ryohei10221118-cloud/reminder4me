@@ -4545,6 +4545,8 @@
       </div>` : '';
 
     el.innerHTML = `
+      <button onclick="_saToggleType()" title="${_saEsc(typeTitle)}"
+        style="width:34px;height:34px;border-radius:50%;background:${typeColor};color:white;border:none;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">${_saEsc(typeLabel)}</button>
       <div style="position:relative">
         ${rPanelHtml}
         <button onclick="event.stopPropagation();_saShowReasonPanel=!_saShowReasonPanel;_saShowHistoryPanel=false;_saRenderActionBtns()"
@@ -4560,8 +4562,6 @@
           ${_saQueryHistory.length>0?`<span style="position:absolute;top:-3px;right:-3px;background:#ef4444;color:white;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">${_saQueryHistory.length}</span>`:''}
         </button>
       </div>
-      <button onclick="_saToggleType()" title="${_saEsc(typeTitle)}"
-        style="width:34px;height:34px;border-radius:50%;background:${typeColor};color:white;border:none;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">${_saEsc(typeLabel)}</button>
       <button onclick="_saShowReasonManager=true;_saRenderReasonManager()" title="管理自訂原因"
         style="width:34px;height:34px;border-radius:50%;background:var(--surface2);color:var(--text-sec);border:1px solid var(--border);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚙️</button>`;
   }
