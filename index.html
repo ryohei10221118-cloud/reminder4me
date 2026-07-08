@@ -1348,6 +1348,9 @@
         </div>`;
     }
 
+    const allEventNames = getEventNames(r);
+    const storedTime = allEventNames.map(n => _getEventTime(n)).find(t => t) || '';
+
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
@@ -1355,7 +1358,12 @@
       <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
         <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
         ${eventSection}
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>
         <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
         ${urlSection}
         <div class="popup-btns" style="margin-top:12px;flex-shrink:0">
@@ -1381,6 +1389,21 @@
     return [(pending[0] || allNames[0] || '').trim()].filter(Boolean);
   }
 
+  const _EVENT_TIME_KEY = 'reminder4me_event_times';
+  function _getEventTime(eventName) {
+    try { return (JSON.parse(localStorage.getItem(_EVENT_TIME_KEY) || '{}'))[eventName] || ''; } catch(e) { return ''; }
+  }
+  function _saveEventTime(eventName, time) {
+    try {
+      const store = JSON.parse(localStorage.getItem(_EVENT_TIME_KEY) || '{}');
+      if (time) store[eventName] = time; else delete store[eventName];
+      localStorage.setItem(_EVENT_TIME_KEY, JSON.stringify(store));
+    } catch(e) {}
+  }
+  function _getQrTimeInput() {
+    return (document.getElementById('qr-time-input') || {}).value || '';
+  }
+
   function _qrCopyDone(id, qrIdx, lang, btn) {
     const qr = _quickReplies[qrIdx];
     if (!qr) return;
@@ -1388,8 +1411,12 @@
     const selectedNames = r ? _getSelectedQrEventNames(r) : [];
     const eventName = selectedNames.join('\n');
     const url = _hintPopupUrl;
+    const timeVal = _getQrTimeInput();
+
+    if (timeVal && selectedNames.length > 0) selectedNames.forEach(n => _saveEventTime(n, timeVal));
 
     let text = qr[lang] || '';
+    text = text.replace(/\{time\}/g, timeVal);
     if (qr.attachName && eventName) text = eventName + '\n' + text;
     const agentName = getAgentName();
     if (agentName) {
@@ -1407,7 +1434,12 @@
     const qr = _quickReplies[qrIdx];
     if (!qr) return;
     const url = _hintPopupUrl;
+    const timeVal = _getQrTimeInput();
+
+    if (timeVal && _hintPopupEvent) _saveEventTime(_hintPopupEvent, timeVal);
+
     let text = qr[lang] || '';
+    text = text.replace(/\{time\}/g, timeVal);
     if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
     const agentName = getAgentName();
     if (agentName) {
@@ -2219,6 +2251,11 @@
         ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
         ${urlRadioHtml}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
+            <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+            <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(_getEventTime(eventName))}"
+              style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+          </div>
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;flex-shrink:0">✓ 快速回覆</div>
           <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:12px">尚未設定快速回覆範本</div>'}</div>
         </div>
