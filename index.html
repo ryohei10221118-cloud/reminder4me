@@ -5150,8 +5150,8 @@
     var escaped = cellContent.replace(/"/g, '""');
 
     var agentName = (document.getElementById('agent-name') || {}).value || '';
-    // B=Date  C=GroupName  D=TicketId  E=(empty)  F=quoted event block  G=action  H=agent
-    return todayDate + '\t' + groupName + '\t' + tid + '\t\t"' + escaped + '"\tcancel please\t' + agentName;
+    // B=Date  C=GroupName  D=TicketId  E=cancel please  F=quoted event block  G=agent
+    return todayDate + '\t' + groupName + '\t' + tid + '\tcancel please\t"' + escaped + '"\t' + agentName;
   }
 
   function _ctBuildFirstReply() {
