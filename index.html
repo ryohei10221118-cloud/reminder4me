@@ -1296,10 +1296,6 @@
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
-    const qrOptions = '<option value="-1">— 不帶入 —</option>' +
-      _quickReplies.map((qr, i) => `<option value="${i}">${esc(qr.label)}</option>`).join('');
-    const noQr = _quickReplies.length === 0;
-
     const urlSection = (hasUrlTemplate && allUrls.length > 1) ? `
       <div style="margin-top:8px;flex-shrink:0;display:flex;flex-direction:column;gap:3px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
@@ -1319,25 +1315,56 @@
       </div>` : '';
 
     const displayNames = pendingNames.length ? pendingNames : allEventNames;
-    const eventRows = displayNames.map(n => {
-      const isPending = pendingNames.includes(n);
-      return `<div class="qr-event-sel-row" style="display:flex;align-items:center;gap:7px;padding:6px 2px;border-bottom:1px solid var(--border-light)">
-        <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" ${isPending ? 'checked' : ''} style="flex-shrink:0;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
-        <span style="flex:1;min-width:0;font-size:12px;color:var(--text-pri);line-height:1.3;word-break:break-word">${esc(n)}</span>
-        ${noQr ? '' : `<select class="qr-event-select" style="flex-shrink:0;width:130px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none">${qrOptions}</select>`}
-      </div>`;
-    }).join('');
-    const hlEn = cardLang === 'en' ? ';background:var(--blue);color:white;border-color:var(--blue)' : '';
-    const hlZh = cardLang === 'zh' ? ';background:var(--green);color:white;border-color:var(--green)' : '';
-    const hlKr = cardLang === 'kr' ? ';background:#a855f7;color:white;border-color:#a855f7' : '';
-    const combinedBtns = noQr ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:8px 0">尚未設定快速回覆範本</div>' : `
-      <div style="display:flex;gap:5px;margin-top:10px;flex-shrink:0">
-        <button onclick="_qrCombinedCopy('${id}','en',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlEn}">合併 EN</button>
-        <button onclick="_qrCombinedCopy('${id}','zh',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlZh}">合併 中</button>
-        <button onclick="_qrCombinedCopy('${id}','kr',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlKr}">합병 KR</button>
-      </div>`;
-
+    const isSingle = displayNames.length === 1;
     const storedTime = allEventNames.map(n => _getEventTime(n)).find(t => t) || '';
+    const hlEn = cardLang === 'en' ? ' hl' : '';
+    const hlZh = cardLang === 'zh' ? ' hl' : '';
+    const hlKr = cardLang === 'kr' ? ' hl' : '';
+
+    // Single event: original QR list with per-template EN/中/KR buttons
+    let eventTitle = '';
+    let qrArea = '';
+    let combinedBtns = '';
+    if (isSingle) {
+      eventTitle = `<div class="popup-title" style="font-size:13px;margin-bottom:6px;flex-shrink:0">🏆 ${esc(displayNames[0])}</div>`;
+      const rowsHtml = _quickReplies.map((qr, i) => {
+        const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
+        const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>' : '';
+        return `<div class="qr-row">
+          <span class="qr-row-label">${esc(qr.label)}${nameTag}${urlTag}</span>
+          <div class="qr-lang-btns">
+            <button class="btn-qr-lang${hlZh}" onclick="_qrCopyDone('${id}',${i},'zh',this)">中</button>
+            <button class="btn-qr-lang${hlEn}" onclick="_qrCopyDone('${id}',${i},'en',this)">EN</button>
+            <button class="btn-qr-lang${hlKr}" onclick="_qrCopyDone('${id}',${i},'kr',this)">한</button>
+          </div>
+        </div>`;
+      }).join('');
+      qrArea = `<div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>`;
+    } else {
+      // Multiple events: per-event checkbox + dropdown + combine buttons
+      const noQr = _quickReplies.length === 0;
+      const qrOptions = '<option value="-1">— 不帶入 —</option>' +
+        _quickReplies.map((qr, i) => `<option value="${i}">${esc(qr.label)}</option>`).join('');
+      const hlEnStyle = cardLang === 'en' ? ';background:var(--blue);color:white;border-color:var(--blue)' : '';
+      const hlZhStyle = cardLang === 'zh' ? ';background:var(--green);color:white;border-color:var(--green)' : '';
+      const hlKrStyle = cardLang === 'kr' ? ';background:#a855f7;color:white;border-color:#a855f7' : '';
+      const eventRows = displayNames.map(n => {
+        const isPending = pendingNames.includes(n);
+        return `<div class="qr-event-sel-row" style="display:flex;align-items:center;gap:7px;padding:6px 2px;border-bottom:1px solid var(--border-light)">
+          <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" ${isPending ? 'checked' : ''} style="flex-shrink:0;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
+          <span style="flex:1;min-width:0;font-size:12px;color:var(--text-pri);line-height:1.3;word-break:break-word">${esc(n)}</span>
+          ${noQr ? '' : `<select class="qr-event-select" style="flex-shrink:0;width:130px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none">${qrOptions}</select>`}
+        </div>`;
+      }).join('');
+      qrArea = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;flex-shrink:0">🏆 賽事 &amp; 範本</div>
+        <div style="overflow-y:auto;flex:1;min-height:0;background:var(--surface2);border-radius:8px;padding:0 8px">${eventRows}</div>`;
+      combinedBtns = noQr ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:8px 0">尚未設定快速回覆範本</div>' : `
+        <div style="display:flex;gap:5px;margin-top:10px;flex-shrink:0">
+          <button onclick="_qrCombinedCopy('${id}','en',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlEnStyle}">合併 EN</button>
+          <button onclick="_qrCombinedCopy('${id}','zh',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlZhStyle}">合併 中</button>
+          <button onclick="_qrCombinedCopy('${id}','kr',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlKrStyle}">합병 KR</button>
+        </div>`;
+    }
 
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
@@ -1345,14 +1372,14 @@
     overlay.innerHTML = `
       <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
         <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
+        ${eventTitle}
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
           <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
           <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
             style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
         </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;flex-shrink:0">🏆 賽事 &amp; 範本</div>
-        <div style="overflow-y:auto;flex:1;min-height:0;background:var(--surface2);border-radius:8px;padding:0 8px">${eventRows}</div>
+        ${qrArea}
         ${combinedBtns}
         ${urlSection}
         <div class="popup-btns" style="margin-top:12px;flex-shrink:0">
