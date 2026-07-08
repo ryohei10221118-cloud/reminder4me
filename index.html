@@ -3394,6 +3394,11 @@
           <span style="font-size:12px;color:var(--text-sec);font-family:monospace;word-break:break-all">${esc(eventId)}</span>
           <button class="btn-icon-sm" title="複製 EventId" data-copy="${esc(eventId)}" onclick="copyText(this.dataset.copy,this)" style="flex-shrink:0">📋</button>
         </div>` : ''}
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="msg-time-input-${id}-${eventIdx}" type="text" placeholder="e.g. 08/07/2026 07:00 (UTC+0)" value="${esc(_getEventTime(eventName))}"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>
         <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(note)}</textarea>
         <button class="btn-copy-reply" onclick="saveCopyMsg('${id}',${eventIdx},this)">📋 複製記錄</button>
       </div>`;
@@ -3416,15 +3421,19 @@
     if (!r.eventNotes) r.eventNotes = {};
     if (!r.eventNoteTimes) r.eventNoteTimes = {};
     const ta = document.getElementById(`msg-textarea-${id}-${eventIdx}`);
+    const ti = document.getElementById(`msg-time-input-${id}-${eventIdx}`);
+    const timeVal = (ti ? ti.value : '').trim();
+    if (timeVal) _saveEventTime(eventName, timeVal);
     r.eventNotes[eventName] = ta ? ta.value : '';
     if (r.eventNotes[eventName]) r.eventNoteTimes[eventName] = Date.now();
     save();
     _refreshNoteHints();
     const betInfo = r.betInfos && r.betInfos[eventIdx];
     const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
+    const note = (r.eventNotes[eventName] || '').replace(/\{time\}/g, timeVal);
     const parts = [eventName];
     if (eventId) parts.push(`EventId: ${eventId}`);
-    if (r.eventNotes[eventName]) parts.push(r.eventNotes[eventName]);
+    if (note) parts.push(note);
     copyText(parts.join('\n'), btn);
   }
 
