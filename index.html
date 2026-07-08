@@ -1413,7 +1413,7 @@
       if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
       text = text.trimEnd() + suffix;
     }
-    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n' + url;
 
     copyText(text, btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
@@ -1437,7 +1437,7 @@
       let text = qr[lang] || '';
       text = text.replace(/\{time\}/g, evTime);
       if (qr.attachName && eventName) text = eventName + '\n' + text;
-      if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n\n' + _hintPopupUrl;
+      if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n' + _hintPopupUrl;
       parts.push(text);
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
@@ -1468,7 +1468,7 @@
       if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
       text = text.trimEnd() + suffix;
     }
-    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n' + url;
     copyText(text, btn);
     setTimeout(() => {
       document.getElementById('popup-overlay')?.remove();
@@ -2397,7 +2397,7 @@
       let text = qr[lang] || '';
       text = text.replace(/\{time\}/g, evTime);
       if (qr.attachName && eventName) text = eventName + '\n' + text;
-      if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n\n' + _hintPopupUrl;
+      if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n' + _hintPopupUrl;
       parts.push(text);
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
