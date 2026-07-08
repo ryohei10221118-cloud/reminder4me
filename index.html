@@ -2323,7 +2323,7 @@
         <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" checked style="flex-shrink:0;margin-top:3px;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;color:var(--text-pri);word-break:break-word;margin-bottom:3px">${esc(n)}</div>
-          <div style="font-size:11px;color:var(--text-sec);line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:56px;overflow-y:auto;background:var(--surface3);border-radius:4px;padding:4px 6px" data-note="${esc(h.note)}">${noteHtml}<button style="float:right;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1" title="複製備註" onclick="copyText(this.closest('[data-note]').dataset.note,this)">📋</button></div>
+          <div style="font-size:11px;color:var(--text-sec);line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:56px;overflow-y:auto;background:var(--surface3);border-radius:4px;padding:4px 6px">${noteHtml}</div>
           ${h.timeStr ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${esc(h.timeStr)}</div>` : ''}
         </div>
         ${noQr ? '' : `<select class="qr-event-select" style="flex-shrink:0;width:120px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none;margin-top:1px">${qrOptions}</select>`}
