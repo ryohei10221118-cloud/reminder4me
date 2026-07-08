@@ -5149,8 +5149,9 @@
     // CSV-quote the cell content (escape any " inside)
     var escaped = cellContent.replace(/"/g, '""');
 
-    // B=Date  C=GroupName  D=TicketId  E=(empty, cancel please dropdown)  F=quoted event block
-    return todayDate + '\t' + groupName + '\t' + tid + '\t\t"' + escaped + '"';
+    var agentName = (document.getElementById('agent-name') || {}).value || '';
+    // B=Date  C=GroupName  D=TicketId  E=(empty)  F=quoted event block  G=action  H=agent
+    return todayDate + '\t' + groupName + '\t' + tid + '\t\t"' + escaped + '"\tcancel please\t' + agentName;
   }
 
   function _ctBuildFirstReply() {
