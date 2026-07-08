@@ -1422,7 +1422,7 @@
   function _qrCombinedCopy(id, lang, btn) {
     const timeVal = _getQrTimeInput();
     const rows = document.querySelectorAll('.qr-event-sel-row');
-    const parts = [];
+    const parts = [];   // {text, url}
     rows.forEach(row => {
       const cb = row.querySelector('.qr-event-cb');
       if (!cb || !cb.checked) return;
@@ -1437,17 +1437,17 @@
       let text = qr[lang] || '';
       text = text.replace(/\{time\}/g, evTime);
       if (qr.attachName && eventName) text = eventName + '\n' + text;
-      if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n' + _hintPopupUrl;
-      parts.push(text);
+      parts.push({ text: text.trimEnd(), url: qr.hasUrl ? _hintPopupUrl : '' });
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
     const agentName = getAgentName();
     if (agentName) {
       const suffix = ` - ${agentName}`;
-      const last = parts[parts.length - 1].trimEnd();
-      parts[parts.length - 1] = (last.endsWith(suffix) ? last : last + suffix);
+      const last = parts[parts.length - 1].text;
+      parts[parts.length - 1].text = last.endsWith(suffix) ? last : last + suffix;
     }
-    copyText(parts.join('\n\n'), btn);
+    const finalParts = parts.map(p => p.url ? p.text + '\n' + p.url : p.text);
+    copyText(finalParts.join('\n\n'), btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
   }
 
@@ -2382,7 +2382,7 @@
   function _qrCombinedCopyHint(lang, btn) {
     const timeVal = _getQrTimeInput();
     const rows = document.querySelectorAll('.qr-event-sel-row');
-    const parts = [];
+    const parts = [];   // {text, url}
     rows.forEach(row => {
       const cb = row.querySelector('.qr-event-cb');
       if (!cb || !cb.checked) return;
@@ -2397,17 +2397,17 @@
       let text = qr[lang] || '';
       text = text.replace(/\{time\}/g, evTime);
       if (qr.attachName && eventName) text = eventName + '\n' + text;
-      if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n' + _hintPopupUrl;
-      parts.push(text);
+      parts.push({ text: text.trimEnd(), url: qr.hasUrl ? _hintPopupUrl : '' });
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
     const agentName = getAgentName();
     if (agentName) {
       const suffix = ` - ${agentName}`;
-      const last = parts[parts.length - 1].trimEnd();
-      parts[parts.length - 1] = (last.endsWith(suffix) ? last : last + suffix);
+      const last = parts[parts.length - 1].text;
+      parts[parts.length - 1].text = last.endsWith(suffix) ? last : last + suffix;
     }
-    copyText(parts.join('\n\n'), btn);
+    const finalParts = parts.map(p => p.url ? p.text + '\n' + p.url : p.text);
+    copyText(finalParts.join('\n\n'), btn);
     setTimeout(() => document.getElementById('popup-overlay')?.remove(), 400);
   }
   function _jsonIsUpcoming(iso) {
