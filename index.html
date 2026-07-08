@@ -3769,6 +3769,7 @@
       const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : 'var(--text-muted)';
       const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
       const timeHtml  = ev.startDate ? `<span style="font-size:11px;color:${timeColor};white-space:nowrap">${_jsonToUtc8(ev.startDate)}${timeNote}</span>` : '';
+      const storedTime = ev.correctTime !== undefined ? ev.correctTime : _getEventTime(hintKey);
       return `
       <div class="msg-event-row" id="msg-ev-${i}" style="${borderStyle}">
         <div class="msg-event-header">
@@ -3780,6 +3781,11 @@
             ${statusBadge}${hintIcon}${timeHtml}
             <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="msg-time-${i}" type="text" placeholder="e.g. 08/07/2026 07:00 (UTC+0)" value="${esc(storedTime)}"
+            style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
         </div>
         <textarea class="msg-event-notes" id="msg-notes-${i}" placeholder="備註（留空則不複製此賽事）...">${esc(ev.notes || '')}</textarea>
       </div>`;
@@ -3866,6 +3872,8 @@
     _msgEvents.forEach((ev, i) => {
       const ta = document.getElementById(`msg-notes-${i}`);
       if (ta) ev.notes = ta.value;
+      const ti = document.getElementById(`msg-time-${i}`);
+      if (ti) ev.correctTime = ti.value;
     });
   }
 
@@ -3879,11 +3887,17 @@
   function _copyMsgCompose() {
     _saveCurrentMsgNotes();
     const includeEventId = document.getElementById('msg-include-eventid')?.checked !== false;
+    // save times to event time store
+    _msgEvents.forEach(ev => { if (ev.correctTime && ev.correctTime.trim()) _saveEventTime(ev.eventName, ev.correctTime.trim()); });
     const parts = _msgEvents
       .filter(ev => ev.notes && ev.notes.trim())
-      .map(ev => includeEventId
-        ? `${ev.eventName}\nEventId: ${ev.eventId}\n${ev.notes.trim()}`
-        : `${ev.eventName}\n${ev.notes.trim()}`);
+      .map(ev => {
+        const timeVal = (ev.correctTime || '').trim();
+        const notes = ev.notes.trim().replace(/\{time\}/g, timeVal);
+        return includeEventId
+          ? `${ev.eventName}\nEventId: ${ev.eventId}\n${notes}`
+          : `${ev.eventName}\n${notes}`;
+      });
     if (!parts.length) { alert('請至少填寫一筆備註'); return; }
     // save notes (including links) to standalone store so 📌 works later
     _msgEvents.forEach(ev => { if (ev.notes && ev.notes.trim()) _ensSet(ev.eventName, ev.notes); });
