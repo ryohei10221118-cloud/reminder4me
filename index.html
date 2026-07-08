@@ -1437,16 +1437,16 @@
       let text = qr[lang] || '';
       text = text.replace(/\{time\}/g, evTime);
       if (qr.attachName && eventName) text = eventName + '\n' + text;
-      const agentName = getAgentName();
-      if (agentName) {
-        const suffix = ` - ${agentName}`;
-        if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
-        text = text.trimEnd() + suffix;
-      }
       if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n\n' + _hintPopupUrl;
       parts.push(text);
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
+    const agentName = getAgentName();
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      const last = parts[parts.length - 1].trimEnd();
+      parts[parts.length - 1] = (last.endsWith(suffix) ? last : last + suffix);
+    }
     copyText(parts.join('\n\n'), btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
   }
@@ -2397,16 +2397,16 @@
       let text = qr[lang] || '';
       text = text.replace(/\{time\}/g, evTime);
       if (qr.attachName && eventName) text = eventName + '\n' + text;
-      const agentName = getAgentName();
-      if (agentName) {
-        const suffix = ` - ${agentName}`;
-        if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
-        text = text.trimEnd() + suffix;
-      }
       if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n\n' + _hintPopupUrl;
       parts.push(text);
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
+    const agentName = getAgentName();
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      const last = parts[parts.length - 1].trimEnd();
+      parts[parts.length - 1] = (last.endsWith(suffix) ? last : last + suffix);
+    }
     copyText(parts.join('\n\n'), btn);
     setTimeout(() => document.getElementById('popup-overlay')?.remove(), 400);
   }
@@ -4055,6 +4055,15 @@
     // update 📌 on form if any matching event names are already there
     const allFormNames = formGroups.flatMap(g => g.eventNames.filter(n => n.trim()));
     if (allFormNames.length) _renderNoteHints(allFormNames);
+    // agent name only on last block when combining multiple events
+    const _composeAgent = getAgentName();
+    if (_composeAgent && parts.length > 1) {
+      const suffix = ` - ${_composeAgent}`;
+      parts.forEach((p, i) => {
+        parts[i] = p.trimEnd().replace(new RegExp(suffix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + '$'), '').trimEnd();
+      });
+      parts[parts.length - 1] = parts[parts.length - 1] + suffix;
+    }
     const text = parts.join('\n\n');
     navigator.clipboard.writeText(text).then(() => _closeMsgCompose()).catch(() => {
       const ta = document.createElement('textarea');
