@@ -2208,6 +2208,17 @@
   function showNoteHintPopup(eventName) {
     const hint = _getHint(eventName);
     if (!hint) return;
+
+    // Collect all hinted events currently visible in the form
+    const allHintBtns = [...document.querySelectorAll('.note-hint-icon-btn')];
+    const allHintedNames = [...new Set([eventName, ...allHintBtns.map(b => b.dataset.event).filter(n => n && _getHint(n))])];
+
+    if (allHintedNames.length > 1) {
+      _showCombinedNoteHintPopup(allHintedNames);
+      return;
+    }
+
+    // Single event popup (original behaviour)
     _hintPopupEvent = eventName;
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
@@ -2228,7 +2239,6 @@
       </div>`;
     }).join('');
 
-    // Note text: URLs are links (open new tab only, selection handled by radio below)
     const noteHtml = hint.note.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
       if (i % 2 === 1) {
         return `<a href="${esc(part)}" target="_blank" rel="noopener noreferrer"
@@ -2238,7 +2248,6 @@
       return esc(part);
     }).join('');
 
-    // URL radio list — shown when there are multiple URLs to choose from
     const urlRadioHtml = allUrls.length > 1 ? `
       <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
@@ -2283,11 +2292,123 @@
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
-    // Highlight the initially-selected radio row
     if (allUrls.length > 1) {
       const firstRow = document.getElementById('hint-url-row-0');
       if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
     }
+  }
+
+  function _showCombinedNoteHintPopup(eventNames) {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+
+    const allUrls = _collectUrls(eventNames);
+    _hintPopupUrl = allUrls[0]?.url || '';
+    _hintPopupEvent = eventNames[0] || '';
+
+    const qrOptions = '<option value="-1">— 不帶入 —</option>' +
+      _quickReplies.map((qr, i) => `<option value="${i}">${esc(qr.label)}</option>`).join('');
+    const noQr = _quickReplies.length === 0;
+
+    const storedTime = eventNames.map(n => _getEventTime(n)).find(t => t) || '';
+
+    const eventRows = eventNames.map(n => {
+      const h = _getHint(n);
+      if (!h) return '';
+      const noteHtml = h.note.split(/(https?:\/\/[^\s]+)/g).map((part, pi) => {
+        if (pi % 2 === 1) return `<a href="${esc(part)}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);word-break:break-all;text-decoration:underline" onclick="event.stopPropagation()">${esc(part)}</a>`;
+        return esc(part);
+      }).join('');
+      return `<div class="qr-event-sel-row" style="display:flex;align-items:flex-start;gap:7px;padding:8px 2px;border-bottom:1px solid var(--border-light)">
+        <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" checked style="flex-shrink:0;margin-top:3px;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text-pri);word-break:break-word;margin-bottom:3px">${esc(n)}</div>
+          <div style="font-size:11px;color:var(--text-sec);line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:56px;overflow-y:auto;background:var(--surface3);border-radius:4px;padding:4px 6px" data-note="${esc(h.note)}">${noteHtml}<button style="float:right;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1" title="複製備註" onclick="copyText(this.closest('[data-note]').dataset.note,this)">📋</button></div>
+          ${h.timeStr ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${esc(h.timeStr)}</div>` : ''}
+        </div>
+        ${noQr ? '' : `<select class="qr-event-select" style="flex-shrink:0;width:120px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none;margin-top:1px">${qrOptions}</select>`}
+      </div>`;
+    }).join('');
+
+    const combinedBtns = noQr ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:8px 0">尚未設定快速回覆範本</div>' : `
+      <div style="display:flex;gap:5px;margin-top:10px;flex-shrink:0">
+        <button onclick="_qrCombinedCopyHint('en',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer">合併 EN</button>
+        <button onclick="_qrCombinedCopyHint('zh',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer">合併 中</button>
+        <button onclick="_qrCombinedCopyHint('kr',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer">합병 KR</button>
+      </div>`;
+
+    const urlRadioHtml = allUrls.length > 1 ? `
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
+        ${allUrls.map(({url, label}, i) => {
+          const safeHref = esc(url);
+          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
+          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
+          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="chint-url-row-${i}">
+            <input type="radio" name="chint-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
+              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=chint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
+            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
+            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
+          </label>`;
+        }).join('')}
+      </div>` : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
+        <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄 & 快速回覆</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>
+        <div style="overflow-y:auto;flex:1;min-height:0">${eventRows}</div>
+        ${combinedBtns}
+        ${urlRadioHtml}
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
+    if (allUrls.length > 1) {
+      const firstRow = document.getElementById('chint-url-row-0');
+      if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
+    }
+  }
+
+  function _qrCombinedCopyHint(lang, btn) {
+    const timeVal = _getQrTimeInput();
+    const rows = document.querySelectorAll('.qr-event-sel-row');
+    const parts = [];
+    rows.forEach(row => {
+      const cb = row.querySelector('.qr-event-cb');
+      if (!cb || !cb.checked) return;
+      const sel = row.querySelector('.qr-event-select');
+      const qrIdx = sel ? parseInt(sel.value) : -1;
+      if (qrIdx < 0) return;
+      const qr = _quickReplies[qrIdx];
+      if (!qr) return;
+      const eventName = cb.dataset.name || '';
+      const evTime = timeVal || _getEventTime(eventName);
+      if (evTime && eventName) _saveEventTime(eventName, evTime);
+      let text = qr[lang] || '';
+      text = text.replace(/\{time\}/g, evTime);
+      if (qr.attachName && eventName) text = eventName + '\n' + text;
+      const agentName = getAgentName();
+      if (agentName) {
+        const suffix = ` - ${agentName}`;
+        if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
+        text = text.trimEnd() + suffix;
+      }
+      if (qr.hasUrl && _hintPopupUrl) text = text.trimEnd() + '\n\n' + _hintPopupUrl;
+      parts.push(text);
+    });
+    if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
+    copyText(parts.join('\n\n'), btn);
+    setTimeout(() => document.getElementById('popup-overlay')?.remove(), 400);
   }
   function _jsonIsUpcoming(iso) {
     if (!iso) return false;
