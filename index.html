@@ -5780,23 +5780,58 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   }
 
   function trRenderSettings() {
-    const keyEl = document.getElementById('tr-api-key-input');
-    if (keyEl) {
-      const key = localStorage.getItem(TR_KEY+'api_key') || '';
-      keyEl.value = key;
-      const statusEl = document.getElementById('tr-key-status');
-      if (statusEl) statusEl.textContent = key ? '✓ 已設定' : '未設定';
+    const key = localStorage.getItem(TR_KEY+'api_key') || '';
+    const savedView = document.getElementById('tr-key-saved-view');
+    const editView = document.getElementById('tr-key-edit-view');
+    if (key) {
+      if (savedView) savedView.style.display = 'flex';
+      if (editView) editView.style.display = 'none';
+    } else {
+      if (savedView) savedView.style.display = 'none';
+      if (editView) editView.style.display = '';
     }
-    const proxyEl = document.getElementById('tr-proxy-url-input');
-    if (proxyEl) {
-      proxyEl.value = localStorage.getItem(TR_KEY+'proxy_url') || '';
+
+    const proxy = localStorage.getItem(TR_KEY+'proxy_url') || '';
+    const proxySaved = document.getElementById('tr-proxy-saved-view');
+    const proxyEdit = document.getElementById('tr-proxy-edit-view');
+    const proxyDisplay = document.getElementById('tr-proxy-display');
+    if (proxy) {
+      if (proxyDisplay) proxyDisplay.textContent = proxy;
+      if (proxySaved) proxySaved.style.display = 'flex';
+      if (proxyEdit) proxyEdit.style.display = 'none';
+    } else {
+      if (proxySaved) proxySaved.style.display = 'none';
+      if (proxyEdit) proxyEdit.style.display = '';
     }
+  }
+
+  function trEditApiKey() {
+    const key = localStorage.getItem(TR_KEY+'api_key') || '';
+    const inp = document.getElementById('tr-api-key-input');
+    if (inp) inp.value = key;
+    const savedView = document.getElementById('tr-key-saved-view');
+    const editView = document.getElementById('tr-key-edit-view');
+    if (savedView) savedView.style.display = 'none';
+    if (editView) editView.style.display = '';
+    if (inp) inp.focus();
+  }
+
+  function trEditProxyUrl() {
+    const proxy = localStorage.getItem(TR_KEY+'proxy_url') || '';
+    const inp = document.getElementById('tr-proxy-url-input');
+    if (inp) inp.value = proxy;
+    const proxySaved = document.getElementById('tr-proxy-saved-view');
+    const proxyEdit = document.getElementById('tr-proxy-edit-view');
+    if (proxySaved) proxySaved.style.display = 'none';
+    if (proxyEdit) proxyEdit.style.display = '';
+    if (inp) inp.focus();
   }
 
   function trSaveProxyUrl() {
     const val = (document.getElementById('tr-proxy-url-input')||{}).value?.trim() || '';
     if (val) localStorage.setItem(TR_KEY+'proxy_url', val);
     else localStorage.removeItem(TR_KEY+'proxy_url');
+    trRenderSettings();
     const badge = document.createElement('div');
     badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
     badge.textContent = '✓ Proxy URL 已儲存';
@@ -5808,8 +5843,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     const val = (document.getElementById('tr-api-key-input')||{}).value?.trim() || '';
     if (val) localStorage.setItem(TR_KEY+'api_key', val);
     else localStorage.removeItem(TR_KEY+'api_key');
-    const statusEl = document.getElementById('tr-key-status');
-    if (statusEl) statusEl.textContent = val ? '✓ 已設定' : '未設定';
+    trRenderSettings();
     const badge = document.createElement('div');
     badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
     badge.textContent = '✓ API Key 已儲存';
@@ -5989,31 +6023,46 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     <div id="tr-tab-settings" style="display:none">
       <div class="card" style="padding:16px;margin-bottom:12px">
         <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🔑 Claude API Key</div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
-          在 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--blue)">console.anthropic.com</a> 取得，格式：<code style="background:var(--surface2);padding:1px 5px;border-radius:3px">sk-ant-api03-...</code><br>
-          Key 只存在你的瀏覽器 localStorage，不會傳送到任何第三方。
+        <!-- saved view -->
+        <div id="tr-key-saved-view" style="display:none;align-items:center;gap:10px">
+          <span style="font-size:13px;color:var(--text-muted);font-family:monospace;letter-spacing:2px">••••••••••••••••••••</span>
+          <span id="tr-key-status" style="font-size:12px;color:var(--green)">✓ 已設定</span>
+          <button onclick="trEditApiKey()" style="margin-left:auto;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">編輯</button>
+          <button id="tr-test-btn" onclick="trTestApiKey()" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">測試</button>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input id="tr-api-key-input" type="password" placeholder="sk-ant-api03-..."
-            style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
-          <button onclick="trSaveApiKey()"
-            style="padding:8px 16px;border:none;border-radius:8px;background:var(--green);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
-          <button id="tr-test-btn" onclick="trTestApiKey()"
-            style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">測試</button>
+        <!-- edit view -->
+        <div id="tr-key-edit-view">
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
+            在 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--blue)">console.anthropic.com</a> 取得，格式：<code style="background:var(--surface2);padding:1px 5px;border-radius:3px">sk-ant-api03-...</code><br>
+            Key 只存在你的瀏覽器 localStorage，不會傳送到任何第三方。
+          </div>
+          <div style="display:flex;gap:8px">
+            <input id="tr-api-key-input" type="password" placeholder="sk-ant-api03-..."
+              style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
+            <button onclick="trSaveApiKey()"
+              style="padding:8px 16px;border:none;border-radius:8px;background:var(--green);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
+          </div>
         </div>
-        <div style="font-size:12px;color:var(--text-muted)">狀態：<span id="tr-key-status" style="color:var(--green)">未設定</span></div>
       </div>
       <div class="card" style="padding:16px;margin-bottom:12px">
         <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🌐 Proxy URL（解決 CORS）</div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
-          瀏覽器直接呼叫 Anthropic API 會被 CORS 封鎖。請部署一個 Cloudflare Worker 作為代理，並在此填入 Worker URL。<br>
-          留空則直接呼叫 <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">api.anthropic.com</code>（僅 localhost 可用）。
+        <!-- saved view -->
+        <div id="tr-proxy-saved-view" style="display:none;align-items:center;gap:10px">
+          <span id="tr-proxy-display" style="font-size:12px;color:var(--text-muted);font-family:monospace;word-break:break-all"></span>
+          <button onclick="trEditProxyUrl()" style="margin-left:auto;flex-shrink:0;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">編輯</button>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input id="tr-proxy-url-input" type="url" placeholder="https://your-worker.your-name.workers.dev"
-            style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
-          <button onclick="trSaveProxyUrl()"
-            style="padding:8px 16px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
+        <!-- edit view -->
+        <div id="tr-proxy-edit-view">
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
+            瀏覽器直接呼叫 Anthropic API 會被 CORS 封鎖。請部署一個 Cloudflare Worker 作為代理，並在此填入 Worker URL。<br>
+            留空則直接呼叫 <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">api.anthropic.com</code>（僅 localhost 可用）。
+          </div>
+          <div style="display:flex;gap:8px">
+            <input id="tr-proxy-url-input" type="url" placeholder="https://your-worker.your-name.workers.dev"
+              style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
+            <button onclick="trSaveProxyUrl()"
+              style="padding:8px 16px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
+          </div>
         </div>
       </div>
       <div class="card" style="padding:16px">
