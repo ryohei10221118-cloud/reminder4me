@@ -5561,13 +5561,16 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     if (resEl)  resEl.style.display  = 'none';
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const proxyUrl = localStorage.getItem(TR_KEY+'proxy_url') || '';
+      const endpoint = proxyUrl ? proxyUrl.replace(/\/$/, '') : 'https://api.anthropic.com/v1/messages';
+      const extraHeaders = proxyUrl ? {} : { 'anthropic-dangerous-allow-browser': 'true' };
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
-          'anthropic-dangerous-allow-browser': 'true'
+          ...extraHeaders
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
@@ -5784,6 +5787,21 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       const statusEl = document.getElementById('tr-key-status');
       if (statusEl) statusEl.textContent = key ? '✓ 已設定' : '未設定';
     }
+    const proxyEl = document.getElementById('tr-proxy-url-input');
+    if (proxyEl) {
+      proxyEl.value = localStorage.getItem(TR_KEY+'proxy_url') || '';
+    }
+  }
+
+  function trSaveProxyUrl() {
+    const val = (document.getElementById('tr-proxy-url-input')||{}).value?.trim() || '';
+    if (val) localStorage.setItem(TR_KEY+'proxy_url', val);
+    else localStorage.removeItem(TR_KEY+'proxy_url');
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
+    badge.textContent = '✓ Proxy URL 已儲存';
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 2000);
   }
 
   function trSaveApiKey() {
@@ -5804,9 +5822,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     if (!apiKey) { alert('請先輸入並儲存 API Key'); return; }
     const btn = document.getElementById('tr-test-btn');
     if (btn) { btn.textContent = '測試中...'; btn.disabled = true; }
-    fetch('https://api.anthropic.com/v1/messages', {
+    const _testProxy = localStorage.getItem(TR_KEY+'proxy_url') || '';
+    const _testEndpoint = _testProxy ? _testProxy.replace(/\/$/, '') : 'https://api.anthropic.com/v1/messages';
+    const _testExtraHeaders = _testProxy ? {} : { 'anthropic-dangerous-allow-browser': 'true' };
+    fetch(_testEndpoint, {
       method: 'POST',
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-allow-browser': 'true' },
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ..._testExtraHeaders },
       body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
     }).then(r => {
       if (r.ok) alert('✅ API Key 有效！');
@@ -5981,6 +6002,19 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">測試</button>
         </div>
         <div style="font-size:12px;color:var(--text-muted)">狀態：<span id="tr-key-status" style="color:var(--green)">未設定</span></div>
+      </div>
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🌐 Proxy URL（解決 CORS）</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
+          瀏覽器直接呼叫 Anthropic API 會被 CORS 封鎖。請部署一個 Cloudflare Worker 作為代理，並在此填入 Worker URL。<br>
+          留空則直接呼叫 <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">api.anthropic.com</code>（僅 localhost 可用）。
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="tr-proxy-url-input" type="url" placeholder="https://your-worker.your-name.workers.dev"
+            style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
+          <button onclick="trSaveProxyUrl()"
+            style="padding:8px 16px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
+        </div>
       </div>
       <div class="card" style="padding:16px">
         <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">📦 匯入 / 匯出</div>
