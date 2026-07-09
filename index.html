@@ -2311,8 +2311,10 @@
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
-        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
-        <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-shrink:0">
+          <div class="popup-badge info" style="margin:0">📌 歷史記錄</div>
+          <button onclick="closeMsgPopup()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 2px">×</button>
+        </div>
         <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
         <div style="margin-top:8px;flex-shrink:0;position:relative">
           <div class="note-hint-text" style="padding:10px 32px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto" data-note="${esc(hint.note)}">${noteHtml}</div>
@@ -2390,8 +2392,10 @@
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
-        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
-        <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄 & 快速回覆</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-shrink:0">
+          <div class="popup-badge info" style="margin:0">📌 歷史記錄 & 快速回覆</div>
+          <button onclick="closeMsgPopup()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 2px">×</button>
+        </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
           <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
           <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
