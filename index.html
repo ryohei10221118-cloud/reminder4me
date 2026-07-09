@@ -728,6 +728,7 @@
     }
     @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
     .popup-card {
+      position: relative;
       background: var(--surface);
       border: 2px solid var(--border);
       border-radius: 18px;
@@ -1236,10 +1237,21 @@
   }
 
   // Gather all unique URLs for given event names, with associated bet line label
+  const HIDDEN_URLS_KEY = 'reminder4me_hidden_urls';
+  function _isUrlHidden(url) {
+    try { return JSON.parse(localStorage.getItem(HIDDEN_URLS_KEY) || '[]').includes(url); } catch { return false; }
+  }
+  function _hideUrl(url) {
+    try {
+      const list = JSON.parse(localStorage.getItem(HIDDEN_URLS_KEY) || '[]');
+      if (!list.includes(url)) { list.push(url); localStorage.setItem(HIDDEN_URLS_KEY, JSON.stringify(list)); }
+    } catch {}
+  }
+
   function _collectUrls(eventNames) {
     const seen = new Set(), result = [];
     const addUrl = (url, betLabel) => {
-      if (!url || seen.has(url)) return;
+      if (!url || seen.has(url) || _isUrlHidden(url)) return;
       seen.add(url);
       result.push({ url, label: betLabel || '' });
     };
@@ -1264,6 +1276,20 @@
       _extractAllUrls((_ensStore[name] || {}).note).forEach(u => addUrl(u, ''));
     }
     return result;
+  }
+
+  function _urlRadioRowHtml(url, label, i, prefix, onchangeJs) {
+    const safeHref = esc(url);
+    const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+    const domainShort = domain.slice(0,36) + (domain.length>36?'…':'');
+    const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
+    return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="${prefix}-${i}">
+      <input type="radio" name="${prefix}-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0" onchange="${onchangeJs}">
+      <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
+      <button type="button" onclick="event.preventDefault();event.stopPropagation();_hideUrl('${safeJs}');this.closest('label').remove();if(!document.querySelector('input[name=${prefix}-radio]:checked')){const f=document.querySelector('input[name=${prefix}-radio]');if(f){f.checked=true;f.dispatchEvent(new Event('change'));}}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;flex-shrink:0" title="隱藏此連結">×</button>
+    </label>`;
   }
 
   function _urlChipsHtml(items, inputId) {
@@ -1301,19 +1327,9 @@
     const urlSection = (hasUrlTemplate && allUrls.length > 1) ? `
       <div style="margin-top:8px;flex-shrink:0;display:flex;flex-direction:column;gap:3px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
-        ${allUrls.map(({url, label}, i) => {
-          const safeHref = esc(url);
-          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
-          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
-          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="done-url-row-${i}">
-            <input type="radio" name="done-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
-              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=done-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
-            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
-            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
-          </label>`;
-        }).join('')}
+        ${allUrls.map(({url, label}, i) => _urlRadioRowHtml(url, label, i, 'done-url-row',
+          `_hintPopupUrl='${url.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';document.querySelectorAll('[id^=done-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})`
+        )).join('')}
       </div>` : '';
 
     const displayNames = pendingNames.length ? pendingNames : allEventNames;
@@ -2285,19 +2301,9 @@
     const urlRadioHtml = allUrls.length > 1 ? `
       <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
-        ${allUrls.map(({url, label}, i) => {
-          const safeHref = esc(url);
-          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
-          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
-          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="hint-url-row-${i}">
-            <input type="radio" name="hint-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
-              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=hint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
-            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
-            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
-          </label>`;
-        }).join('')}
+        ${allUrls.map(({url, label}, i) => _urlRadioRowHtml(url, label, i, 'hint-url-row',
+          `_hintPopupUrl='${url.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';document.querySelectorAll('[id^=hint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})`
+        )).join('')}
       </div>` : '';
 
     const overlay = document.createElement('div');
@@ -2305,7 +2311,7 @@
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
-        <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
+        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
         <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
         <div style="margin-top:8px;flex-shrink:0;position:relative">
@@ -2374,19 +2380,9 @@
     const urlRadioHtml = allUrls.length > 1 ? `
       <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
-        ${allUrls.map(({url, label}, i) => {
-          const safeHref = esc(url);
-          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
-          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
-          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="chint-url-row-${i}">
-            <input type="radio" name="chint-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
-              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=chint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
-            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
-            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
-          </label>`;
-        }).join('')}
+        ${allUrls.map(({url, label}, i) => _urlRadioRowHtml(url, label, i, 'chint-url-row',
+          `_hintPopupUrl='${url.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';document.querySelectorAll('[id^=chint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})`
+        )).join('')}
       </div>` : '';
 
     const overlay = document.createElement('div');
@@ -2394,7 +2390,7 @@
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
-        <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
+        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄 & 快速回覆</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
           <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
