@@ -4983,6 +4983,10 @@
     ctTab.removeEventListener('click', _ctOnCancelActivity);
     ctTab.removeEventListener('keydown', _ctOnCancelActivity);
     _ctClearIdleTimer();
+    const trTab = document.getElementById('tab-translate');
+    trTab.removeEventListener('click', _trOnTranslateActivity);
+    trTab.removeEventListener('keydown', _trOnTranslateActivity);
+    _trClearIdleTimer();
     if (tab === 'analyzer') {
       _saRenderLeft();
       _saRenderResults();
@@ -4995,6 +4999,10 @@
       ctTab.addEventListener('click', _ctOnCancelActivity);
       ctTab.addEventListener('keydown', _ctOnCancelActivity);
       _ctStartIdleTimer();
+    } else if (tab === 'translate') {
+      trTab.addEventListener('click', _trOnTranslateActivity);
+      trTab.addEventListener('keydown', _trOnTranslateActivity);
+      _trStartIdleTimer();
     }
   }
 
@@ -5087,6 +5095,33 @@
   }
 
   function _ctOnCancelActivity() { _ctStartIdleTimer(); }
+
+  var _trIdleTimer = null;
+  var _trIdleSecs = 0;
+
+  function _trStartIdleTimer() {
+    clearInterval(_trIdleTimer);
+    _trIdleSecs = 60;
+    _trUpdateIdleIndicator();
+    _trIdleTimer = setInterval(function() {
+      _trIdleSecs--;
+      _trUpdateIdleIndicator();
+      if (_trIdleSecs <= 0) { clearInterval(_trIdleTimer); _trIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _trClearIdleTimer() {
+    clearInterval(_trIdleTimer); _trIdleTimer = null; _trIdleSecs = 0; _trUpdateIdleIndicator();
+  }
+
+  function _trUpdateIdleIndicator() {
+    var el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_trIdleSecs > 0) { el.textContent = '↩ ' + _trIdleSecs + 's'; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _trOnTranslateActivity() { _trStartIdleTimer(); }
 
   function _ctPasteAndUpdate() {
     var prevId = _ctTicketId;
