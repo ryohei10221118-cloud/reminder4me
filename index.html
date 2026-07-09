@@ -958,6 +958,7 @@
   <button class="tab-btn active" onclick="switchTab('reminder')" id="tabbtn-reminder">📋 提醒工具</button>
   <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
   <button class="tab-btn" onclick="switchTab('cancel')" id="tabbtn-cancel">✂️ 取消請求</button>
+  <button class="tab-btn" onclick="switchTab('translate')" id="tabbtn-translate">🌐 翻譯</button>
   <span id="sa-idle-indicator" style="display:none;font-size:11px;color:var(--text-muted);align-self:center;padding-left:6px"></span>
 </div>
 <div id="tab-reminder" class="tab-content active">
@@ -3884,6 +3885,7 @@
     _grpMigrateFromRecords();
     _grpDedupCase();
     initFormGroups();
+    trInit();
     setInterval(tickTimers, 1000);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') pruneOldCompleted();
@@ -5432,6 +5434,428 @@
     });
   }
 
+  // ── Translation Tool ──
+  const TR_KEY = 'tr_';
+  const TR_DEFAULT_PHRASES = [
+    {id:1770584603526,title:'延期24h',category:'結尾語',createdAt:'2026/2/9 上午5:03:23',
+      zh:'经确认此赛事目前似乎延期 ，相关团队会等待24小时确认赛事是否重启，相关注单将会在之后做对应处理，提前感谢您的耐心。 -  Sunny',
+      en:'It has been confirmed that this event appears to be postponed. The relevant team will wait 24 hours to confirm whether the event will resume. Related bets will be handled accordingly afterwards. Thank you in advance for your patience. - Sunny',
+      ko:'이 경기는 현재 연기된 것으로 확인되었습니다. 관련 팀은 경기 재개 여부를 확인하기 위해 24시간 대기할 예정이며, 관련 베팅은 이후 적절히 처리될 것입니다. 양해해 주셔서 미리 감사드립니다. - Sunny'},
+    {id:1763680551051,title:'重结原因',category:'常用語',createdAt:'2025/11/21 上午7:15:51',
+      en:'official score change',zh:'官方分数变更',ko:'공식 점수 변경'},
+    {id:1763680513330,title:'重结原因',category:'常用語',createdAt:'2025/11/21 上午7:15:13',
+      en:'wrong info from feed',zh:'供应商讯息不正确',ko:'피드의 잘못된 정보'},
+    {id:1757914661935,title:'取消原因-延期',category:'結尾語',createdAt:'2025/9/15 下午1:37:41',
+      en:'Thank you for waiting. The line has been canceled due to event postponed and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的等待。由于赛事延期，此盘口已被取消，注单已结算。后台系统需要5-10分钟更新。请稍后再查看。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 이벤트 연기로 인해 라인이 취소되었으며 베팅이 정산되었습니다. BO는 업데이트까지 5-10분이 소요됩니다. 나중에 다시 확인해 주세요. 감사합니다. - Sunny'},
+    {id:1755017220573,title:'取消原因 - 供应商中断',category:'結尾語',createdAt:'2025/8/13 上午12:47:00',
+      en:'Cancelled due to feed interruption, it might cause line/ odds/ information incorrectly. So canceled the related bets.',
+      zh:'由于数据源中断而取消，可能导致赔率/投注线/信息不准确。因此取消相关投注。',
+      ko:'피드 중단으로 인해 취소되었으며, 이로 인해 라인/배당률/정보가 부정확할 수 있습니다. 따라서 관련 베팅을 취소합니다.'},
+    {id:1754170387618,title:'DG9-棄賽取消',category:'結尾語',createdAt:'2025/8/3 上午5:33:07',
+      en:'Thank you for your patience, this bet has been canceled due to abandoned, please check again after 5-10 mins. - Sunny',
+      zh:'感谢您的耐心等待，此投注因为被放弃已被取消，请在5-10分钟后重新检查。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 이 베팅은 포기로 인해 취소되었습니다. 5-10분 후에 다시 확인해 주세요. - Sunny'},
+    {id:1752855216607,title:'盘口赔率正确',category:'結尾語',createdAt:'2025/7/19 上午12:13:36',
+      en:'Thank you for your patience. After confirmation by the relevant team, both the betting market and odds for this bet slip are correct, and this bet is considered valid. - Sunny',
+      zh:'感谢您的耐心等待。经相关团队确认，此投注单的盘口和赔率均正确，此投注被视为有效。- Sunny',
+      ko:'인내심을 가져주셔서 감사합니다. 관련 팀의 확인 결과, 이 배팅 슬립의 베팅 마켓과 배당률이 모두 정확하며, 이 배팅은 유효한 것으로 간주됩니다. - Sunny'},
+    {id:1752855140504,title:'取消原因-退赛',category:'結尾語',createdAt:'2025/7/19 上午12:12:20',
+      en:'Thank you for waiting. The line has been canceled due to player retire and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的等待。由于球员退赛，该线注已被取消，投注已结算。BO需要5-10分钟更新。请稍后再查看。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 선수 기권으로 인해 라인이 취소되었고 베팅이 정산되었습니다. BO가 업데이트되는 데 5-10분이 소요됩니다. 나중에 다시 확인해 주세요. 감사합니다. - Sunny'},
+    {id:1752854998904,title:'取消原因-模拟失败',category:'結尾語',createdAt:'2025/7/19 上午12:09:58',
+      en:'Thank you for waiting. The line has been canceled due to failed simulation and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的等待。由于模拟失败，该线注已被取消，投注已结算。BO需要5-10分钟更新。请稍后再查看。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 시뮬레이션 실패로 인해 라인이 취소되었으며 베팅이 정산되었습니다. BO가 업데이트되는 데 5-10분이 필요합니다. 그 후 다시 확인해 주세요. 감사합니다. - Sunny'},
+    {id:1752854878423,title:'DG9用取消问问',category:'結尾語',createdAt:'2025/7/19 上午12:07:58',
+      en:"For this event we have no official information available yet. Once there is any update, the bets will be settled accordingly. Since it's been long time after the scheduled time, please let us know if you need us to cancel the line, Thank you. - Sunny",
+      zh:'关于此赛事，我们目前还没有官方信息。一旦有任何更新，投注将相应结算。由于已经过了预定时间很长时间，如果您需要我们取消此线注，请告知我们，谢谢。- Sunny',
+      ko:'이 이벤트에 대해서는 아직 공식적인 정보가 없습니다. 업데이트가 있으면 베팅은 그에 따라 정산됩니다. 예정된 시간 이후 오랜 시간이 지났으므로, 라인을 취소해야 한다면 알려주시기 바랍니다. 감사합니다. - Sunny'},
+    {id:1752854645725,title:'线注取消注单结算',category:'結尾語',createdAt:'2025/7/19 上午12:04:05',
+      en:'Thank you for waiting. The line has been canceled and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的耐心等候，经确认该线注已被取消，投注已结算。BO需要5-10分钟更新。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다. - Sunny'}
+  ];
+  const TR_DEFAULT_TERMS = [
+    {id:1769883349483,zh:'提前兑现',en:'cashout',ko:'캐시아웃'},
+    {id:1754170335529,zh:'弃赛',en:'abandoned',ko:'포기하'},
+    {id:1754166285642,zh:'赛事',en:'event',ko:'이벤트'},
+    {id:1752854607039,zh:'线注',en:'line',ko:'라인'},
+    {id:1752854386824,zh:'耐心等待',en:'patience',ko:'기다려 주셔서'},
+    {id:1752854371367,zh:'套利玩家',en:'Arbitrage player',ko:'어드밴티지 플레이어'},
+    {id:1752854353876,zh:'延长赛',en:'overtime',ko:'연장전'},
+    {id:1,zh:'盤口',en:'market',ko:'마켓'},
+    {id:2,zh:'賠率',en:'odds',ko:'배당률'},
+    {id:3,zh:'投注',en:'bet',ko:'베팅'},
+    {id:4,zh:'未取得单一钱包资讯',en:'failed to get seamless details',ko:'심리스 서비스 무효 응답'}
+  ];
+  const TR_DEFAULT_CATS = ['稍後語','結尾語','開場語','常用語'];
+
+  var _trLastResult = null;
+  var _trLastInput = '';
+  var _trSubTab = 'translator';
+  var _trPhraseFilter = '';
+  var _trPhraseCat = '';
+
+  function trInit() {
+    if (!localStorage.getItem(TR_KEY+'phrases')) localStorage.setItem(TR_KEY+'phrases', JSON.stringify(TR_DEFAULT_PHRASES));
+    if (!localStorage.getItem(TR_KEY+'terms'))   localStorage.setItem(TR_KEY+'terms',   JSON.stringify(TR_DEFAULT_TERMS));
+    if (!localStorage.getItem(TR_KEY+'cats'))    localStorage.setItem(TR_KEY+'cats',    JSON.stringify(TR_DEFAULT_CATS));
+    trUpdateCounts();
+  }
+
+  function trGetPhrases() { try { return JSON.parse(localStorage.getItem(TR_KEY+'phrases') || '[]'); } catch(e) { return []; } }
+  function trSavePhrases(arr) { localStorage.setItem(TR_KEY+'phrases', JSON.stringify(arr)); trUpdateCounts(); }
+  function trGetTerms()   { try { return JSON.parse(localStorage.getItem(TR_KEY+'terms')   || '[]'); } catch(e) { return []; } }
+  function trSaveTerms(arr)   { localStorage.setItem(TR_KEY+'terms',   JSON.stringify(arr)); trUpdateCounts(); }
+  function trGetCats()    { try { return JSON.parse(localStorage.getItem(TR_KEY+'cats')    || '[]'); } catch(e) { return []; } }
+
+  function trUpdateCounts() {
+    const pc = document.getElementById('tr-phrase-count');
+    const tc = document.getElementById('tr-term-count');
+    if (pc) pc.textContent = trGetPhrases().length;
+    if (tc) tc.textContent = trGetTerms().length;
+  }
+
+  function trSwitchTab(tab) {
+    _trSubTab = tab;
+    ['translator','phrases','terms','settings'].forEach(t => {
+      const btn = document.getElementById('tr-tabbtn-'+t);
+      const pane = document.getElementById('tr-tab-'+t);
+      const active = t === tab;
+      if (btn) {
+        btn.style.color = active ? 'var(--blue)' : 'var(--text-muted)';
+        btn.style.borderBottomColor = active ? 'var(--blue)' : 'transparent';
+        btn.style.fontWeight = active ? '700' : '500';
+      }
+      if (pane) pane.style.display = active ? 'block' : 'none';
+    });
+    if (tab === 'phrases')  { trPopulateCatFilter(); trRenderPhrases(); }
+    if (tab === 'terms')    trRenderTerms();
+    if (tab === 'settings') trRenderSettings();
+  }
+
+  async function trTranslate() {
+    const apiKey = localStorage.getItem(TR_KEY+'api_key');
+    if (!apiKey) { alert('請先在「設定」頁輸入 Claude API Key'); trSwitchTab('settings'); return; }
+    const input = (document.getElementById('tr-input') || {}).value?.trim();
+    if (!input) return;
+
+    const terms = trGetTerms();
+    const termCtx = terms.length
+      ? '\n\nApply this terminology (use consistently):\n' + terms.map(t => `zh:${t.zh} = en:${t.en} = ko:${t.ko}`).join('\n')
+      : '';
+
+    const prompt = `Translate the following text into English, Simplified Chinese (简体中文), and Korean. If the text is already in one of these languages, still provide all three versions.${termCtx}
+
+Text:
+${input}
+
+Reply with JSON only, no extra text: {"detected":"language name in English","en":"...","zh":"...","ko":"..."}`;
+
+    const loadEl = document.getElementById('tr-loading');
+    const resEl  = document.getElementById('tr-results');
+    if (loadEl) loadEl.style.display = 'flex';
+    if (resEl)  resEl.style.display  = 'none';
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-allow-browser': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'API error ' + res.status);
+      }
+      const data = await res.json();
+      const raw = data.content[0].text;
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('無法解析回應');
+      const result = JSON.parse(match[0]);
+      _trLastResult = result;
+      _trLastInput = input;
+      trRenderResults(result);
+    } catch(e) {
+      alert('翻譯失敗：' + e.message);
+    } finally {
+      if (loadEl) loadEl.style.display = 'none';
+    }
+  }
+
+  function trRenderResults(r) {
+    const resEl = document.getElementById('tr-results');
+    if (!resEl) return;
+    function row(label, color, text) {
+      const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div style="border-left:3px solid ${color};padding:10px 14px;background:var(--surface2);border-radius:0 8px 8px 0;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:5px">${label}</div>
+        <div style="font-size:13px;color:var(--text-pri);line-height:1.65;white-space:pre-wrap;word-break:break-word">${safe}</div>
+        <button data-copy="${text.replace(/"/g,'&quot;')}" onclick="copyText(this.dataset.copy,this)"
+          style="margin-top:7px;font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text-sec);cursor:pointer">📋 複製</button>
+      </div>`;
+    }
+    resEl.innerHTML = `
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">原文語言：${(r.detected||'—').replace(/</g,'&lt;')}</div>
+      ${row('English','var(--blue)', r.en||'')}
+      ${row('中文（簡體）','var(--green)', r.zh||'')}
+      ${row('한국어','#a855f7', r.ko||'')}
+      <div style="text-align:right;margin-top:6px">
+        <button onclick="trShowAddPhrase()"
+          style="font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid var(--blue);background:transparent;color:var(--blue);cursor:pointer;font-weight:600">+ 加入造句庫</button>
+      </div>`;
+    resEl.style.display = 'block';
+  }
+
+  function trClear() {
+    const el = document.getElementById('tr-input');
+    if (el) el.value = '';
+    const resEl = document.getElementById('tr-results');
+    if (resEl) { resEl.innerHTML = ''; resEl.style.display = 'none'; }
+    _trLastResult = null;
+    _trLastInput = '';
+  }
+
+  function trShowAddPhrase() {
+    if (!_trLastResult) return;
+    const cats = trGetCats();
+    const overlay = document.createElement('div');
+    overlay.id = 'tr-add-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:10000;display:flex;align-items:center;justify-content:center';
+    const defaultTitle = _trLastInput.slice(0,30).replace(/"/g,'&quot;');
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:12px;padding:20px;width:90%;max-width:420px;box-shadow:var(--shadow-lg)">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:14px">+ 加入造句庫</div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">標題</label>
+          <input id="tr-add-title" value="${defaultTitle}"
+            style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px">分類</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px" id="tr-cat-chips">
+            ${cats.map(c => `<button type="button" onclick="trSelectCat(this,'${c.replace(/'/g,"\\'")}')"
+              style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);font-size:12px;cursor:pointer">${c.replace(/</g,'&lt;')}</button>`).join('')}
+          </div>
+          <input id="tr-add-cat" placeholder="或輸入新分類" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text-pri);outline:none">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="document.getElementById('tr-add-overlay').remove()"
+            style="padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-sec);cursor:pointer">取消</button>
+          <button onclick="trConfirmAddPhrase()"
+            style="padding:7px 16px;border-radius:6px;border:none;background:var(--blue);color:white;cursor:pointer;font-weight:600">儲存</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  function trSelectCat(btn, cat) {
+    document.querySelectorAll('#tr-cat-chips button').forEach(b => {
+      b.style.background = 'var(--surface2)'; b.style.color = 'var(--text-pri)'; b.style.borderColor = 'var(--border)';
+    });
+    btn.style.background = 'var(--blue)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--blue)';
+    const inp = document.getElementById('tr-add-cat');
+    if (inp) inp.value = cat;
+  }
+
+  function trConfirmAddPhrase() {
+    const title = (document.getElementById('tr-add-title') || {}).value?.trim() || '未命名';
+    const cat   = (document.getElementById('tr-add-cat')   || {}).value?.trim() || '';
+    const r = _trLastResult;
+    if (!r) return;
+    const phrases = trGetPhrases();
+    phrases.unshift({ id: Date.now(), title, category: cat, createdAt: new Date().toLocaleString('zh-TW'),
+      en: r.en||'', zh: r.zh||'', ko: r.ko||'' });
+    trSavePhrases(phrases);
+    if (cat) {
+      const cats = trGetCats();
+      if (!cats.includes(cat)) { cats.push(cat); localStorage.setItem(TR_KEY+'cats', JSON.stringify(cats)); }
+    }
+    document.getElementById('tr-add-overlay')?.remove();
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
+    badge.textContent = '✓ 已加入造句庫';
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 2000);
+  }
+
+  function trPopulateCatFilter() {
+    const sel = document.getElementById('tr-phrase-cat-filter');
+    if (!sel) return;
+    const current = sel.value;
+    const cats = trGetCats();
+    const used = new Set(trGetPhrases().map(p => p.category).filter(Boolean));
+    sel.innerHTML = '<option value="">全部分類</option>' +
+      [...new Set([...cats, ...used])].map(c => `<option value="${c.replace(/"/g,'&quot;')}"${c===current?'selected':''}>${c.replace(/</g,'&lt;')}</option>`).join('');
+  }
+
+  function trRenderPhrases() {
+    const el = document.getElementById('tr-phrases-list');
+    if (!el) return;
+    let list = trGetPhrases();
+    if (_trPhraseCat)    list = list.filter(p => p.category === _trPhraseCat);
+    if (_trPhraseFilter) {
+      const q = _trPhraseFilter.toLowerCase();
+      list = list.filter(p => [p.title,p.en,p.zh,p.ko].some(s => (s||'').toLowerCase().includes(q)));
+    }
+    if (!list.length) {
+      el.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:30px">暫無資料</div>';
+      return;
+    }
+    el.innerHTML = list.map(p => {
+      const langs = [['EN','var(--blue)',p.en],['中(簡)','var(--green)',p.zh],['KR','#a855f7',p.ko]];
+      return `<div style="border:1px solid var(--border-light);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--surface2)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--text-pri);flex:1">${(p.title||'').replace(/</g,'&lt;')}</span>
+          ${p.category ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-light)">${p.category.replace(/</g,'&lt;')}</span>` : ''}
+          <button onclick="trDeletePhrase(${p.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px" title="刪除">🗑</button>
+        </div>
+        ${langs.map(([label,color,text]) => !text ? '' :
+          `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+            <span style="font-size:10px;font-weight:700;color:${color};width:36px;flex-shrink:0;padding-top:2px">${label}</span>
+            <span style="font-size:12px;color:var(--text-sec);flex:1;line-height:1.55;word-break:break-word">${(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+            <button data-copy="${(text||'').replace(/"/g,'&quot;')}" onclick="copyText(this.dataset.copy,this)"
+              style="flex-shrink:0;padding:2px 8px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text-sec);cursor:pointer">📋</button>
+          </div>`).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  function trDeletePhrase(id) {
+    if (!confirm('確定刪除這筆造句？')) return;
+    trSavePhrases(trGetPhrases().filter(p => p.id !== id));
+    trRenderPhrases();
+  }
+
+  function trRenderTerms() {
+    const el = document.getElementById('tr-terms-body');
+    if (!el) return;
+    const terms = trGetTerms();
+    if (!terms.length) {
+      el.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">暫無術語</td></tr>';
+      return;
+    }
+    el.innerHTML = terms.map(t => `
+      <tr style="border-bottom:1px solid var(--border-light)">
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-pri)">${(t.zh||'').replace(/</g,'&lt;')}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-pri)">${(t.en||'').replace(/</g,'&lt;')}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-pri)">${(t.ko||'').replace(/</g,'&lt;')}</td>
+        <td style="padding:8px 12px;text-align:center">
+          <button onclick="trDeleteTerm(${t.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 5px" title="刪除">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function trDeleteTerm(id) {
+    if (!confirm('確定刪除這筆術語？')) return;
+    trSaveTerms(trGetTerms().filter(t => t.id !== id));
+    trRenderTerms();
+  }
+
+  function trAddTerm() {
+    const zh = (document.getElementById('tr-new-zh')||{}).value?.trim() || '';
+    const en = (document.getElementById('tr-new-en')||{}).value?.trim() || '';
+    const ko = (document.getElementById('tr-new-ko')||{}).value?.trim() || '';
+    if (!zh && !en && !ko) return;
+    const terms = trGetTerms();
+    terms.push({ id: Date.now(), zh, en, ko });
+    trSaveTerms(terms);
+    ['tr-new-zh','tr-new-en','tr-new-ko'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    trRenderTerms();
+  }
+
+  function trRenderSettings() {
+    const keyEl = document.getElementById('tr-api-key-input');
+    if (keyEl) {
+      const key = localStorage.getItem(TR_KEY+'api_key') || '';
+      keyEl.value = key;
+      const statusEl = document.getElementById('tr-key-status');
+      if (statusEl) statusEl.textContent = key ? '✓ 已設定' : '未設定';
+    }
+  }
+
+  function trSaveApiKey() {
+    const val = (document.getElementById('tr-api-key-input')||{}).value?.trim() || '';
+    if (val) localStorage.setItem(TR_KEY+'api_key', val);
+    else localStorage.removeItem(TR_KEY+'api_key');
+    const statusEl = document.getElementById('tr-key-status');
+    if (statusEl) statusEl.textContent = val ? '✓ 已設定' : '未設定';
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
+    badge.textContent = '✓ API Key 已儲存';
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 2000);
+  }
+
+  function trTestApiKey() {
+    const apiKey = localStorage.getItem(TR_KEY+'api_key');
+    if (!apiKey) { alert('請先輸入並儲存 API Key'); return; }
+    const btn = document.getElementById('tr-test-btn');
+    if (btn) { btn.textContent = '測試中...'; btn.disabled = true; }
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-allow-browser': 'true' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+    }).then(r => {
+      if (r.ok) alert('✅ API Key 有效！');
+      else r.json().then(e => alert('❌ ' + (e.error?.message || 'Key 無效'))).catch(() => alert('❌ Key 無效'));
+    }).catch(e => alert('❌ 連線失敗：' + e.message))
+    .finally(() => { if (btn) { btn.textContent = '測試 Key'; btn.disabled = false; } });
+  }
+
+  function trExport() {
+    const data = { phraseBank: trGetPhrases(), termBank: trGetTerms(), categories: trGetCats(), timestamp: new Date().toISOString(), version: '2.0' };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'translation_backup_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+  }
+
+  function trImport() {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          let phrases = (data.phraseBank || []).map(p => {
+            if (p.en !== undefined || p.zh !== undefined || p.ko !== undefined) return p;
+            const langs = {};
+            if (p.originalLang) langs[p.originalLang] = p.original;
+            if (p.lang1) langs[p.lang1] = p.translation1;
+            if (p.lang2) langs[p.lang2] = p.translation2;
+            return { id: p.id, title: p.title, category: p.category, createdAt: p.createdAt, en: langs['en']||'', zh: langs['zh']||'', ko: langs['ko']||'' };
+          });
+          trSavePhrases(phrases);
+          if (data.termBank) trSaveTerms(data.termBank);
+          if (data.categories) localStorage.setItem(TR_KEY+'cats', JSON.stringify(data.categories));
+          trUpdateCounts();
+          alert(`匯入成功：${phrases.length} 筆造句、${(data.termBank||[]).length} 筆術語`);
+          if (_trSubTab === 'phrases') { trPopulateCatFilter(); trRenderPhrases(); }
+          if (_trSubTab === 'terms')   trRenderTerms();
+        } catch(e) { alert('匯入失敗：' + e.message); }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
   function _ctClear() {
     _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctRequestTime = ''; _ctDate = ''; _ctBrand = '';
     var jsonEl = document.getElementById('ct-json-input');
@@ -5453,5 +5877,123 @@
   }
 
 </script>
+
+<div id="tab-translate" class="tab-content">
+  <div style="max-width:860px;width:100%;margin:0 auto;padding:16px">
+    <!-- Sub-tab nav -->
+    <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:16px">
+      <button id="tr-tabbtn-translator" onclick="trSwitchTab('translator')"
+        style="padding:9px 18px;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-1px;transition:color 0.15s">
+        🌐 翻譯器</button>
+      <button id="tr-tabbtn-phrases" onclick="trSwitchTab('phrases')"
+        style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
+        📚 造句庫 (<span id="tr-phrase-count">0</span>)</button>
+      <button id="tr-tabbtn-terms" onclick="trSwitchTab('terms')"
+        style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
+        📖 術語庫 (<span id="tr-term-count">0</span>)</button>
+      <button id="tr-tabbtn-settings" onclick="trSwitchTab('settings')"
+        style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
+        ⚙️ 設定</button>
+    </div>
+
+    <!-- 翻譯器 -->
+    <div id="tr-tab-translator">
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">輸入文字（自動偵測語言）</div>
+        <textarea id="tr-input" placeholder="在此輸入要翻譯的文字..."
+          onkeydown="if(event.ctrlKey&&event.key==='Enter')trTranslate()"
+          style="width:100%;box-sizing:border-box;height:120px;font-size:13px;font-family:inherit;line-height:1.65;background:var(--surface2);color:var(--text-pri);border:1px solid var(--border);border-radius:8px;padding:10px 12px;resize:vertical;outline:none"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <button onclick="trTranslate()"
+            style="padding:8px 22px;font-size:13px;font-weight:600;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer">
+            🌐 翻譯</button>
+          <button onclick="trClear()"
+            style="padding:8px 16px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer">
+            清空</button>
+          <span style="font-size:11px;color:var(--text-muted)">Ctrl+Enter 快速翻譯</span>
+        </div>
+      </div>
+      <div id="tr-loading" style="display:none;align-items:center;gap:10px;padding:16px;color:var(--text-muted);font-size:13px">
+        <div style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></div>
+        翻譯中...
+      </div>
+      <div id="tr-results" style="display:none"></div>
+    </div>
+
+    <!-- 造句庫 -->
+    <div id="tr-tab-phrases" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input id="tr-phrase-search" placeholder="搜尋標題或內容..."
+          oninput="_trPhraseFilter=this.value;trRenderPhrases()"
+          style="flex:1;min-width:150px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+        <select id="tr-phrase-cat-filter" onchange="_trPhraseCat=this.value;trRenderPhrases()"
+          style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <option value="">全部分類</option>
+        </select>
+      </div>
+      <div id="tr-phrases-list"></div>
+    </div>
+
+    <!-- 術語庫 -->
+    <div id="tr-tab-terms" style="display:none">
+      <div class="card" style="padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:8px">新增術語</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="tr-new-zh" placeholder="中文"
+            style="flex:1;min-width:90px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <input id="tr-new-en" placeholder="English"
+            style="flex:1;min-width:90px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <input id="tr-new-ko" placeholder="한국어"
+            style="flex:1;min-width:90px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <button onclick="trAddTerm()"
+            style="padding:7px 16px;border:none;border-radius:6px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">新增</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">中文</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">English</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">한국어</th>
+              <th style="padding:10px 12px;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="tr-terms-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 設定 -->
+    <div id="tr-tab-settings" style="display:none">
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🔑 Claude API Key</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
+          在 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--blue)">console.anthropic.com</a> 取得，格式：<code style="background:var(--surface2);padding:1px 5px;border-radius:3px">sk-ant-api03-...</code><br>
+          Key 只存在你的瀏覽器 localStorage，不會傳送到任何第三方。
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="tr-api-key-input" type="password" placeholder="sk-ant-api03-..."
+            style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
+          <button onclick="trSaveApiKey()"
+            style="padding:8px 16px;border:none;border-radius:8px;background:var(--green);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
+          <button id="tr-test-btn" onclick="trTestApiKey()"
+            style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">測試</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted)">狀態：<span id="tr-key-status" style="color:var(--green)">未設定</span></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">📦 匯入 / 匯出</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="trImport()"
+            style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">📂 匯入 JSON</button>
+          <button onclick="trExport()"
+            style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">💾 匯出 JSON</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">支援匯入舊格式（original + translation1/2）自動轉換</div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
