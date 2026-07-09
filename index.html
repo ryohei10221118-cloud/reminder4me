@@ -844,6 +844,7 @@
     }
     .btn-copy-reply:hover { background: rgba(143,172,200,0.22); }
     .btn-copy-reply.copied { background: var(--green-bg); color: var(--green); border-color: var(--green-border); transform: scale(1.03); }
+    button.copied { background: var(--green-bg) !important; color: var(--green) !important; border-color: var(--green-border) !important; transition: background 0.15s, color 0.15s; }
     .popup-queue-note { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 12px; }
     .popup-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .popup-btns.single { grid-template-columns: 1fr; }
@@ -1982,10 +1983,15 @@
 
   // ── Copy util ──
   function copyText(text, btn) {
-    // Show feedback immediately — don't wait for async clipboard
     if (btn) {
       btn.classList.add('copied');
-      setTimeout(() => btn.classList.remove('copied'), 1500);
+      const orig = btn.textContent;
+      if (orig.includes('複製') || orig.includes('복사') || orig.includes('Copy')) {
+        btn.textContent = '✓ 已複製';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1500);
+      } else {
+        setTimeout(() => btn.classList.remove('copied'), 1500);
+      }
     }
     navigator.clipboard.writeText(text).catch(() => {
       const ta = document.createElement('textarea');
