@@ -5203,7 +5203,13 @@
       return;
     }
     var tidMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
-    _ctTicketId = tidMatch ? tidMatch[1] : '';
+    var newTicketId = tidMatch ? tidMatch[1] : '';
+    // Save current checked state before overwriting rows (same ticket → preserve user's selections)
+    var _ctPrevChecked = {};
+    if (newTicketId && newTicketId === _ctTicketId) {
+      _ctRows.forEach(function(r, i) { _ctPrevChecked[i] = r.checked; });
+    }
+    _ctTicketId = newTicketId;
 
     var data;
     try { data = JSON.parse(raw); } catch(e) {
@@ -5264,6 +5270,11 @@
         checked: sel.SelectionStatus === 0
       });
     });
+
+    // Restore checked state if same ticket (overrides status-based default)
+    if (Object.keys(_ctPrevChecked).length > 0) {
+      _ctRows.forEach(function(r, i) { if (_ctPrevChecked[i] !== undefined) r.checked = _ctPrevChecked[i]; });
+    }
 
     _ctDoneTime = _ctExtractDoneTime(data);
 
