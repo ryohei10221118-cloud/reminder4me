@@ -1391,7 +1391,7 @@
       <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
         <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
         ${eventTitle}
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;flex-shrink:0;line-height:1.6">${r.orderNos && r.orderNos.length ? `🎫 ${r.orderNos.map(o=>esc(o)).join('　')}` : ''}${r.orderNos && r.orderNos.length && (reqText || grpText) ? '<br>' : ''}${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
           <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
           <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
