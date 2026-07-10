@@ -5881,8 +5881,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     const el = document.getElementById('tr-usage-body');
     if (!el) return;
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(1) + 'K' : n.toString(); }
-    el.innerHTML = inp === 0 && out === 0
-      ? `<div style="font-size:12px;color:var(--text-muted)">尚無使用記錄</div>`
+    const statsHtml = inp === 0 && out === 0
+      ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">尚無使用記錄</div>`
       : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
           <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;text-align:center">
             <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">輸入 Tokens</div>
@@ -5893,13 +5893,43 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             <div style="font-size:18px;font-weight:700;color:var(--green)">${fmt(out)}</div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div>
             <div style="font-size:11px;color:var(--text-muted)">預估費用（Haiku 4.5）</div>
             <div style="font-size:16px;font-weight:700;color:var(--text-pri)">≈ $${cost < 0.001 ? cost.toFixed(6) : cost.toFixed(4)} USD</div>
           </div>
           <button onclick="trResetUsage()" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px">重置</button>
         </div>`;
+    el.innerHTML = statsHtml + `
+      <details style="margin-top:2px">
+        <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:4px">
+          <span style="font-size:10px">▶</span> 從 Console 手動同步
+        </summary>
+        <div style="margin-top:8px;padding:10px;background:var(--surface2);border-radius:8px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">在 <b>console.anthropic.com/settings/usage</b> 查看後填入，會覆蓋目前數值。</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">Total tokens in</div>
+              <input id="tr-sync-inp" type="number" min="0" value="${inp}"
+                style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">Total tokens out</div>
+              <input id="tr-sync-out" type="number" min="0" value="${out}"
+                style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+            </div>
+          </div>
+          <button onclick="trSyncUsage()" style="width:100%;padding:7px;border:none;border-radius:6px;background:var(--blue);color:white;cursor:pointer;font-size:12px;font-weight:600">同步</button>
+        </div>
+      </details>`;
+  }
+
+  function trSyncUsage() {
+    const inp = parseInt(document.getElementById('tr-sync-inp')?.value || '0');
+    const out = parseInt(document.getElementById('tr-sync-out')?.value || '0');
+    localStorage.setItem(TR_KEY+'total_input_tokens', isNaN(inp) ? 0 : inp);
+    localStorage.setItem(TR_KEY+'total_output_tokens', isNaN(out) ? 0 : out);
+    trRenderUsage();
   }
 
   function trResetUsage() {
