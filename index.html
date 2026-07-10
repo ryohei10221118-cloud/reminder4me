@@ -3694,10 +3694,19 @@
         <button class="popup-close-btn" onclick="dismissPopup()">×</button>
         <div class="popup-badge success">✅ 已建立計時器</div>
         <div class="submit-content-box">${esc(content)}</div>
-        <button class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
+        <button id="submit-copy-btn" class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
       </div>`;
     document.body.appendChild(overlay);
     attachOverlayClose(overlay);
+    // Auto-copy on open
+    navigator.clipboard.writeText(content).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = content; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    });
+    const copyBtn = document.getElementById('submit-copy-btn');
+    if (copyBtn) { copyBtn.textContent = '✓ 已複製'; copyBtn.classList.add('copied'); }
   }
 
   // ── Tick timers ──
