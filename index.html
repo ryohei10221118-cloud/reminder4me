@@ -6265,7 +6265,10 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     for (var i = 0; i < d.sels.length; i++) {
       var s = d.sels[i];
       var factorNote = '';
-      if (s.SelectionStatus === 17) factorNote = '<span style="font-size:10px;color:#f59e0b;margin-left:4px">（有效賠率 @' + f.toFixed(4).replace(/\.?0+$/,'') + '）</span>';
+      if (s.SelectionStatus === 17 || s.SelectionStatus === 16) {
+        var f = sbFactor(s);
+        factorNote = '<span style="font-size:10px;color:#f59e0b;margin-left:4px">（有效賠率 @' + f.toFixed(4).replace(/\.?0+$/,'') + '）</span>';
+      }
       html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
         + '<div style="font-size:16px;flex-shrink:0;width:22px;text-align:center;font-weight:700;color:var(--blue)">' + sbCircle(i) + '</div>'
         + '<div style="flex:1;min-width:0">'
