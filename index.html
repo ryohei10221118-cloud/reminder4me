@@ -6278,12 +6278,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         if (factors[i] === 0) { hasLoss = true; break; }
         product *= factors[i];
       }
-      var baseGain = hasLoss ? 0 : stakePerBet * product;
+      var baseGain = hasLoss ? 0 : Math.floor(stakePerBet * product * 100) / 100;
       var bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
       var bonusGain = bonusObj ? (bonusObj.Gain || 0) : 0;
       var bonusPct  = bonusObj ? (bonusObj.Percentage || 0) : 0;
       var bonusMax  = bonusObj ? (bonusObj.MaxWin || null) : null;
-      var totalGain = baseGain + bonusGain;
+      var totalGain = Math.floor((baseGain + bonusGain) * 100) / 100;
       _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusGain, bonusPct, bonusMax, totalGain };
     } else {
       var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
@@ -6303,6 +6303,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         }
         groups[k] = { win:winCombos, lose:loseCombos, total:winCombos.reduce(function(a,b){return a+b.gain;},0) };
       }
+      totalGain = Math.floor(totalGain * 100) / 100;
       _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, comboSizes, groups, totalGain };
     }
     sbRender();
