@@ -6650,6 +6650,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         if (g.win.length===0) lines.push('  全部落空');
       }
     }
+    var totalLabel = lang==='en' ? '💰 Total Payout: ' : lang==='ko' ? '💰 총 배당: ' : '💰 派彩合计：';
+    lines.push('');
+    lines.push(totalLabel + d.cs + sbFmt(d.totalGain));
     return lines.join('\n');
   }
 
