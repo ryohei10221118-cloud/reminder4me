@@ -6189,6 +6189,24 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     return map[currency] || (currency ? currency+' ' : '');
   }
 
+  function sbGetStatusText(sel, lang) {
+    var m = {
+      zh:{2:'✅赢',17:'🔶半赢',16:'🔸半输',1:'❌输',3:'🤝和局',4:'🚫取消',15:'⛔拒绝',32:'💸套现',0:'⏳进行中'},
+      en:{2:'✅Won',17:'🔶Half Won',16:'🔸Half Lost',1:'❌Lost',3:'🤝Draw',4:'🚫Canceled',15:'⛔Declined',32:'💸Cashout',0:'⏳Open'},
+      ko:{2:'✅승',17:'🔶반승',16:'🔸반패',1:'❌패',3:'🤝무',4:'🚫취소',15:'⛔거절',32:'💸캐시아웃',0:'⏳진행중'}
+    };
+    return (m[lang]||m.zh)[sel.SelectionStatus]||'⏳';
+  }
+
+  function sbEffPartLang(sel, i, lang) {
+    var s = sel.SelectionStatus, f = sbFactor(sel);
+    var hw = {zh:'半赢',en:'HW',ko:'반승'};
+    var hl = {zh:'半输',en:'HL',ko:'반패'};
+    if (s===17) return sbCircle(i)+'@'+f.toFixed(4).replace(/\.?0+$/,'')+'('+(hw[lang]||hw.zh)+')';
+    if (s===16) return sbCircle(i)+'@0.5('+(hl[lang]||hl.zh)+')';
+    return sbCircle(i)+'@'+sel.TrueOdds;
+  }
+
   function sbParse() {
     var raw = (document.getElementById('sb-json-input') || {}).value || '';
     var data;
@@ -6201,7 +6219,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var N = bet.NumberOfLines || sels.length;
     var stakePerBet = bet.Stake || 0;
     var totalStake = parseFloat(data.Deposit || (stakePerBet * (bet.NumberOfBets||1))) || 0;
-    var ticketId = bet.TicketId || data.SQLTicketId || '';
+    var tidM = raw.match(/"TicketId"\s*:\s*(\d+)/);
+    var ticketId = tidM ? tidM[1] : String(bet.TicketId || data.SQLTicketId || '');
     var currency = (data.Customer && data.Customer.CurrencyData && data.Customer.CurrencyData.Code) || '';
     var cs = sbCurrSym(currency);
     var factors = sels.map(sbFactor);
@@ -6258,14 +6277,21 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       + '</div><div style="flex-shrink:0;text-align:right">' + sbStatusTag(s) + factorNote + '</div></div>';
   }
 
-  function sbReportCard(reportText) {
-    return '<div class="card" style="padding:16px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">客戶報告（可複製）</div>'
-      + '<button onclick="sbCopyReport()" id="sb-copy-btn" style="padding:5px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">📋 複製</button>'
-      + '</div>'
-      + '<pre id="sb-report-text" style="font-size:11px;color:var(--text-sec);white-space:pre-wrap;word-break:break-word;background:var(--surface2);border-radius:8px;padding:10px;margin:0;line-height:1.7">'
-      + reportText + '</pre></div>';
+  function sbReportCard() {
+    var defs = [{lang:'zh',label:'中文',btn:'复制'},{lang:'en',label:'English',btn:'Copy'},{lang:'ko',label:'한국어',btn:'복사'}];
+    var html = '<div class="card" style="padding:16px"><div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:12px">客户报告</div>';
+    for (var i=0; i<defs.length; i++) {
+      var ld = defs[i];
+      var txt = _sbData.isParlay ? sbBuildParlayReportLang(ld.lang) : sbBuildSystemReportLang(ld.lang);
+      var esc = txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '<div style="margin-bottom:'+(i<2?'14':'0')+'px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+        +'<span style="font-size:12px;font-weight:700;color:var(--text-muted)">'+ld.label+'</span>'
+        +'<button onclick="copyText(document.getElementById(\'sbr-'+ld.lang+'\').textContent,this)" style="padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:11px">📋 '+ld.btn+'</button>'
+        +'</div>'
+        +'<pre id="sbr-'+ld.lang+'" style="font-size:11px;color:var(--text-sec);white-space:pre-wrap;word-break:break-word;background:var(--surface2);border-radius:8px;padding:10px;margin:0;line-height:1.65">'+esc+'</pre></div>';
+    }
+    return html+'</div>';
   }
 
   function sbEffectivePart(sel, i) {
@@ -6298,7 +6324,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
       + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
-      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">票号 ' + d.ticketId + '</div></div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">注单号 ' + d.ticketId + '</div></div>'
       + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">投注</div>'
       + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
       + '</div>';
@@ -6338,7 +6364,10 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         + ' = <span style="color:var(--green);font-weight:700">' + d.cs + sbFmt(d.baseGain) + '</span></div>';
       if (d.bonusGain > 0) {
         html += '<div style="margin-top:6px;color:var(--text-pri)">串關加成 (' + (d.bonusPct*100).toFixed(0) + '%)'
-          + ' = <span style="color:#f59e0b;font-weight:700">+' + d.cs + sbFmt(d.bonusGain) + '</span></div>';
+          + ' = <span style="color:#f59e0b;font-weight:700">+' + d.cs + sbFmt(d.bonusGain) + '</span></div>'
+          + '<div style="margin-top:4px;color:var(--text-pri);font-weight:700">'
+          + d.cs + sbFmt(d.baseGain) + ' + ' + d.cs + sbFmt(d.bonusGain)
+          + ' = <span style="color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</span></div>';
       }
     }
     html += '</div>'
@@ -6347,39 +6376,86 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
       + '</div></div>';
 
-    return html + sbReportCard(sbBuildParlayReport());
+    return html + sbReportCard();
   }
 
-  function sbBuildParlayReport() {
+  function sbBuildParlayReportLang(lang) {
     if (!_sbData || !_sbData.isParlay) return '';
     var d = _sbData, lines = [];
-    lines.push('🎫 票号：' + d.ticketId);
-    lines.push('📋 ' + d.betName + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
-    lines.push('');
-    lines.push('选项结果：');
-    for (var i = 0; i < d.sels.length; i++) {
-      var s = d.sels[i], note = '';
-      if (s.SelectionStatus === 17 || s.SelectionStatus === 16)
-        note = '（有效@' + sbFactor(s).toFixed(4).replace(/\.?0+$/,'') + '）';
-      lines.push(sbCircle(i) + ' ' + sbSelNameText(s) + ' @' + s.TrueOdds
-        + ' → ' + sbStatusText(s) + note + '  [' + (s.SettlementResult || s.Result || '') + ']');
-    }
-    lines.push('');
-    lines.push('═══ 结算算式 ═══');
-    if (d.hasLoss) {
-      lines.push('含落空选项 → 串关派彩 = 0');
+    var betNameLang = d.N + (lang==='en' ? '-Fold Parlay' : lang==='ko' ? '폴드 파레이' : '串1 串关');
+    if (lang === 'en') {
+      lines.push('🎫 Ticket ID: ' + d.ticketId);
+      lines.push('📋 ' + betNameLang + ' | Stake ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('Results:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = ' (eff.@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+')';
+        else if (s.SelectionStatus===16) note = ' (eff.@0.5)';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'en')+note+'  ['+(s.SettlementResult||s.Result||'')+']');
+      }
+      lines.push('');
+      lines.push('Settlement:');
+      if (d.hasLoss) {
+        lines.push('Contains losing selection → Parlay payout = 0');
+      } else {
+        var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'en'); });
+        lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
+        lines.push('Base Payout: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        if (d.bonusGain > 0) {
+          lines.push('Combo Bonus ('+(d.bonusPct*100).toFixed(0)+'%): +'+d.cs+sbFmt(d.bonusGain));
+          lines.push(d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+        }
+      }
+    } else if (lang === 'ko') {
+      lines.push('🎫 주문번호: ' + d.ticketId);
+      lines.push('📋 ' + betNameLang + ' | 배팅 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('결과:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（유효@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（유효@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'ko')+note+'  ['+(s.SettlementResult||s.Result||'')+']');
+      }
+      lines.push('');
+      lines.push('정산식:');
+      if (d.hasLoss) {
+        lines.push('낙첨 선택 포함 → 파레이 배당 = 0');
+      } else {
+        var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'ko'); });
+        lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
+        lines.push('기본 배당: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        if (d.bonusGain > 0) {
+          lines.push('콤보 보너스（'+(d.bonusPct*100).toFixed(0)+'%）: +'+d.cs+sbFmt(d.bonusGain));
+          lines.push(d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+        }
+      }
     } else {
-      var parts = d.sels.map(function(s,i){ return sbEffectivePartText(s,i); });
-      lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
-      lines.push('基本派彩：' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(d.product) + ' = ' + d.cs + sbFmt(d.baseGain));
-      if (d.bonusGain > 0)
-        lines.push('串关加成（' + (d.bonusPct*100).toFixed(0) + '%）：+' + d.cs + sbFmt(d.bonusGain));
+      lines.push('🎫 注单号：' + d.ticketId);
+      lines.push('📋 ' + betNameLang + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('选项结果：');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（有效@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（有效@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'  ['+(s.SettlementResult||s.Result||'')+']');
+      }
+      lines.push('');
+      lines.push('结算算式：');
+      if (d.hasLoss) {
+        lines.push('含落空选项 → 串关派彩 = 0');
+      } else {
+        var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'zh'); });
+        lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
+        lines.push('基本派彩：'+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        if (d.bonusGain > 0) {
+          lines.push('串关加成（'+(d.bonusPct*100).toFixed(0)+'%）：+'+d.cs+sbFmt(d.bonusGain));
+          lines.push(d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+        }
+      }
     }
-    lines.push('');
-    lines.push('━━━━━━━━━━━━━━━━━━');
-    lines.push('💰 总派彩：' + d.cs + sbFmt(d.totalGain));
-    lines.push('📥 总投注：' + d.cs + sbFmt(d.totalStake));
-    lines.push('📈 净盈利：' + d.cs + sbFmt(d.totalGain - d.totalStake));
     return lines.join('\n');
   }
 
@@ -6392,7 +6468,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
       + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
-      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">票号 ' + d.ticketId + '</div></div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">注单号 ' + d.ticketId + '</div></div>'
       + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">總投注</div>'
       + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
       + '</div>'
@@ -6440,49 +6516,97 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
       + '</div></div>';
 
-    return html + sbReportCard(sbBuildSystemReport());
+    return html + sbReportCard();
   }
 
-  function sbBuildSystemReport() {
+  function sbBuildSystemReportLang(lang) {
     if (!_sbData || _sbData.isParlay) return '';
-    var d = _sbData, csn = {2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'}, lines = [];
-    lines.push('🎫 票号：' + d.ticketId);
-    lines.push('📋 ' + d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
-    lines.push('');
-    lines.push('选项结果：');
-    for (var i = 0; i < d.sels.length; i++) {
-      var s = d.sels[i], note = '';
-      if (s.SelectionStatus === 17 || s.SelectionStatus === 16)
-        note = '（有效@' + sbFactor(s).toFixed(4).replace(/\.?0+$/,'') + '）';
-      lines.push(sbCircle(i) + ' ' + sbSelNameText(s) + ' @' + s.TrueOdds
-        + ' → ' + sbStatusText(s) + note + '  [' + (s.SettlementResult || s.Result || '') + ']');
-    }
-    lines.push('');
-    lines.push('═══ 结算算式 ═══');
-    for (var ci = 0; ci < d.comboSizes.length; ci++) {
-      var k = d.comboSizes[ci], g = d.groups[k];
-      var sizeName = csn[k] || (k+'串'), totalInSize = g.win.length + g.lose;
+    var d = _sbData, lines = [];
+    var csn = {
+      zh:{2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'},
+      en:{2:'Doubles',3:'Trebles',4:'4-Folds',5:'5-Folds',6:'6-Folds',7:'7-Folds',8:'8-Folds'},
+      ko:{2:'더블',3:'트레블',4:'4폴드',5:'5폴드',6:'6폴드',7:'7폴드',8:'8폴드'}
+    };
+    var csnL = csn[lang] || csn.zh;
+    if (lang === 'en') {
+      lines.push('🎫 Ticket ID: ' + d.ticketId);
+      lines.push('📋 ' + d.betName + ' | Per Bet ' + d.cs + sbFmt(d.stakePerBet) + ' | Total ' + d.cs + sbFmt(d.totalStake));
       lines.push('');
-      lines.push('▌' + sizeName + '（' + totalInSize + '注中 ' + g.win.length + ' 注）合计：' + d.cs + sbFmt(g.total));
-      for (var wi = 0; wi < g.win.length; wi++) {
-        var w = g.win[wi];
-        var parts = w.idx.map(function(i){ return sbEffectivePartText(d.sels[i], i); });
-        lines.push('  ' + parts.join(' × ') + ' = ' + sbFmtOdds(w.odds)
-          + '  →  ' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(w.odds) + ' = ' + d.cs + sbFmt(w.gain));
+      lines.push('Results:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = ' (eff.@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+')';
+        else if (s.SelectionStatus===16) note = ' (eff.@0.5)';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'en')+note+'  ['+(s.SettlementResult||s.Result||'')+']');
       }
-      if (g.win.length === 0) lines.push('  全部落空');
+      lines.push('');
+      lines.push('Settlement:');
+      for (var ci = 0; ci < d.comboSizes.length; ci++) {
+        var k = d.comboSizes[ci], g = d.groups[k];
+        var sn = csnL[k]||(k+'-Folds'), tot = g.win.length+g.lose;
+        lines.push('');
+        lines.push('▌'+sn+' ('+g.win.length+'/'+tot+' won) Total: '+d.cs+sbFmt(g.total));
+        for (var wi=0;wi<g.win.length;wi++) {
+          var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'en'); });
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+        }
+        if (g.win.length===0) lines.push('  All lost');
+      }
+    } else if (lang === 'ko') {
+      lines.push('🎫 주문번호: ' + d.ticketId);
+      lines.push('📋 ' + d.betName + ' | 건당 ' + d.cs + sbFmt(d.stakePerBet) + ' | 합계 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('결과:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（유효@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（유효@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'ko')+note+'  ['+(s.SettlementResult||s.Result||'')+']');
+      }
+      lines.push('');
+      lines.push('정산식:');
+      for (var ci = 0; ci < d.comboSizes.length; ci++) {
+        var k = d.comboSizes[ci], g = d.groups[k];
+        var sn = csnL[k]||(k+'폴드'), tot = g.win.length+g.lose;
+        lines.push('');
+        lines.push('▌'+sn+' ('+tot+'건 중 '+g.win.length+'건) 합계: '+d.cs+sbFmt(g.total));
+        for (var wi=0;wi<g.win.length;wi++) {
+          var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'ko'); });
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+        }
+        if (g.win.length===0) lines.push('  전부 낙첨');
+      }
+    } else {
+      lines.push('🎫 注单号：' + d.ticketId);
+      lines.push('📋 ' + d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('选项结果：');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（有效@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（有效@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'  ['+(s.SettlementResult||s.Result||'')+']');
+      }
+      lines.push('');
+      lines.push('结算算式：');
+      for (var ci = 0; ci < d.comboSizes.length; ci++) {
+        var k = d.comboSizes[ci], g = d.groups[k];
+        var sn = csnL[k]||(k+'串'), tot = g.win.length+g.lose;
+        lines.push('');
+        lines.push('▌'+sn+'（'+tot+'注中 '+g.win.length+' 注）合计：'+d.cs+sbFmt(g.total));
+        for (var wi=0;wi<g.win.length;wi++) {
+          var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'zh'); });
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+        }
+        if (g.win.length===0) lines.push('  全部落空');
+      }
     }
-    lines.push('');
-    lines.push('━━━━━━━━━━━━━━━━━━');
-    lines.push('💰 总派彩：' + d.cs + sbFmt(d.totalGain));
-    lines.push('📥 总投注：' + d.cs + sbFmt(d.totalStake));
-    lines.push('📈 净盈利：' + d.cs + sbFmt(d.totalGain - d.totalStake));
     return lines.join('\n');
   }
 
   function sbCopyReport() {
-    var text = (document.getElementById('sb-report-text') || {}).textContent || '';
-    copyText(text, document.getElementById('sb-copy-btn'));
+    var el = document.getElementById('sbr-zh') || document.getElementById('sbr-en');
+    if (el) copyText(el.textContent, null);
   }
 </script>
 
