@@ -6260,7 +6260,11 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     if (!bet) { alert('找不到 Bets 資料'); return; }
     var allSels = data.Selections || [];
     if (!allSels.length) { alert('找不到 Selections 資料'); return; }
-    var sels = allSels.slice().sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
+    var mapped = bet.MappedSelections;
+    var sels = (mapped && mapped.length > 0
+      ? allSels.filter(function(s){ return mapped.indexOf(s.SelectionIndex) !== -1; })
+      : allSels.slice()
+    ).sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
     var N = bet.NumberOfLines || sels.length;
     var stakePerBet = bet.Stake || 0;
     var totalStake = stakePerBet * (bet.NumberOfBets || 1);
