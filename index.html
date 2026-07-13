@@ -961,7 +961,7 @@
   <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
   <button class="tab-btn" onclick="switchTab('cancel')" id="tabbtn-cancel">✂️ 取消請求</button>
   <button class="tab-btn" onclick="switchTab('translate')" id="tabbtn-translate">🌐 翻譯</button>
-  <button class="tab-btn" onclick="switchTab('sysbets')" id="tabbtn-sysbets">🎰 系統投注</button>
+  <button class="tab-btn" onclick="switchTab('sysbets')" id="tabbtn-sysbets">🎰 串關計算機</button>
   <span id="sa-idle-indicator" style="display:none;font-size:11px;color:var(--text-muted);align-self:center;padding-left:6px"></span>
 </div>
 <div id="tab-reminder" class="tab-content active">
@@ -6067,7 +6067,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   }
 
 
-  // ── System Bet Calculator ──────────────────────────────────────────────────
+  // ── 串關計算機 ────────────────────────────────────────────────────────────
   var _sbData = null;
 
   function sbClear() {
@@ -6184,202 +6184,300 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     return circles[i] || ('['+(i+1)+']');
   }
 
+  function sbCurrSym(currency) {
+    var map = { CNY:'¥', THB:'฿', USD:'$', EUR:'€', GBP:'£', HKD:'HK$', KRW:'₩', JPY:'¥', VND:'₫', MYR:'RM', IDR:'Rp' };
+    return map[currency] || (currency ? currency+' ' : '');
+  }
+
   function sbParse() {
     var raw = (document.getElementById('sb-json-input') || {}).value || '';
     var data;
     try { data = JSON.parse(raw.trim()); } catch(e) { alert('JSON 格式錯誤：' + e.message); return; }
-
     var bet = data.Bets && data.Bets[0];
     if (!bet) { alert('找不到 Bets 資料'); return; }
     var allSels = data.Selections || [];
     if (!allSels.length) { alert('找不到 Selections 資料'); return; }
-
-    // Sort selections by SelectionIndex for consistent display
     var sels = allSels.slice().sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
     var N = bet.NumberOfLines || sels.length;
     var stakePerBet = bet.Stake || 0;
-    var totalStake = parseFloat(data.Deposit || (stakePerBet * bet.NumberOfBets)) || 0;
+    var totalStake = parseFloat(data.Deposit || (stakePerBet * (bet.NumberOfBets||1))) || 0;
     var ticketId = bet.TicketId || data.SQLTicketId || '';
-    var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
-    var comboSizes = sbGetComboSizes(N, bet.NumberOfBets || 0);
-    var factors = sels.map(sbFactor);
     var currency = (data.Customer && data.Customer.CurrencyData && data.Customer.CurrencyData.Code) || '';
-    var currSym = currency === 'CNY' ? '¥' : (currency || '');
+    var cs = sbCurrSym(currency);
+    var factors = sels.map(sbFactor);
+    var isParlay = (bet.NumberOfBets === 1);
 
-    // Calculate all combos
-    var groups = {};
-    var totalGain = 0;
-    for (var ci = 0; ci < comboSizes.length; ci++) {
-      var k = comboSizes[ci];
-      var combos = sbCombinations(N, k);
-      var winCombos = [], loseCombos = 0;
-      for (var j = 0; j < combos.length; j++) {
-        var combo = combos[j];
-        var product = 1, lost = false;
-        for (var m = 0; m < combo.length; m++) {
-          var f = factors[combo[m]];
-          if (f === 0) { lost = true; break; }
-          product *= f;
-        }
-        if (lost) { loseCombos++; }
-        else { var g = stakePerBet * product; winCombos.push({ idx: combo, odds: product, gain: g }); totalGain += g; }
+    if (isParlay) {
+      var betName = N + '串1 串關';
+      var product = 1, hasLoss = false;
+      for (var i = 0; i < sels.length; i++) {
+        if (factors[i] === 0) { hasLoss = true; break; }
+        product *= factors[i];
       }
-      groups[k] = { win: winCombos, lose: loseCombos, total: winCombos.reduce(function(a,b){return a+b.gain;},0) };
+      var baseGain = hasLoss ? 0 : stakePerBet * product;
+      var bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
+      var bonusGain = bonusObj ? (bonusObj.Gain || 0) : 0;
+      var bonusPct  = bonusObj ? (bonusObj.Percentage || 0) : 0;
+      var bonusMax  = bonusObj ? (bonusObj.MaxWin || null) : null;
+      var totalGain = baseGain + bonusGain;
+      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusGain, bonusPct, bonusMax, totalGain };
+    } else {
+      var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
+      var comboSizes = sbGetComboSizes(N, bet.NumberOfBets || 0);
+      var groups = {}, totalGain = 0;
+      for (var ci = 0; ci < comboSizes.length; ci++) {
+        var k = comboSizes[ci];
+        var combos = sbCombinations(N, k), winCombos = [], loseCombos = 0;
+        for (var j = 0; j < combos.length; j++) {
+          var combo = combos[j], prod = 1, lost = false;
+          for (var m = 0; m < combo.length; m++) {
+            if (factors[combo[m]] === 0) { lost = true; break; }
+            prod *= factors[combo[m]];
+          }
+          if (lost) { loseCombos++; }
+          else { var g = stakePerBet * prod; winCombos.push({ idx:combo, odds:prod, gain:g }); totalGain += g; }
+        }
+        groups[k] = { win:winCombos, lose:loseCombos, total:winCombos.reduce(function(a,b){return a+b.gain;},0) };
+      }
+      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, comboSizes, groups, totalGain };
     }
-
-    _sbData = { bet, sels, N, stakePerBet, totalStake, ticketId, betName, comboSizes, groups, totalGain, currSym, currency };
     sbRender();
+  }
+
+  function sbSelRow(d, i) {
+    var s = d.sels[i], factorNote = '';
+    if (s.SelectionStatus === 17 || s.SelectionStatus === 16) {
+      var f = sbFactor(s);
+      factorNote = '<span style="font-size:10px;color:#f59e0b;margin-left:4px">（有效 @' + f.toFixed(4).replace(/\.?0+$/,'') + '）</span>';
+    }
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<div style="font-size:16px;flex-shrink:0;width:22px;text-align:center;font-weight:700;color:var(--blue)">' + sbCircle(i) + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:12px;font-weight:600;color:var(--text-pri);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sbSelName(s) + ' <span style="color:var(--text-muted);font-weight:400">@' + s.TrueOdds + '</span></div>'
+      + '<div style="font-size:10px;color:var(--text-muted);margin-top:1px">' + sbEventName(s) + ' ｜ ' + (s.SettlementResult || s.Result || '') + '</div>'
+      + '</div><div style="flex-shrink:0;text-align:right">' + sbStatusTag(s) + factorNote + '</div></div>';
+  }
+
+  function sbReportCard(reportText) {
+    return '<div class="card" style="padding:16px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">客戶報告（可複製）</div>'
+      + '<button onclick="sbCopyReport()" id="sb-copy-btn" style="padding:5px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">📋 複製</button>'
+      + '</div>'
+      + '<pre id="sb-report-text" style="font-size:11px;color:var(--text-sec);white-space:pre-wrap;word-break:break-word;background:var(--surface2);border-radius:8px;padding:10px;margin:0;line-height:1.7">'
+      + reportText + '</pre></div>';
+  }
+
+  function sbEffectivePart(sel, i) {
+    var s = sel.SelectionStatus, f = sbFactor(sel);
+    if (s === 17) return sbCircle(i) + ' ' + f.toFixed(4).replace(/\.?0+$/,'') + '(半贏)';
+    if (s === 16) return sbCircle(i) + ' 0.5(半輸)';
+    return sbCircle(i) + ' ' + sel.TrueOdds;
+  }
+  function sbEffectivePartText(sel, i) {
+    var s = sel.SelectionStatus, f = sbFactor(sel);
+    if (s === 17) return sbCircle(i) + '@' + f.toFixed(4).replace(/\.?0+$/,'') + '(半赢)';
+    if (s === 16) return sbCircle(i) + '@0.5(半输)';
+    return sbCircle(i) + '@' + sel.TrueOdds;
   }
 
   function sbRender() {
     if (!_sbData) return;
-    var d = _sbData;
-    var comboSizeNames = {2:'雙串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'};
     var res = document.getElementById('sb-results');
     if (!res) return;
+    res.innerHTML = _sbData.isParlay ? sbRenderParlay() : sbRenderSystem();
+    res.style.display = 'block';
+  }
 
-    // ── Header card ──
-    var wonCount = d.sels.filter(function(s){ return s.SelectionStatus===2||s.SelectionStatus===17; }).length;
-    var lostCount = d.sels.filter(function(s){ return s.SelectionStatus===1; }).length;
+  // ── Parlay renderer ──────────────────────────────────────────────────────
+  function sbRenderParlay() {
+    var d = _sbData;
+    var gainColor = d.hasLoss ? 'var(--red,#ef4444)' : 'var(--green)';
+
+    // Header
+    var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+      + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">票号 ' + d.ticketId + '</div></div>'
+      + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">投注</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
+      + '</div>';
+
+    var cols = d.bonusGain > 0 ? 3 : 2;
+    html += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px">'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:10px;color:var(--text-muted)">基本派彩</div>'
+      + '<div style="font-size:15px;font-weight:700;color:' + gainColor + '">' + d.cs + sbFmt(d.baseGain) + '</div></div>';
+    if (d.bonusGain > 0) {
+      html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+        + '<div style="font-size:10px;color:var(--text-muted)">串關加成 (' + (d.bonusPct*100).toFixed(0) + '%)</div>'
+        + '<div style="font-size:15px;font-weight:700;color:#f59e0b">+' + d.cs + sbFmt(d.bonusGain) + '</div></div>';
+    }
+    html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
+      + '</div></div>';
+
+    // Selections
+    html += '<div class="card" style="padding:16px;margin-bottom:12px">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px">選項結果</div>';
+    for (var i = 0; i < d.sels.length; i++) html += sbSelRow(d, i);
+    html += '</div>';
+
+    // Formula
+    html += '<div class="card" style="padding:16px;margin-bottom:12px">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px">結算算式</div>'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:10px;font-family:monospace;font-size:12px">';
+    if (d.hasLoss) {
+      html += '<div style="color:var(--red,#ef4444)">含落空選項 → 串關派彩 = 0</div>';
+    } else {
+      var parts = d.sels.map(function(s,i){ return sbEffectivePart(s,i); });
+      html += '<div style="color:var(--text-pri);margin-bottom:6px">' + parts.join(' × ') + '</div>'
+        + '<div style="color:var(--text-muted);margin-bottom:8px">= ' + sbFmtOdds(d.product) + '</div>'
+        + '<div style="color:var(--text-pri)">基本派彩 = ' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(d.product)
+        + ' = <span style="color:var(--green);font-weight:700">' + d.cs + sbFmt(d.baseGain) + '</span></div>';
+      if (d.bonusGain > 0) {
+        html += '<div style="margin-top:6px;color:var(--text-pri)">串關加成 (' + (d.bonusPct*100).toFixed(0) + '%)'
+          + ' = <span style="color:#f59e0b;font-weight:700">+' + d.cs + sbFmt(d.bonusGain) + '</span></div>';
+      }
+    }
+    html += '</div>'
+      + '<div style="border-top:2px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">總派彩</div>'
+      + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
+      + '</div></div>';
+
+    return html + sbReportCard(sbBuildParlayReport());
+  }
+
+  function sbBuildParlayReport() {
+    if (!_sbData || !_sbData.isParlay) return '';
+    var d = _sbData, lines = [];
+    lines.push('🎫 票号：' + d.ticketId);
+    lines.push('📋 ' + d.betName + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
+    lines.push('');
+    lines.push('选项结果：');
+    for (var i = 0; i < d.sels.length; i++) {
+      var s = d.sels[i], note = '';
+      if (s.SelectionStatus === 17 || s.SelectionStatus === 16)
+        note = '（有效@' + sbFactor(s).toFixed(4).replace(/\.?0+$/,'') + '）';
+      lines.push(sbCircle(i) + ' ' + sbSelNameText(s) + ' @' + s.TrueOdds
+        + ' → ' + sbStatusText(s) + note + '  [' + (s.SettlementResult || s.Result || '') + ']');
+    }
+    lines.push('');
+    lines.push('═══ 结算算式 ═══');
+    if (d.hasLoss) {
+      lines.push('含落空选项 → 串关派彩 = 0');
+    } else {
+      var parts = d.sels.map(function(s,i){ return sbEffectivePartText(s,i); });
+      lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
+      lines.push('基本派彩：' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(d.product) + ' = ' + d.cs + sbFmt(d.baseGain));
+      if (d.bonusGain > 0)
+        lines.push('串关加成（' + (d.bonusPct*100).toFixed(0) + '%）：+' + d.cs + sbFmt(d.bonusGain));
+    }
+    lines.push('');
+    lines.push('━━━━━━━━━━━━━━━━━━');
+    lines.push('💰 总派彩：' + d.cs + sbFmt(d.totalGain));
+    lines.push('📥 总投注：' + d.cs + sbFmt(d.totalStake));
+    lines.push('📈 净盈利：' + d.cs + sbFmt(d.totalGain - d.totalStake));
+    return lines.join('\n');
+  }
+
+  // ── System bet renderer ──────────────────────────────────────────────────
+  function sbRenderSystem() {
+    var d = _sbData;
+    var csn = {2:'雙串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'};
+    var winTotal = d.comboSizes.reduce(function(a,k){return a+d.groups[k].win.length;},0);
 
     var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
       + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">票号 ' + d.ticketId + '</div></div>'
       + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">總投注</div>'
-      + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.currSym + sbFmt(d.totalStake) + '</div></div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
       + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
       + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
-      + '<div style="font-size:10px;color:var(--text-muted)">每注</div><div style="font-size:15px;font-weight:700;color:var(--blue)">' + d.currSym + sbFmt(d.stakePerBet) + '</div></div>'
+      + '<div style="font-size:10px;color:var(--text-muted)">每注</div><div style="font-size:15px;font-weight:700;color:var(--blue)">' + d.cs + sbFmt(d.stakePerBet) + '</div></div>'
       + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
       + '<div style="font-size:10px;color:var(--text-muted)">共 ' + d.bet.NumberOfBets + ' 注</div>'
-      + '<div style="font-size:15px;font-weight:700;color:var(--green)">中 ' + d.comboSizes.reduce(function(a,k){return a+d.groups[k].win.length;},0) + ' 注</div></div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--green)">中 ' + winTotal + ' 注</div></div>'
       + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
-      + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div><div style="font-size:15px;font-weight:700;color:var(--green)">' + d.currSym + sbFmt(d.totalGain) + '</div></div>'
+      + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div><div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
       + '</div></div>';
 
-    // ── Selections card ──
     html += '<div class="card" style="padding:16px;margin-bottom:12px">'
       + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px">選項結果</div>';
-    for (var i = 0; i < d.sels.length; i++) {
-      var s = d.sels[i];
-      var factorNote = '';
-      if (s.SelectionStatus === 17 || s.SelectionStatus === 16) {
-        var f = sbFactor(s);
-        factorNote = '<span style="font-size:10px;color:#f59e0b;margin-left:4px">（有效賠率 @' + f.toFixed(4).replace(/\.?0+$/,'') + '）</span>';
-      }
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-        + '<div style="font-size:16px;flex-shrink:0;width:22px;text-align:center;font-weight:700;color:var(--blue)">' + sbCircle(i) + '</div>'
-        + '<div style="flex:1;min-width:0">'
-        + '<div style="font-size:12px;font-weight:600;color:var(--text-pri);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sbSelName(s) + ' <span style="color:var(--text-muted);font-weight:400">@' + s.TrueOdds + '</span></div>'
-        + '<div style="font-size:10px;color:var(--text-muted);margin-top:1px">' + sbEventName(s) + ' ｜ ' + (s.SettlementResult || s.Result || '') + '</div>'
-        + '</div>'
-        + '<div style="flex-shrink:0;text-align:right">' + sbStatusTag(s) + factorNote + '</div>'
-        + '</div>';
-    }
+    for (var i = 0; i < d.sels.length; i++) html += sbSelRow(d, i);
     html += '</div>';
 
-    // ── Calculation breakdown ──
     html += '<div class="card" style="padding:16px;margin-bottom:12px">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:12px">結算算式（每注 ' + d.currSym + sbFmt(d.stakePerBet) + '）</div>';
-
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:12px">結算算式（每注 ' + d.cs + sbFmt(d.stakePerBet) + '）</div>';
     for (var ci = 0; ci < d.comboSizes.length; ci++) {
-      var k = d.comboSizes[ci];
-      var g = d.groups[k];
-      var sizeName = comboSizeNames[k] || (k + '串');
-      var totalInSize = g.win.length + g.lose;
+      var k = d.comboSizes[ci], g = d.groups[k];
+      var sizeName = csn[k] || (k+'串'), totalInSize = g.win.length + g.lose;
       html += '<div style="margin-bottom:14px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-        + '<div style="font-size:12px;font-weight:700;color:var(--text-pri)">▌' + sizeName + ' <span style="color:var(--text-muted);font-weight:400">（' + totalInSize + '注中 ' + g.win.length + ' 注）</span></div>'
-        + '<div style="font-size:12px;font-weight:700;color:var(--green)">' + d.currSym + sbFmt(g.total) + '</div>'
-        + '</div>';
-
+        + '<div style="font-size:12px;font-weight:700;color:var(--text-pri)">▌' + sizeName
+        + ' <span style="color:var(--text-muted);font-weight:400">（' + totalInSize + '注中 ' + g.win.length + ' 注）</span></div>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(g.total) + '</div></div>';
       if (g.win.length > 0) {
-        html += '<div style="background:var(--surface2);border-radius:8px;padding:8px;font-family:monospace;font-size:11px;color:var(--text-sec)">';
+        html += '<div style="background:var(--surface2);border-radius:8px;padding:8px;font-family:monospace;font-size:11px">';
         for (var wi = 0; wi < g.win.length; wi++) {
           var w = g.win[wi];
-          var parts = w.idx.map(function(i){ return sbCircle(i) + ' ' + d.sels[i].TrueOdds; });
-          var effectiveParts = w.idx.map(function(i){
-            var sel = d.sels[i];
-            if (sel.SelectionStatus === 17) return sbCircle(i) + ' ' + sbFactor(sel).toFixed(4).replace(/\.?0+$/,'') + '(半贏)';
-            return sbCircle(i) + ' ' + sel.TrueOdds;
-          });
+          var ep = w.idx.map(function(i){ return sbEffectivePart(d.sels[i], i); });
           html += '<div style="padding:2px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px">'
-            + '<span style="color:var(--text-pri)">' + effectiveParts.join(' × ') + ' = ' + sbFmtOdds(w.odds) + '</span>'
-            + '<span style="color:var(--green);flex-shrink:0">× ' + d.currSym + sbFmt(d.stakePerBet) + ' = <b>' + d.currSym + sbFmt(w.gain) + '</b></span>'
+            + '<span style="color:var(--text-pri)">' + ep.join(' × ') + ' = ' + sbFmtOdds(w.odds) + '</span>'
+            + '<span style="color:var(--green);flex-shrink:0">× ' + d.cs + sbFmt(d.stakePerBet) + ' = <b>' + d.cs + sbFmt(w.gain) + '</b></span>'
             + '</div>';
         }
         html += '</div>';
-      } else {
-        html += '<div style="font-size:11px;color:var(--text-muted);padding:4px 0">全部落空</div>';
-      }
+      } else { html += '<div style="font-size:11px;color:var(--text-muted);padding:4px 0">全部落空</div>'; }
       html += '</div>';
     }
-
     html += '<div style="border-top:2px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;align-items:center">'
       + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">總派彩</div>'
-      + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.currSym + sbFmt(d.totalGain) + '</div>'
-      + '</div>'
-      + '</div>';
+      + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
+      + '</div></div>';
 
-    // ── Customer report ──
-    html += '<div class="card" style="padding:16px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">客戶報告（可複製）</div>'
-      + '<button onclick="sbCopyReport()" id="sb-copy-btn" style="padding:5px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">📋 複製</button>'
-      + '</div>'
-      + '<pre id="sb-report-text" style="font-size:11px;color:var(--text-sec);white-space:pre-wrap;word-break:break-word;background:var(--surface2);border-radius:8px;padding:10px;margin:0;line-height:1.7">'
-      + sbBuildReport()
-      + '</pre></div>';
-
-    res.innerHTML = html;
-    res.style.display = 'block';
+    return html + sbReportCard(sbBuildSystemReport());
   }
 
-  function sbBuildReport() {
-    if (!_sbData) return '';
-    var d = _sbData;
-    var comboSizeNames = {2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'};
-    var lines = [];
+  function sbBuildSystemReport() {
+    if (!_sbData || _sbData.isParlay) return '';
+    var d = _sbData, csn = {2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'}, lines = [];
     lines.push('🎫 票号：' + d.ticketId);
-    lines.push('📋 ' + d.betName + ' | 每注 ' + d.currSym + sbFmt(d.stakePerBet) + ' | 总注 ' + d.currSym + sbFmt(d.totalStake));
+    lines.push('📋 ' + d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
     lines.push('');
     lines.push('选项结果：');
     for (var i = 0; i < d.sels.length; i++) {
-      var s = d.sels[i];
-      var note = '';
-      if (s.SelectionStatus === 17) note = '（有效@' + sbFactor(s).toFixed(4).replace(/\.?0+$/,'') + '）';
+      var s = d.sels[i], note = '';
+      if (s.SelectionStatus === 17 || s.SelectionStatus === 16)
+        note = '（有效@' + sbFactor(s).toFixed(4).replace(/\.?0+$/,'') + '）';
       lines.push(sbCircle(i) + ' ' + sbSelNameText(s) + ' @' + s.TrueOdds
-        + ' → ' + sbStatusText(s) + note
-        + '  [' + (s.SettlementResult || s.Result || '') + ']');
+        + ' → ' + sbStatusText(s) + note + '  [' + (s.SettlementResult || s.Result || '') + ']');
     }
     lines.push('');
     lines.push('═══ 结算算式 ═══');
     for (var ci = 0; ci < d.comboSizes.length; ci++) {
-      var k = d.comboSizes[ci];
-      var g = d.groups[k];
-      var sizeName = comboSizeNames[k] || (k+'串');
-      var totalInSize = g.win.length + g.lose;
+      var k = d.comboSizes[ci], g = d.groups[k];
+      var sizeName = csn[k] || (k+'串'), totalInSize = g.win.length + g.lose;
       lines.push('');
-      lines.push('▌' + sizeName + '（' + totalInSize + '注中 ' + g.win.length + ' 注）合计：' + d.currSym + sbFmt(g.total));
+      lines.push('▌' + sizeName + '（' + totalInSize + '注中 ' + g.win.length + ' 注）合计：' + d.cs + sbFmt(g.total));
       for (var wi = 0; wi < g.win.length; wi++) {
         var w = g.win[wi];
-        var parts = w.idx.map(function(i){
-          var sel = d.sels[i];
-          if (sel.SelectionStatus === 17) return sbCircle(i) + '@' + sbFactor(sel).toFixed(4).replace(/\.?0+$/,'');
-          return sbCircle(i) + '@' + sel.TrueOdds;
-        });
-        lines.push('  ' + parts.join(' × ') + ' = ' + sbFmtOdds(w.odds) + '  →  ' + d.currSym + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(w.odds) + ' = ' + d.currSym + sbFmt(w.gain));
+        var parts = w.idx.map(function(i){ return sbEffectivePartText(d.sels[i], i); });
+        lines.push('  ' + parts.join(' × ') + ' = ' + sbFmtOdds(w.odds)
+          + '  →  ' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(w.odds) + ' = ' + d.cs + sbFmt(w.gain));
       }
       if (g.win.length === 0) lines.push('  全部落空');
     }
     lines.push('');
     lines.push('━━━━━━━━━━━━━━━━━━');
-    lines.push('💰 总派彩：' + d.currSym + sbFmt(d.totalGain));
-    lines.push('📥 总投注：' + d.currSym + sbFmt(d.totalStake));
-    lines.push('📈 净盈利：' + d.currSym + sbFmt(d.totalGain - d.totalStake));
-    return lines.join('\n').replace(/&lt;/g,'<');
+    lines.push('💰 总派彩：' + d.cs + sbFmt(d.totalGain));
+    lines.push('📥 总投注：' + d.cs + sbFmt(d.totalStake));
+    lines.push('📈 净盈利：' + d.cs + sbFmt(d.totalGain - d.totalStake));
+    return lines.join('\n');
   }
 
   function sbCopyReport() {
@@ -6542,7 +6640,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
 <div id="tab-sysbets" class="tab-content">
   <div class="container">
     <div class="card" style="padding:16px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🎰 系統投注計算機</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🎰 串關計算機</div>
       <textarea id="sb-json-input" placeholder="在此貼上投注 JSON…"
         style="width:100%;box-sizing:border-box;height:110px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none;resize:vertical"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px">
