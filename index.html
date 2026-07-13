@@ -6287,7 +6287,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusGain, bonusPct, bonusMax, totalGain };
     } else {
       var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
-      var comboSizes = sbGetComboSizes(N, bet.NumberOfBets || 0);
+      var comboSizes = (bet.ComboSize > 0) ? [bet.ComboSize] : sbGetComboSizes(N, bet.NumberOfBets || 0);
       var groups = {}, totalGain = 0;
       for (var ci = 0; ci < comboSizes.length; ci++) {
         var k = comboSizes[ci];
