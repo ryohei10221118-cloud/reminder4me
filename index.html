@@ -33,6 +33,9 @@
       min-height: 100vh;
     }
 
+    /* ── Sticky nav wrapper ── */
+    #sticky-nav { position: sticky; top: 0; z-index: 100; background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
     /* ── Header ── */
     .header {
       background: var(--surface);
@@ -42,9 +45,6 @@
       flex-wrap: nowrap;
       align-items: center;
       gap: 12px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
     }
     .header h1 { font-size: 15px; font-weight: 700; color: var(--text-pri); }
     .header-badge {
@@ -942,6 +942,7 @@
 </head>
 <body>
 
+<div id="sticky-nav">
 <div class="header">
   <h1>ToolBox</h1>
   <span class="header-badge" id="header-badge">0</span>
@@ -963,6 +964,7 @@
   <button class="tab-btn" onclick="switchTab('translate')" id="tabbtn-translate">🌐 翻譯</button>
   <button class="tab-btn" onclick="switchTab('sysbets')" id="tabbtn-sysbets">🎰 串關計算機</button>
   <span id="sa-idle-indicator" style="display:none;font-size:11px;color:var(--text-muted);align-self:center;padding-left:6px"></span>
+</div>
 </div>
 <div id="tab-reminder" class="tab-content active">
 <div class="container">
@@ -4983,7 +4985,7 @@
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
     document.getElementById('tabbtn-' + tab).classList.add('active');
-    // Always clean up both tabs' listeners/timers before setting up the active one
+    // Always clean up all tabs' listeners/timers before setting up the active one
     document.removeEventListener('click', _saHandleOutsideClick);
     _saClearIdleTimer();
     const saTab = document.getElementById('tab-analyzer');
@@ -4997,6 +4999,10 @@
     trTab.removeEventListener('click', _trOnTranslateActivity);
     trTab.removeEventListener('keydown', _trOnTranslateActivity);
     _trClearIdleTimer();
+    const sbTab = document.getElementById('tab-sysbets');
+    sbTab.removeEventListener('click', _sbOnSysbetsActivity);
+    sbTab.removeEventListener('keydown', _sbOnSysbetsActivity);
+    _sbClearIdleTimer();
     if (tab === 'analyzer') {
       _saRenderLeft();
       _saRenderResults();
@@ -5013,6 +5019,10 @@
       trTab.addEventListener('click', _trOnTranslateActivity);
       trTab.addEventListener('keydown', _trOnTranslateActivity);
       _trStartIdleTimer();
+    } else if (tab === 'sysbets') {
+      sbTab.addEventListener('click', _sbOnSysbetsActivity);
+      sbTab.addEventListener('keydown', _sbOnSysbetsActivity);
+      _sbStartIdleTimer();
     }
   }
 
@@ -5132,6 +5142,33 @@
   }
 
   function _trOnTranslateActivity() { _trStartIdleTimer(); }
+
+  var _sbIdleTimer = null;
+  var _sbIdleSecs = 0;
+
+  function _sbStartIdleTimer() {
+    clearInterval(_sbIdleTimer);
+    _sbIdleSecs = 60;
+    _sbUpdateIdleIndicator();
+    _sbIdleTimer = setInterval(function() {
+      _sbIdleSecs--;
+      _sbUpdateIdleIndicator();
+      if (_sbIdleSecs <= 0) { clearInterval(_sbIdleTimer); _sbIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _sbClearIdleTimer() {
+    clearInterval(_sbIdleTimer); _sbIdleTimer = null; _sbIdleSecs = 0; _sbUpdateIdleIndicator();
+  }
+
+  function _sbUpdateIdleIndicator() {
+    var el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_sbIdleSecs > 0) { el.textContent = '↩ ' + _sbIdleSecs + 's'; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _sbOnSysbetsActivity() { _sbStartIdleTimer(); }
 
   function _ctPasteAndUpdate() {
     var prevId = _ctTicketId;
