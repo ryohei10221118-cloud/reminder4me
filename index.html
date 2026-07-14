@@ -2564,7 +2564,16 @@
       evtMap[key].betLines.push(...s.betLines);
     });
 
-    return { ticketId, selections: evtOrder.map(k => evtMap[k]) };
+    // Try to extract siteId from the debit_reserve XML root or first Bet element
+    const rootEl = debitXml.documentElement;
+    const siteId = (() => {
+      const v = rootEl && (rootEl.getAttribute('SiteId') || rootEl.getAttribute('siteId') ||
+        (betEls[0] && (betEls[0].getAttribute('SiteId') || betEls[0].getAttribute('siteId'))));
+      const n = v ? parseInt(v, 10) : NaN;
+      return isNaN(n) ? null : n;
+    })();
+
+    return { ticketId, selections: evtOrder.map(k => evtMap[k]), siteId };
   }
 
   function _autoParseJson(overlay) {
