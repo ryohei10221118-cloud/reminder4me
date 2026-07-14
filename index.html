@@ -6199,23 +6199,19 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   }
 
   function sbSelName(sel) {
-    var t = sel.Translations || {};
-    return (t.SelectionName || sel.SelectionName || '').replace(/</g,'&lt;');
+    return (sel.SelectionName || '').replace(/</g,'&lt;');
   }
 
   function sbSelNameText(sel) {
-    var t = sel.Translations || {};
-    return t.SelectionName || sel.SelectionName || '';
+    return sel.SelectionName || '';
   }
 
   function sbEventName(sel) {
-    var t = sel.Translations || {};
-    return (t.EventName || sel.EventName || '').replace(/</g,'&lt;');
+    return (sel.EventName || '').replace(/</g,'&lt;');
   }
 
   function sbLeague(sel) {
-    var t = sel.Translations || {};
-    return (t.LeagueName || sel.LeagueName || '').replace(/</g,'&lt;');
+    return (sel.LeagueName || '').replace(/</g,'&lt;');
   }
 
   function sbBetTypeName(n, total) {
