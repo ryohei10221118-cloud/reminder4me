@@ -2640,7 +2640,7 @@
       return;
     }
 
-    _jsonImportData = { ticketId, selections };
+    _jsonImportData = { ticketId, selections, siteId: (data.Customer && data.Customer.SiteId) || null };
 
     _renderJsonSelectionState(overlay);
   }
@@ -2769,6 +2769,7 @@
       score1:           selections[i].score1,
       score2:           selections[i].score2,
       settlementResult: selections[i].settlementResult,
+      siteId:           _jsonImportData.siteId || null,
       };
     });
 
@@ -3389,7 +3390,7 @@
           <div class="record-info">
             ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
             <div class="record-req" title="${esc(r.requirement)}">${esc(r.requirement)}</div>
-            <div class="record-meta">群組：<b>${esc(r.group)}</b>${r.additionalInfo ? `<br><span class="record-meta-note" title="${esc(r.additionalInfo)}">備註：${esc(r.additionalInfo)}</span>` : ''}</div>
+            <div class="record-meta">群組：<b>${esc(r.group)}</b>${(()=>{ const sid = r.betInfos && r.betInfos[0] && r.betInfos[0].siteId; const op = sid ? (_saOperatorMap[sid] || 'Site '+sid) : ''; return op ? `<br><span style="color:var(--blue)">OP：<b>${esc(op)}</b></span>` : ''; })()}${r.additionalInfo ? `<br><span class="record-meta-note" title="${esc(r.additionalInfo)}">備註：${esc(r.additionalInfo)}</span>` : ''}</div>
             ${_buildBetInfoHtml(r)}
           </div>
           <div class="record-actions">
