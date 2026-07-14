@@ -3557,6 +3557,7 @@
     const eventName = names[eventIdx] || names[0] || '';
     if (!r.eventNotes) r.eventNotes = {};
     const note = r.eventNotes[eventName] || r.eventNote || '';
+    const initialText = note || (r.additionalInfo ? r.additionalInfo.trim() : '');
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
     const overlay = document.createElement('div');
@@ -3579,7 +3580,7 @@
           <input id="msg-time-input-${id}-${eventIdx}" type="text" placeholder="e.g. 08/07/2026 07:00 (UTC+0)" value="${esc(_getEventTime(eventName))}"
             style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
         </div>
-        <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(note)}</textarea>
+        <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(initialText)}</textarea>
         <button class="btn-copy-reply" onclick="saveCopyMsg('${id}',${eventIdx},this)">📋 複製記錄</button>
       </div>`;
     document.body.appendChild(overlay);
