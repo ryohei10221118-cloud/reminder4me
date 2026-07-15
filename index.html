@@ -2047,7 +2047,7 @@
     list.innerHTML = formGroups.map((g, idx) => `
       <div class="group-block" data-group="${g.id}">
         <div class="group-block-header">
-          <span class="group-block-label">賽事群組 ${idx+1}</span>
+          <span class="group-block-label">賽事群組 ${idx+1}${(()=>{ const sid = (g.betInfos || []).map(b=>b&&b.siteId).find(s=>s); const op = sid ? (_saOperatorMap[sid] || 'Site '+sid) : ''; return op ? ` <span style="color:var(--blue);font-weight:700">· OP：${op}</span>` : ''; })()}</span>
           ${formGroups.length > 1 ? `<button type="button" class="btn-remove-group" onclick="removeFormGroup('${g.id}')">×</button>` : ''}
         </div>
         <div class="form-group">
@@ -3401,7 +3401,7 @@
           <div class="record-info">
             ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
             <div class="record-req" title="${esc(r.requirement)}">${esc(r.requirement)}</div>
-            <div class="record-meta">群組：<b>${esc(r.group)}</b>${(()=>{ const sid = r.betInfos && r.betInfos[0] && r.betInfos[0].siteId; const op = sid ? (_saOperatorMap[sid] || 'Site '+sid) : ''; return op ? `<br><span style="color:var(--blue)">OP：<b>${esc(op)}</b></span>` : ''; })()}${r.additionalInfo ? `<br><span class="record-meta-note" title="${esc(r.additionalInfo)}">備註：${esc(r.additionalInfo)}</span>` : ''}</div>
+            <div class="record-meta">群組：<b>${esc(r.group)}</b>${r.additionalInfo ? `<br><span class="record-meta-note" title="${esc(r.additionalInfo)}">備註：${esc(r.additionalInfo)}</span>` : ''}</div>
             ${_buildBetInfoHtml(r)}
           </div>
           <div class="record-actions">
