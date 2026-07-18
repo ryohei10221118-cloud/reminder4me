@@ -4158,6 +4158,7 @@
   var _saShowHistoryPanel = false;
   var _saShowReasonManager = false;
   var _saManagingReasonType = 'resettlement';
+  var _saCustomFillText = '';
   var _saQueryHistory = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'queryHistory') || '[]'); } catch(e) { return []; } })();
   var _saCustomResettlementReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customResettlementReasons') || '{}'); } catch(e) { return {}; } })();
   var _saCustomCancellationReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customCancellationReasons') || '{}'); } catch(e) { return {}; } })();
@@ -4419,7 +4420,7 @@
 
     data.forEach((item,i)=>{
       const rk = customReasons&&customReasons[i]!==undefined ? customReasons[i] : _saResettlementReason;
-      const rt = reasonOpts[rk] || reasonOpts[''];
+      const rt = rk === '_custom_fill' ? { english: _saCustomFillText, chinese: _saCustomFillText, korean: _saCustomFillText } : (reasonOpts[rk] || reasonOpts['']);
       const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
       const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Resettlement History: ${_saTranslateHistory(item.statusHistory,'english')}\nBet Status: ${item.betStatus}\nFirst Settlement Time: ${_saFormatDateTime(item.firstSettlementTime)}\nLast Update Time: ${_saFormatDateTime(item.lastUpdateTime)}\nReason for Resettlement: ${rt.english}`;
       const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事重新结算历史：${_saTranslateHistory(item.statusHistory,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n第一次结算时间：${_saFormatDateTime(item.firstSettlementTime)}\n最后更新时间：${_saFormatDateTime(item.lastUpdateTime)}\n重新结算原因：${rt.chinese}`;
@@ -4446,7 +4447,7 @@
 
     data.forEach((item,i)=>{
       const rk=customReasons&&customReasons[i]!==undefined?customReasons[i]:_saCancellationReason;
-      const rt=reasonOpts[rk]||reasonOpts[''];
+      const rt=rk==='_custom_fill'?{english:_saCustomFillText,chinese:_saCustomFillText,korean:_saCustomFillText}:(reasonOpts[rk]||reasonOpts['']);
       const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
       const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Status: ${item.eventStatus}\nBet Status: ${item.betStatus}\nUpdate Time: ${_saFormatDateTime(item.updateTime)}\nReason of Cancelation: ${rt.english}`;
       const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事状态：${_saTranslateStatus(item.eventStatus,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n更新时间：${_saFormatDateTime(item.updateTime)}\n取消原因：${rt.chinese}`;
@@ -4549,7 +4550,7 @@
     }
     _saResults = null; _saError = ''; _saCopyStatus = '';
     _saPerEventReasons = {}; _saShowPerEventReasons = false;
-    _saResettlementReason = ''; _saCancellationReason = '';
+    _saResettlementReason = ''; _saCancellationReason = ''; _saCustomFillText = '';
     const ta = document.getElementById('sa-json-input');
     if (ta) ta.value = '';
 
@@ -4785,6 +4786,15 @@
           </button>`;
         }).join('')}
         </div>
+        ${curReason === '_custom_fill' ? `
+        <div style="margin-top:8px;border-top:1px solid var(--border-light);padding-top:8px">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">自行填写原因（三语共用）</div>
+          <input type="text" id="sa-custom-fill-input" value="${_saEsc(_saCustomFillText)}"
+            placeholder="输入原因..."
+            onclick="event.stopPropagation()"
+            oninput="_saCustomFillText=this.value;if(_saResults)_saRegenerateWithCustomReasons()"
+            style="width:100%;box-sizing:border-box;padding:5px 8px;font-size:11px;border:1px solid var(--blue-light);border-radius:6px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>` : ''}
       </div>` : '';
 
     const hPanelHtml = _saShowHistoryPanel ? `
