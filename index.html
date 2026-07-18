@@ -4758,7 +4758,15 @@
         <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[_saPreviewLang]||'')}</pre>
       </div>`;
 
-    el.innerHTML = perEventHtml + copyBtns + previewHtml;
+    const globalCustomFillHtml = (_saCurrentReason() === '_custom_fill' && !_saShowPerEventReasons)
+      ? `<div style="background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">✏️ 自行填写原因（三语共用）</div>
+          <input type="text" value="${_saEsc(_saCustomFillText)}" placeholder="输入原因..."
+            oninput="_saCustomFillText=this.value;if(_saResults)_saRegenerateWithCustomReasons()"
+            style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:12px;border:1px solid var(--blue-light);border-radius:6px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>` : '';
+
+    el.innerHTML = perEventHtml + globalCustomFillHtml + copyBtns + previewHtml;
   }
 
   function _saRenderActionBtns() {
