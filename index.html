@@ -6248,8 +6248,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   function sbFmtOdds(n) { return n.toFixed(4).replace(/\.?0+$/, '') || '0'; }
 
   function sbCircle(i) {
-    var circles = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
-    return circles[i] || ('['+(i+1)+']');
+    return '('+(i+1)+')';
   }
 
   function sbCurrSym(currency) {
@@ -6259,11 +6258,11 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
 
   function sbGetStatusText(sel, lang) {
     var m = {
-      zh:{2:'✅赢',17:'🔶半赢',16:'🔸半输',1:'❌输',3:'🤝和局',4:'🚫取消',15:'⛔拒绝',32:'💸套现',0:'⏳进行中'},
-      en:{2:'✅Won',17:'🔶Half Won',16:'🔸Half Lost',1:'❌Lost',3:'🤝Draw',4:'🚫Canceled',15:'⛔Declined',32:'💸Cashout',0:'⏳Open'},
-      ko:{2:'✅승',17:'🔶반승',16:'🔸반패',1:'❌패',3:'🤝무',4:'🚫취소',15:'⛔거절',32:'💸캐시아웃',0:'⏳진행중'}
+      zh:{2:'赢',17:'半赢',16:'半输',1:'输',3:'和局',4:'取消',15:'拒绝',32:'套现',0:'进行中'},
+      en:{2:'Won',17:'Half Won',16:'Half Lost',1:'Lost',3:'Draw',4:'Canceled',15:'Declined',32:'Cashout',0:'Open'},
+      ko:{2:'승',17:'반승',16:'반패',1:'패',3:'무',4:'취소',15:'거절',32:'캐시아웃',0:'진행중'}
     };
-    return (m[lang]||m.zh)[sel.SelectionStatus]||'⏳';
+    return (m[lang]||m.zh)[sel.SelectionStatus]||'Open';
   }
 
   function sbEffPartLang(sel, i, lang) {
@@ -6469,8 +6468,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var d = _sbData, lines = [];
     var betNameLang = d.N + (lang==='en' ? '-Fold Parlay' : lang==='ko' ? '폴드 파레이' : '串1 串关');
     if (lang === 'en') {
-      lines.push('🎫 Ticket ID: ' + d.ticketId);
-      lines.push('📋 ' + betNameLang + ' | Stake ' + d.cs + sbFmt(d.totalStake));
+      lines.push('Ticket ID: ' + d.ticketId);
+      lines.push(betNameLang + ' | Stake ' + d.cs + sbFmt(d.totalStake));
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6493,8 +6492,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         }
       }
     } else if (lang === 'ko') {
-      lines.push('🎫 주문번호: ' + d.ticketId);
-      lines.push('📋 ' + betNameLang + ' | 배팅 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('주문번호: ' + d.ticketId);
+      lines.push(betNameLang + ' | 배팅 ' + d.cs + sbFmt(d.totalStake));
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6517,8 +6516,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         }
       }
     } else {
-      lines.push('🎫 注单号：' + d.ticketId);
-      lines.push('📋 ' + betNameLang + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('注单号：' + d.ticketId);
+      lines.push(betNameLang + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6614,8 +6613,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     };
     var csnL = csn[lang] || csn.zh;
     if (lang === 'en') {
-      lines.push('🎫 Ticket ID: ' + d.ticketId);
-      lines.push('📋 ' + d.betName + ' | Per Bet ' + d.cs + sbFmt(d.stakePerBet) + ' | Total ' + d.cs + sbFmt(d.totalStake));
+      lines.push('Ticket ID: ' + d.ticketId);
+      lines.push(d.betName + ' | Per Bet ' + d.cs + sbFmt(d.stakePerBet) + ' | Total ' + d.cs + sbFmt(d.totalStake));
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6638,8 +6637,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         if (g.win.length===0) lines.push('  All lost');
       }
     } else if (lang === 'ko') {
-      lines.push('🎫 주문번호: ' + d.ticketId);
-      lines.push('📋 ' + d.betName + ' | 건당 ' + d.cs + sbFmt(d.stakePerBet) + ' | 합계 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('주문번호: ' + d.ticketId);
+      lines.push(d.betName + ' | 건당 ' + d.cs + sbFmt(d.stakePerBet) + ' | 합계 ' + d.cs + sbFmt(d.totalStake));
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6662,8 +6661,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         if (g.win.length===0) lines.push('  전부 낙첨');
       }
     } else {
-      lines.push('🎫 注单号：' + d.ticketId);
-      lines.push('📋 ' + d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('注单号：' + d.ticketId);
+      lines.push(d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6686,7 +6685,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         if (g.win.length===0) lines.push('  全部落空');
       }
     }
-    var totalLabel = lang==='en' ? '💰 Total Payout: ' : lang==='ko' ? '💰 총 배당: ' : '💰 派彩合计：';
+    var totalLabel = lang==='en' ? 'Total Payout: ' : lang==='ko' ? '총 배당: ' : '派彩合计：';
     lines.push('');
     lines.push(totalLabel + d.cs + sbFmt(d.totalGain));
     return lines.join('\n');
