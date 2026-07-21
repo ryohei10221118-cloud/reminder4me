@@ -6517,10 +6517,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           lines.push('');
           var _pctOvrEn = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
           if (_pctOvrEn) {
-            var _cnEn = d.sels.filter(function(s){return s.SelectionStatus===4||s.SelectionStatus===15;})
-              .map(function(s){return sbSelNameText(s);}).join(', ');
+            var _cnEn = d.sels.map(function(s,i){return (s.SelectionStatus===4||s.SelectionStatus===15)?sbCircle(i)+' '+sbSelNameText(s):null;}).filter(Boolean).join(', ');
             lines.push('*Combo Bonus tier adjusted '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'%'
-              +(_cnEn ? ' due to '+_cnEn+' (Canceled/Declined)' : ''));
+              +(_cnEn ? ' due to '+_cnEn+' being Canceled' : ''));
           }
           lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
           lines.push('Total Payout: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
@@ -6549,10 +6548,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           lines.push('');
           var _pctOvrKo = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
           if (_pctOvrKo) {
-            var _cnKo = d.sels.filter(function(s){return s.SelectionStatus===4||s.SelectionStatus===15;})
-              .map(function(s){return sbSelNameText(s);}).join(', ');
+            var _cnKo = d.sels.map(function(s,i){return (s.SelectionStatus===4||s.SelectionStatus===15)?sbCircle(i)+' '+sbSelNameText(s):null;}).filter(Boolean).join(', ');
             lines.push('*콤보 보너스 등급 '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'% 조정'
-              +(_cnKo ? '（'+_cnKo+' 취소/거절로 인해）' : ''));
+              +(_cnKo ? '（'+_cnKo+' 취소로 인해）' : ''));
           }
           lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
           lines.push('최종 배당: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
@@ -6581,10 +6579,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           lines.push('');
           var _pctOvrZh = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
           if (_pctOvrZh) {
-            var _cnZh = d.sels.filter(function(s){return s.SelectionStatus===4||s.SelectionStatus===15;})
-              .map(function(s){return sbSelNameText(s);}).join('、');
+            var _cnZh = d.sels.map(function(s,i){return (s.SelectionStatus===4||s.SelectionStatus===15)?sbCircle(i)+' '+sbSelNameText(s):null;}).filter(Boolean).join('、');
             lines.push('*串关加成级距从 '+sbPctStr(d.bonusPctJson)+'% 下调至 '+sbPctStr(d.bonusPct)+'%'
-              +(_cnZh ? '（因 '+_cnZh+' 取消/拒绝）' : ''));
+              +(_cnZh ? '（因 '+_cnZh+' 取消）' : ''));
           }
           lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
           lines.push('最终派彩：'+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
