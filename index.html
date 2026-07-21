@@ -6141,6 +6141,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
 
   // ── 串關計算機 ────────────────────────────────────────────────────────────
   var _sbData = null;
+  var _sbBonusPctOverride = null; // null = use JSON value, number = manual override (decimal, e.g. 0.02)
 
   function sbClear() {
     var el = document.getElementById('sb-json-input');
@@ -6148,6 +6149,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var res = document.getElementById('sb-results');
     if (res) { res.innerHTML = ''; res.style.display = 'none'; }
     _sbData = null;
+    _sbBonusPctOverride = null;
   }
 
   function sbC(n, k) {
@@ -6246,6 +6248,13 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
 
   function sbFmt(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function sbFmtOdds(n) { return n.toFixed(4).replace(/\.?0+$/, '') || '0'; }
+  function sbRnd(x, mode) { return mode === 1 ? Math.round(x * 100) / 100 : Math.floor(x * 100) / 100; }
+  function sbPctStr(v) { var p = Math.round(v * 10000) / 100; return p % 1 === 0 ? p.toFixed(0) : p.toFixed(2).replace(/\.?0+$/,''); }
+  function sbSetBonusPct(v) {
+    var n = parseFloat(v);
+    _sbBonusPctOverride = (isNaN(n) || v === '') ? null : n / 100;
+    sbRender();
+  }
 
   function sbCircle(i) {
     return '('+(i+1)+')';
@@ -6304,6 +6313,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var cs = sbCurrSym(currency);
     var factors = sels.map(sbFactor);
     var isParlay = (bet.NumberOfBets === 1);
+    var roundingMode = (data.CalculationSettings && data.CalculationSettings.GainRoundingMode) || 3;
 
     if (isParlay) {
       var betName = N + '串1 串關';
@@ -6312,13 +6322,14 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         if (factors[i] === 0) { hasLoss = true; break; }
         product *= factors[i];
       }
-      var baseGain = hasLoss ? 0 : Math.floor(stakePerBet * product * 100) / 100;
+      var baseGain = hasLoss ? 0 : sbRnd(stakePerBet * product, roundingMode);
       var bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
-      var bonusGain = bonusObj ? (bonusObj.Gain || 0) : 0;
-      var bonusPct  = bonusObj ? (bonusObj.Percentage || 0) : 0;
+      var bonusPctJson = bonusObj ? (bonusObj.Percentage || 0) : 0;
       var bonusMax  = bonusObj ? (bonusObj.MaxWin || null) : null;
-      var totalGain = Math.floor((baseGain + bonusGain) * 100) / 100;
-      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusGain, bonusPct, bonusMax, totalGain };
+      _sbBonusPctOverride = null;
+      // bonusPct / bonusGain / totalGain are computed live in sbRender()
+      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, roundingMode,
+        bonusPct:0, bonusGain:0, totalGain:baseGain };
     } else {
       var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
       var comboSizes = (bet.ComboSize > 0) ? [bet.ComboSize] : sbGetComboSizes(N, bet.NumberOfBets || 0);
@@ -6337,8 +6348,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         }
         groups[k] = { win:winCombos, lose:loseCombos, total:winCombos.reduce(function(a,b){return a+b.gain;},0) };
       }
-      totalGain = Math.floor(totalGain * 100) / 100;
-      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, comboSizes, groups, totalGain };
+      totalGain = sbRnd(totalGain, roundingMode);
+      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, comboSizes, groups, totalGain, roundingMode };
     }
     sbRender();
   }
@@ -6393,6 +6404,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
 
   function sbRender() {
     if (!_sbData) return;
+    if (_sbData.isParlay) {
+      var pct = _sbBonusPctOverride !== null ? _sbBonusPctOverride : _sbData.bonusPctJson;
+      _sbData.bonusPct  = pct;
+      _sbData.bonusGain = (_sbData.hasLoss || !_sbData.bonusPctJson) ? 0 : sbRnd(_sbData.baseGain * pct, _sbData.roundingMode);
+      _sbData.totalGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
+    }
     var res = document.getElementById('sb-results');
     if (!res) return;
     res.innerHTML = _sbData.isParlay ? sbRenderParlay() : sbRenderSystem();
@@ -6413,14 +6430,14 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
       + '</div>';
 
-    var cols = d.bonusGain > 0 ? 3 : 2;
+    var cols = d.bonusPctJson > 0 ? 3 : 2;
     html += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px">'
       + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
       + '<div style="font-size:10px;color:var(--text-muted)">基本派彩</div>'
       + '<div style="font-size:15px;font-weight:700;color:' + gainColor + '">' + d.cs + sbFmt(d.baseGain) + '</div></div>';
-    if (d.bonusGain > 0) {
+    if (d.bonusPctJson > 0) {
       html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
-        + '<div style="font-size:10px;color:var(--text-muted)">串關加成 (' + (d.bonusPct*100).toFixed(0) + '%)</div>'
+        + '<div style="font-size:10px;color:var(--text-muted)">串關加成 (' + sbPctStr(d.bonusPct) + '%)</div>'
         + '<div style="font-size:15px;font-weight:700;color:#f59e0b">+' + d.cs + sbFmt(d.bonusGain) + '</div></div>';
     }
     html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
@@ -6446,12 +6463,22 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         + '<div style="color:var(--text-muted);margin-bottom:8px">= ' + sbFmtOdds(d.product) + '</div>'
         + '<div style="color:var(--text-pri)">基本派彩 = ' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(d.product)
         + ' = <span style="color:var(--green);font-weight:700">' + d.cs + sbFmt(d.baseGain) + '</span></div>';
-      if (d.bonusGain > 0) {
-        html += '<div style="margin-top:6px;color:var(--text-pri)">串關加成 (' + (d.bonusPct*100).toFixed(0) + '%)'
+      if (d.bonusPctJson > 0) {
+        var pctOverrideActive = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+        html += '<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">'
+          + '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:var(--text-pri)">'
+          + '串關加成 <input type="number" value="' + sbPctStr(d.bonusPct) + '" step="0.5" min="0" max="100"'
+          + ' style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text-pri);font-size:12px;text-align:center"'
+          + ' oninput="sbSetBonusPct(this.value)"> %'
+          + (pctOverrideActive ? ' <span style="font-size:10px;color:var(--text-muted)">(JSON: ' + sbPctStr(d.bonusPctJson) + '%)</span>' : '')
+          + '</div>'
+          + '<div style="margin-top:3px;color:var(--text-muted);font-size:11px">'
+          + '= ' + d.cs + sbFmt(d.baseGain) + ' × ' + sbPctStr(d.bonusPct) + '%'
           + ' = <span style="color:#f59e0b;font-weight:700">+' + d.cs + sbFmt(d.bonusGain) + '</span></div>'
           + '<div style="margin-top:4px;color:var(--text-pri);font-weight:700">'
           + d.cs + sbFmt(d.baseGain) + ' + ' + d.cs + sbFmt(d.bonusGain)
-          + ' = <span style="color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</span></div>';
+          + ' = <span style="color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</span></div>'
+          + '</div>';
       }
     }
     html += '</div>'
@@ -6486,9 +6513,16 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'en'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('Base Payout: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
-        if (d.bonusGain > 0) {
+        if (d.bonusPctJson > 0) {
           lines.push('');
-          lines.push('Combo Bonus ('+(d.bonusPct*100).toFixed(0)+'%): +'+d.cs+sbFmt(d.bonusGain));
+          var _pctOvrEn = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+          if (_pctOvrEn) {
+            var _cnEn = d.sels.filter(function(s){return s.SelectionStatus===4||s.SelectionStatus===15;})
+              .map(function(s){return sbSelNameText(s);}).join(', ');
+            lines.push('*Combo Bonus tier adjusted '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'%'
+              +(_cnEn ? ' due to '+_cnEn+' (Canceled/Declined)' : ''));
+          }
+          lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
           lines.push('Total Payout: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
         }
       }
@@ -6511,9 +6545,16 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'ko'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('기본 배당: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
-        if (d.bonusGain > 0) {
+        if (d.bonusPctJson > 0) {
           lines.push('');
-          lines.push('콤보 보너스（'+(d.bonusPct*100).toFixed(0)+'%）: +'+d.cs+sbFmt(d.bonusGain));
+          var _pctOvrKo = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+          if (_pctOvrKo) {
+            var _cnKo = d.sels.filter(function(s){return s.SelectionStatus===4||s.SelectionStatus===15;})
+              .map(function(s){return sbSelNameText(s);}).join(', ');
+            lines.push('*콤보 보너스 등급 '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'% 조정'
+              +(_cnKo ? '（'+_cnKo+' 취소/거절로 인해）' : ''));
+          }
+          lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
           lines.push('최종 배당: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
         }
       }
@@ -6536,9 +6577,16 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'zh'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('基本派彩：'+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
-        if (d.bonusGain > 0) {
+        if (d.bonusPctJson > 0) {
           lines.push('');
-          lines.push('串关加成（'+(d.bonusPct*100).toFixed(0)+'%）：+'+d.cs+sbFmt(d.bonusGain));
+          var _pctOvrZh = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+          if (_pctOvrZh) {
+            var _cnZh = d.sels.filter(function(s){return s.SelectionStatus===4||s.SelectionStatus===15;})
+              .map(function(s){return sbSelNameText(s);}).join('、');
+            lines.push('*串关加成级距从 '+sbPctStr(d.bonusPctJson)+'% 下调至 '+sbPctStr(d.bonusPct)+'%'
+              +(_cnZh ? '（因 '+_cnZh+' 取消/拒绝）' : ''));
+          }
+          lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
           lines.push('最终派彩：'+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
         }
       }
