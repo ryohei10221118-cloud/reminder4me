@@ -6487,8 +6487,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('Base Payout: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
         if (d.bonusGain > 0) {
+          lines.push('');
           lines.push('Combo Bonus ('+(d.bonusPct*100).toFixed(0)+'%): +'+d.cs+sbFmt(d.bonusGain));
-          lines.push(d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push('Total Payout: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
         }
       }
     } else if (lang === 'ko') {
@@ -6511,8 +6512,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('기본 배당: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
         if (d.bonusGain > 0) {
+          lines.push('');
           lines.push('콤보 보너스（'+(d.bonusPct*100).toFixed(0)+'%）: +'+d.cs+sbFmt(d.bonusGain));
-          lines.push(d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push('최종 배당: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
         }
       }
     } else {
@@ -6535,8 +6537,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('基本派彩：'+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
         if (d.bonusGain > 0) {
+          lines.push('');
           lines.push('串关加成（'+(d.bonusPct*100).toFixed(0)+'%）：+'+d.cs+sbFmt(d.bonusGain));
-          lines.push(d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push('最终派彩：'+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
         }
       }
     }
