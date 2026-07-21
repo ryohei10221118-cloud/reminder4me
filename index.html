@@ -6273,7 +6273,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var dr = {zh:'和局',en:'Draw',ko:'무'};
     var dc = {zh:'拒绝',en:'Declined',ko:'거절'};
     var co = {zh:'套现',en:'Cashout',ko:'캐시아웃'};
-    if (s===17) return sbCircle(i)+'@('+sel.TrueOdds+'-1)÷2+1='+f.toFixed(4).replace(/\.?0+$/,'')+'('+(hw[lang]||hw.zh)+')';
+    if (s===17) return sbCircle(i)+'@(1+'+sel.TrueOdds+')÷2='+f.toFixed(4).replace(/\.?0+$/,'')+'('+(hw[lang]||hw.zh)+')';
     if (s===16) return sbCircle(i)+'@0.5('+(hl[lang]||hl.zh)+')';
     if (s===4)  return sbCircle(i)+'@1('+(ca[lang]||ca.zh)+')';
     if (s===3)  return sbCircle(i)+'@1('+(dr[lang]||dr.zh)+')';
