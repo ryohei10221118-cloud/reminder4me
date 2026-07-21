@@ -33,6 +33,9 @@
       min-height: 100vh;
     }
 
+    /* ── Sticky nav wrapper ── */
+    #sticky-nav { position: sticky; top: 0; z-index: 100; background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
     /* ── Header ── */
     .header {
       background: var(--surface);
@@ -42,9 +45,6 @@
       flex-wrap: nowrap;
       align-items: center;
       gap: 12px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
     }
     .header h1 { font-size: 15px; font-weight: 700; color: var(--text-pri); }
     .header-badge {
@@ -728,6 +728,7 @@
     }
     @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
     .popup-card {
+      position: relative;
       background: var(--surface);
       border: 2px solid var(--border);
       border-radius: 18px;
@@ -844,6 +845,7 @@
     }
     .btn-copy-reply:hover { background: rgba(143,172,200,0.22); }
     .btn-copy-reply.copied { background: var(--green-bg); color: var(--green); border-color: var(--green-border); transform: scale(1.03); }
+    button.copied { background: var(--green-bg) !important; color: var(--green) !important; border-color: var(--green-border) !important; transition: background 0.15s, color 0.15s; }
     .popup-queue-note { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 12px; }
     .popup-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .popup-btns.single { grid-template-columns: 1fr; }
@@ -940,6 +942,7 @@
 </head>
 <body>
 
+<div id="sticky-nav">
 <div class="header">
   <h1>ToolBox</h1>
   <span class="header-badge" id="header-badge">0</span>
@@ -958,7 +961,10 @@
   <button class="tab-btn active" onclick="switchTab('reminder')" id="tabbtn-reminder">📋 提醒工具</button>
   <button class="tab-btn" onclick="switchTab('analyzer')" id="tabbtn-analyzer">📊 結算分析</button>
   <button class="tab-btn" onclick="switchTab('cancel')" id="tabbtn-cancel">✂️ 取消請求</button>
+  <button class="tab-btn" onclick="switchTab('translate')" id="tabbtn-translate">🌐 翻譯</button>
+  <button class="tab-btn" onclick="switchTab('sysbets')" id="tabbtn-sysbets">🎰 串關計算機</button>
   <span id="sa-idle-indicator" style="display:none;font-size:11px;color:var(--text-muted);align-self:center;padding-left:6px"></span>
+</div>
 </div>
 <div id="tab-reminder" class="tab-content active">
 <div class="container">
@@ -1064,6 +1070,9 @@
     <div class="card" style="padding:16px;min-width:0">
       <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:12px">✂️ 取消請求 — JSON 輸入</div>
       <textarea id="ct-json-input" onpaste="setTimeout(_ctExtract,0)" placeholder="貼上 Kraken JSON..." style="width:100%;box-sizing:border-box;height:180px;font-size:11px;font-family:monospace;background:var(--bg-secondary);color:var(--text-pri);border:1px solid var(--border);border-radius:6px;padding:8px;resize:vertical"></textarea>
+      <div style="margin-top:6px">
+        <button onclick="_ctPasteAndUpdate()" style="padding:6px 14px;font-size:12px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer">📋 貼上並更新</button>
+      </div>
       <!-- Ticket info bar -->
       <div id="ct-ticket-info" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg-secondary);border-radius:6px;font-size:12px;gap:12px;flex-wrap:wrap;align-items:center">
         <span>🎫 Ticket: <strong id="ct-ticket-id-display" style="color:var(--text-pri)"></strong></span>
@@ -1231,10 +1240,21 @@
   }
 
   // Gather all unique URLs for given event names, with associated bet line label
+  const HIDDEN_URLS_KEY = 'reminder4me_hidden_urls';
+  function _isUrlHidden(url) {
+    try { return JSON.parse(localStorage.getItem(HIDDEN_URLS_KEY) || '[]').includes(url); } catch { return false; }
+  }
+  function _hideUrl(url) {
+    try {
+      const list = JSON.parse(localStorage.getItem(HIDDEN_URLS_KEY) || '[]');
+      if (!list.includes(url)) { list.push(url); localStorage.setItem(HIDDEN_URLS_KEY, JSON.stringify(list)); }
+    } catch {}
+  }
+
   function _collectUrls(eventNames) {
     const seen = new Set(), result = [];
     const addUrl = (url, betLabel) => {
-      if (!url || seen.has(url)) return;
+      if (!url || seen.has(url) || _isUrlHidden(url)) return;
       seen.add(url);
       result.push({ url, label: betLabel || '' });
     };
@@ -1259,6 +1279,20 @@
       _extractAllUrls((_ensStore[name] || {}).note).forEach(u => addUrl(u, ''));
     }
     return result;
+  }
+
+  function _urlRadioRowHtml(url, label, i, prefix, onchangeJs) {
+    const safeHref = esc(url);
+    const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+    const domainShort = domain.slice(0,36) + (domain.length>36?'…':'');
+    const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
+    return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="${prefix}-${i}">
+      <input type="radio" name="${prefix}-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0" onchange="${onchangeJs}">
+      <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
+      <button type="button" onclick="event.preventDefault();event.stopPropagation();_hideUrl('${safeJs}');this.closest('label').remove();if(!document.querySelector('input[name=${prefix}-radio]:checked')){const f=document.querySelector('input[name=${prefix}-radio]');if(f){f.checked=true;f.dispatchEvent(new Event('change'));}}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;flex-shrink:0" title="隱藏此連結">×</button>
+    </label>`;
   }
 
   function _urlChipsHtml(items, inputId) {
@@ -1293,55 +1327,63 @@
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
 
-    const rowsHtml = _quickReplies.map((qr, i) => {
-      const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
-      const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>' : '';
-      const hlZh = cardLang === 'zh' ? ' hl' : '';
-      const hlEn = cardLang === 'en' ? ' hl' : '';
-      const hlKr = cardLang === 'kr' ? ' hl' : '';
-      return `<div class="qr-row">
-        <span class="qr-row-label">${esc(qr.label)}${nameTag}${urlTag}</span>
-        <div class="qr-lang-btns">
-          <button class="btn-qr-lang${hlZh}" onclick="_qrCopyDone('${id}',${i},'zh',this)">中</button>
-          <button class="btn-qr-lang${hlEn}" onclick="_qrCopyDone('${id}',${i},'en',this)">EN</button>
-          <button class="btn-qr-lang${hlKr}" onclick="_qrCopyDone('${id}',${i},'kr',this)">한</button>
-        </div>
-      </div>`;
-    }).join('');
-
     const urlSection = (hasUrlTemplate && allUrls.length > 1) ? `
       <div style="margin-top:8px;flex-shrink:0;display:flex;flex-direction:column;gap:3px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
-        ${allUrls.map(({url, label}, i) => {
-          const safeHref = esc(url);
-          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
-          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
-          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="done-url-row-${i}">
-            <input type="radio" name="done-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
-              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=done-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
-            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
-            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
-          </label>`;
-        }).join('')}
+        ${allUrls.map(({url, label}, i) => _urlRadioRowHtml(url, label, i, 'done-url-row',
+          `_hintPopupUrl='${url.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';document.querySelectorAll('[id^=done-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})`
+        )).join('')}
       </div>` : '';
 
-    // Event selector: single name as title, multiple as checkboxes
     const displayNames = pendingNames.length ? pendingNames : allEventNames;
-    let eventSection = '';
-    if (displayNames.length === 1) {
-      eventSection = `<div class="popup-title" style="font-size:13px;margin-bottom:6px;flex-shrink:0">🏆 ${esc(displayNames[0])}</div>`;
-    } else if (displayNames.length > 1) {
-      const cbItems = displayNames.map(n =>
-        `<label style="display:flex;align-items:flex-start;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;color:var(--text-pri)">
-          <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" checked style="margin-top:2px;flex-shrink:0">
-          <span style="line-height:1.4">${esc(n)}</span>
-        </label>`).join('');
-      eventSection = `
-        <div style="margin-bottom:8px;flex-shrink:0">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">🏆 選擇帶入的賽事</div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 10px">${cbItems}</div>
+    const isSingle = displayNames.length === 1;
+    const storedTime = allEventNames.map(n => _getEventTime(n)).find(t => t) || '';
+    const hlEn = cardLang === 'en' ? ' hl' : '';
+    const hlZh = cardLang === 'zh' ? ' hl' : '';
+    const hlKr = cardLang === 'kr' ? ' hl' : '';
+
+    // Single event: original QR list with per-template EN/中/KR buttons
+    let eventTitle = '';
+    let qrArea = '';
+    let combinedBtns = '';
+    if (isSingle) {
+      eventTitle = `<div class="popup-title" style="font-size:13px;margin-bottom:6px;flex-shrink:0">🏆 ${esc(displayNames[0])}</div>`;
+      const rowsHtml = _quickReplies.map((qr, i) => {
+        const nameTag = qr.attachName ? '<span style="font-size:10px;color:var(--blue);margin-left:5px">附名</span>' : '';
+        const urlTag  = qr.hasUrl     ? '<span style="font-size:10px;color:var(--orange);margin-left:3px">+URL</span>' : '';
+        return `<div class="qr-row">
+          <span class="qr-row-label">${esc(qr.label)}${nameTag}${urlTag}</span>
+          <div class="qr-lang-btns">
+            <button class="btn-qr-lang${hlZh}" onclick="_qrCopyDone('${id}',${i},'zh',this)">中</button>
+            <button class="btn-qr-lang${hlEn}" onclick="_qrCopyDone('${id}',${i},'en',this)">EN</button>
+            <button class="btn-qr-lang${hlKr}" onclick="_qrCopyDone('${id}',${i},'kr',this)">한</button>
+          </div>
+        </div>`;
+      }).join('');
+      qrArea = `<div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>`;
+    } else {
+      // Multiple events: per-event checkbox + dropdown + combine buttons
+      const noQr = _quickReplies.length === 0;
+      const qrOptions = '<option value="-1">— 不帶入 —</option>' +
+        _quickReplies.map((qr, i) => `<option value="${i}">${esc(qr.label)}</option>`).join('');
+      const hlEnStyle = cardLang === 'en' ? ';background:var(--blue);color:white;border-color:var(--blue)' : '';
+      const hlZhStyle = cardLang === 'zh' ? ';background:var(--green);color:white;border-color:var(--green)' : '';
+      const hlKrStyle = cardLang === 'kr' ? ';background:#a855f7;color:white;border-color:#a855f7' : '';
+      const eventRows = displayNames.map(n => {
+        const isPending = pendingNames.includes(n);
+        return `<div class="qr-event-sel-row" style="display:flex;align-items:center;gap:7px;padding:6px 2px;border-bottom:1px solid var(--border-light)">
+          <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" ${isPending ? 'checked' : ''} style="flex-shrink:0;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
+          <span style="flex:1;min-width:0;font-size:12px;color:var(--text-pri);line-height:1.3;word-break:break-word">${esc(n)}</span>
+          ${noQr ? '' : `<select class="qr-event-select" style="flex-shrink:0;width:130px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none">${qrOptions}</select>`}
+        </div>`;
+      }).join('');
+      qrArea = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;flex-shrink:0">🏆 賽事 &amp; 範本</div>
+        <div style="overflow-y:auto;flex:1;min-height:0;background:var(--surface2);border-radius:8px;padding:0 8px">${eventRows}</div>`;
+      combinedBtns = noQr ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:8px 0">尚未設定快速回覆範本</div>' : `
+        <div style="display:flex;gap:5px;margin-top:10px;flex-shrink:0">
+          <button onclick="_qrCombinedCopy('${id}','en',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlEnStyle}">合併 EN</button>
+          <button onclick="_qrCombinedCopy('${id}','zh',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlZhStyle}">合併 中</button>
+          <button onclick="_qrCombinedCopy('${id}','kr',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer${hlKrStyle}">합병 KR</button>
         </div>`;
     }
 
@@ -1351,9 +1393,15 @@
     overlay.innerHTML = `
       <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
         <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
-        ${eventSection}
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;flex-shrink:0;line-height:1.6">${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
-        <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">尚未設定快速回覆範本</div>'}</div>
+        ${eventTitle}
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;flex-shrink:0;line-height:1.6">${r.orderNos && r.orderNos.length ? `🎫 ${r.orderNos.map(o=>esc(o)).join('　')}` : ''}${r.orderNos && r.orderNos.length && (reqText || grpText) ? '<br>' : ''}${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>
+        ${qrArea}
+        ${combinedBtns}
         ${urlSection}
         <div class="popup-btns" style="margin-top:12px;flex-shrink:0">
           <button class="btn-popup-sec" onclick="showQrManager()">⚙ 管理範本</button>
@@ -1378,6 +1426,21 @@
     return [(pending[0] || allNames[0] || '').trim()].filter(Boolean);
   }
 
+  const _EVENT_TIME_KEY = 'reminder4me_event_times';
+  function _getEventTime(eventName) {
+    try { return (JSON.parse(localStorage.getItem(_EVENT_TIME_KEY) || '{}'))[eventName] || ''; } catch(e) { return ''; }
+  }
+  function _saveEventTime(eventName, time) {
+    try {
+      const store = JSON.parse(localStorage.getItem(_EVENT_TIME_KEY) || '{}');
+      if (time) store[eventName] = time; else delete store[eventName];
+      localStorage.setItem(_EVENT_TIME_KEY, JSON.stringify(store));
+    } catch(e) {}
+  }
+  function _getQrTimeInput() {
+    return (document.getElementById('qr-time-input') || {}).value || '';
+  }
+
   function _qrCopyDone(id, qrIdx, lang, btn) {
     const qr = _quickReplies[qrIdx];
     if (!qr) return;
@@ -1385,8 +1448,12 @@
     const selectedNames = r ? _getSelectedQrEventNames(r) : [];
     const eventName = selectedNames.join('\n');
     const url = _hintPopupUrl;
+    const timeVal = _getQrTimeInput();
+
+    if (timeVal && selectedNames.length > 0) selectedNames.forEach(n => _saveEventTime(n, timeVal));
 
     let text = qr[lang] || '';
+    text = text.replace(/\{time\}/g, timeVal);
     if (qr.attachName && eventName) text = eventName + '\n' + text;
     const agentName = getAgentName();
     if (agentName) {
@@ -1394,9 +1461,41 @@
       if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
       text = text.trimEnd() + suffix;
     }
-    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n' + url;
 
     copyText(text, btn);
+    setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
+  }
+
+  function _qrCombinedCopy(id, lang, btn) {
+    const timeVal = _getQrTimeInput();
+    const rows = document.querySelectorAll('.qr-event-sel-row');
+    const parts = [];   // {text, url}
+    rows.forEach(row => {
+      const cb = row.querySelector('.qr-event-cb');
+      if (!cb || !cb.checked) return;
+      const sel = row.querySelector('.qr-event-select');
+      const qrIdx = sel ? parseInt(sel.value) : -1;
+      if (qrIdx < 0) return;
+      const qr = _quickReplies[qrIdx];
+      if (!qr) return;
+      const eventName = cb.dataset.name || '';
+      const evTime = timeVal || _getEventTime(eventName);
+      if (evTime && eventName) _saveEventTime(eventName, evTime);
+      let text = qr[lang] || '';
+      text = text.replace(/\{time\}/g, evTime);
+      if (qr.attachName && eventName) text = eventName + '\n' + text;
+      parts.push({ text: text.trimEnd(), url: qr.hasUrl ? _hintPopupUrl : '' });
+    });
+    if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
+    const agentName = getAgentName();
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      const last = parts[parts.length - 1].text;
+      parts[parts.length - 1].text = last.endsWith(suffix) ? last : last + suffix;
+    }
+    const finalParts = parts.map(p => p.url ? p.text + '\n' + p.url : p.text);
+    copyText(finalParts.join('\n\n'), btn);
     setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
   }
 
@@ -1404,7 +1503,12 @@
     const qr = _quickReplies[qrIdx];
     if (!qr) return;
     const url = _hintPopupUrl;
+    const timeVal = _getQrTimeInput();
+
+    if (timeVal && _hintPopupEvent) _saveEventTime(_hintPopupEvent, timeVal);
+
     let text = qr[lang] || '';
+    text = text.replace(/\{time\}/g, timeVal);
     if (qr.attachName && _hintPopupEvent) text = _hintPopupEvent + '\n' + text;
     const agentName = getAgentName();
     if (agentName) {
@@ -1412,7 +1516,7 @@
       if (text.trimEnd().endsWith(suffix)) text = text.trimEnd().slice(0, -suffix.length);
       text = text.trimEnd() + suffix;
     }
-    if (qr.hasUrl && url) text = text.trimEnd() + '\n\n' + url;
+    if (qr.hasUrl && url) text = text.trimEnd() + '\n' + url;
     copyText(text, btn);
     setTimeout(() => {
       document.getElementById('popup-overlay')?.remove();
@@ -1898,10 +2002,15 @@
 
   // ── Copy util ──
   function copyText(text, btn) {
-    // Show feedback immediately — don't wait for async clipboard
     if (btn) {
       btn.classList.add('copied');
-      setTimeout(() => btn.classList.remove('copied'), 1500);
+      const orig = btn.textContent;
+      if (orig.includes('複製') || orig.includes('복사') || orig.includes('Copy')) {
+        btn.textContent = '✓ 已複製';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1500);
+      } else {
+        setTimeout(() => btn.classList.remove('copied'), 1500);
+      }
     }
     navigator.clipboard.writeText(text).catch(() => {
       const ta = document.createElement('textarea');
@@ -1938,7 +2047,7 @@
     list.innerHTML = formGroups.map((g, idx) => `
       <div class="group-block" data-group="${g.id}">
         <div class="group-block-header">
-          <span class="group-block-label">賽事群組 ${idx+1}</span>
+          <span class="group-block-label">賽事群組 ${idx+1}${(()=>{ const sid = (g.betInfos || []).map(b=>b&&b.siteId).find(s=>s); const op = sid ? (_saOperatorMap[sid] || 'Site '+sid) : ''; return op ? ` <span style="color:var(--blue);font-weight:700">· OP：${op}</span>` : ''; })()}</span>
           ${formGroups.length > 1 ? `<button type="button" class="btn-remove-group" onclick="removeFormGroup('${g.id}')">×</button>` : ''}
         </div>
         <div class="form-group">
@@ -2152,6 +2261,17 @@
   function showNoteHintPopup(eventName) {
     const hint = _getHint(eventName);
     if (!hint) return;
+
+    // Collect all hinted events currently visible in the form
+    const allHintBtns = [...document.querySelectorAll('.note-hint-icon-btn')];
+    const allHintedNames = [...new Set([eventName, ...allHintBtns.map(b => b.dataset.event).filter(n => n && _getHint(n))])];
+
+    if (allHintedNames.length > 1) {
+      _showCombinedNoteHintPopup(allHintedNames);
+      return;
+    }
+
+    // Single event popup (original behaviour)
     _hintPopupEvent = eventName;
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
@@ -2172,7 +2292,6 @@
       </div>`;
     }).join('');
 
-    // Note text: URLs are links (open new tab only, selection handled by radio below)
     const noteHtml = hint.note.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
       if (i % 2 === 1) {
         return `<a href="${esc(part)}" target="_blank" rel="noopener noreferrer"
@@ -2182,23 +2301,12 @@
       return esc(part);
     }).join('');
 
-    // URL radio list — shown when there are multiple URLs to choose from
     const urlRadioHtml = allUrls.length > 1 ? `
       <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
-        ${allUrls.map(({url, label}, i) => {
-          const safeHref = esc(url);
-          const safeJs   = url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          const domain   = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-          const domainShort = domain.slice(0,38) + (domain.length>38?'…':'');
-          const labelSpan = label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px">${esc(label)}</span>` : '';
-          return `<label style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer" id="hint-url-row-${i}">
-            <input type="radio" name="hint-url-radio" ${i===0?'checked':''} style="accent-color:var(--blue);flex-shrink:0"
-              onchange="_hintPopupUrl='${safeJs}';document.querySelectorAll('[id^=hint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})">
-            <span style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(domainShort)}${labelSpan}</span>
-            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--text-muted);text-decoration:none;font-size:13px;flex-shrink:0" title="開啟連結">↗</a>
-          </label>`;
-        }).join('')}
+        ${allUrls.map(({url, label}, i) => _urlRadioRowHtml(url, label, i, 'hint-url-row',
+          `_hintPopupUrl='${url.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';document.querySelectorAll('[id^=hint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})`
+        )).join('')}
       </div>` : '';
 
     const overlay = document.createElement('div');
@@ -2206,8 +2314,10 @@
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
-        <button class="popup-close-btn" style="flex-shrink:0" onclick="closeMsgPopup()">×</button>
-        <div class="popup-badge info" style="flex-shrink:0">📌 歷史記錄</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-shrink:0">
+          <div class="popup-badge info" style="margin:0">📌 歷史記錄</div>
+          <button onclick="closeMsgPopup()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 2px">×</button>
+        </div>
         <div class="popup-title" style="font-size:13px;flex-shrink:0">🏆 ${esc(eventName)}</div>
         <div style="margin-top:8px;flex-shrink:0;position:relative">
           <div class="note-hint-text" style="padding:10px 32px 10px 12px;background:var(--surface2);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto" data-note="${esc(hint.note)}">${noteHtml}</div>
@@ -2216,17 +2326,126 @@
         ${hint.timeStr ? `<div style="margin-top:5px;font-size:11px;color:var(--text-muted);flex-shrink:0">${esc(hint.timeStr)}</div>` : ''}
         ${urlRadioHtml}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);flex:1;min-height:0;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
+            <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+            <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(_getEventTime(eventName))}"
+              style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+          </div>
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;flex-shrink:0">✓ 快速回覆</div>
           <div class="qr-list" style="overflow-y:auto;flex:1;min-height:0">${rowsHtml || '<div style="color:var(--text-muted);font-size:12px">尚未設定快速回覆範本</div>'}</div>
         </div>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
-    // Highlight the initially-selected radio row
     if (allUrls.length > 1) {
       const firstRow = document.getElementById('hint-url-row-0');
       if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
     }
+  }
+
+  function _showCombinedNoteHintPopup(eventNames) {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+
+    const allUrls = _collectUrls(eventNames);
+    _hintPopupUrl = allUrls[0]?.url || '';
+    _hintPopupEvent = eventNames[0] || '';
+
+    const qrOptions = '<option value="-1">— 不帶入 —</option>' +
+      _quickReplies.map((qr, i) => `<option value="${i}">${esc(qr.label)}</option>`).join('');
+    const noQr = _quickReplies.length === 0;
+
+    const storedTime = eventNames.map(n => _getEventTime(n)).find(t => t) || '';
+
+    const eventRows = eventNames.map(n => {
+      const h = _getHint(n);
+      if (!h) return '';
+      const noteHtml = h.note.split(/(https?:\/\/[^\s]+)/g).map((part, pi) => {
+        if (pi % 2 === 1) return `<a href="${esc(part)}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);word-break:break-all;text-decoration:underline" onclick="event.stopPropagation()">${esc(part)}</a>`;
+        return esc(part);
+      }).join('');
+      return `<div class="qr-event-sel-row" style="display:flex;align-items:flex-start;gap:7px;padding:8px 2px;border-bottom:1px solid var(--border-light)">
+        <input type="checkbox" class="qr-event-cb" data-name="${esc(n)}" checked style="flex-shrink:0;margin-top:3px;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text-pri);word-break:break-word;margin-bottom:3px">${esc(n)}</div>
+          <div style="font-size:11px;color:var(--text-sec);line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:56px;overflow-y:auto;background:var(--surface3);border-radius:4px;padding:4px 6px">${noteHtml}</div>
+          ${h.timeStr ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${esc(h.timeStr)}</div>` : ''}
+        </div>
+        ${noQr ? '' : `<select class="qr-event-select" style="flex-shrink:0;width:120px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none;margin-top:1px">${qrOptions}</select>`}
+      </div>`;
+    }).join('');
+
+    const combinedBtns = noQr ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:8px 0">尚未設定快速回覆範本</div>' : `
+      <div style="display:flex;gap:5px;margin-top:10px;flex-shrink:0">
+        <button onclick="_qrCombinedCopyHint('en',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer">合併 EN</button>
+        <button onclick="_qrCombinedCopyHint('zh',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer">合併 中</button>
+        <button onclick="_qrCombinedCopyHint('kr',this)" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);cursor:pointer">합병 KR</button>
+      </div>`;
+
+    const urlRadioHtml = allUrls.length > 1 ? `
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">🔗 選擇帶入的連結</div>
+        ${allUrls.map(({url, label}, i) => _urlRadioRowHtml(url, label, i, 'chint-url-row',
+          `_hintPopupUrl='${url.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';document.querySelectorAll('[id^=chint-url-row-]').forEach((el,j)=>{el.style.background=j===${i}?'var(--blue-bg)':'var(--surface2)';el.style.borderColor=j===${i}?'var(--blue-light)':'var(--border-light)'})`
+        )).join('')}
+      </div>` : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card msg-popup" style="border-color:var(--blue-light);max-width:440px;width:92%;max-height:82vh;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-shrink:0">
+          <div class="popup-badge info" style="margin:0">📌 歷史記錄 & 快速回覆</div>
+          <button onclick="closeMsgPopup()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 2px">×</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>
+        <div style="overflow-y:auto;flex:1;min-height:0">${eventRows}</div>
+        ${combinedBtns}
+        ${urlRadioHtml}
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
+    if (allUrls.length > 1) {
+      const firstRow = document.getElementById('chint-url-row-0');
+      if (firstRow) { firstRow.style.background = 'var(--blue-bg)'; firstRow.style.borderColor = 'var(--blue-light)'; }
+    }
+  }
+
+  function _qrCombinedCopyHint(lang, btn) {
+    const timeVal = _getQrTimeInput();
+    const rows = document.querySelectorAll('.qr-event-sel-row');
+    const parts = [];   // {text, url}
+    rows.forEach(row => {
+      const cb = row.querySelector('.qr-event-cb');
+      if (!cb || !cb.checked) return;
+      const sel = row.querySelector('.qr-event-select');
+      const qrIdx = sel ? parseInt(sel.value) : -1;
+      if (qrIdx < 0) return;
+      const qr = _quickReplies[qrIdx];
+      if (!qr) return;
+      const eventName = cb.dataset.name || '';
+      const evTime = timeVal || _getEventTime(eventName);
+      if (evTime && eventName) _saveEventTime(eventName, evTime);
+      let text = qr[lang] || '';
+      text = text.replace(/\{time\}/g, evTime);
+      if (qr.attachName && eventName) text = eventName + '\n' + text;
+      parts.push({ text: text.trimEnd(), url: qr.hasUrl ? _hintPopupUrl : '' });
+    });
+    if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
+    const agentName = getAgentName();
+    if (agentName) {
+      const suffix = ` - ${agentName}`;
+      const last = parts[parts.length - 1].text;
+      parts[parts.length - 1].text = last.endsWith(suffix) ? last : last + suffix;
+    }
+    const finalParts = parts.map(p => p.url ? p.text + '\n' + p.url : p.text);
+    copyText(finalParts.join('\n\n'), btn);
+    setTimeout(() => document.getElementById('popup-overlay')?.remove(), 400);
   }
   function _jsonIsUpcoming(iso) {
     if (!iso) return false;
@@ -2345,7 +2564,16 @@
       evtMap[key].betLines.push(...s.betLines);
     });
 
-    return { ticketId, selections: evtOrder.map(k => evtMap[k]) };
+    // Try to extract siteId from the debit_reserve XML root or first Bet element
+    const rootEl = debitXml.documentElement;
+    const siteId = (() => {
+      const v = rootEl && (rootEl.getAttribute('SiteId') || rootEl.getAttribute('siteId') ||
+        (betEls[0] && (betEls[0].getAttribute('SiteId') || betEls[0].getAttribute('siteId'))));
+      const n = v ? parseInt(v, 10) : NaN;
+      return isNaN(n) ? null : n;
+    })();
+
+    return { ticketId, selections: evtOrder.map(k => evtMap[k]), siteId };
   }
 
   function _autoParseJson(overlay) {
@@ -2421,14 +2649,15 @@
       return;
     }
 
-    _jsonImportData = { ticketId, selections };
+    _jsonImportData = { ticketId, selections, siteId: (data.Customer && data.Customer.SiteId) || null };
 
     _renderJsonSelectionState(overlay);
   }
 
   function _renderJsonSelectionState(overlay) {
     if (!_jsonImportData) return;
-    const { ticketId, selections } = _jsonImportData;
+    const { ticketId, selections, siteId } = _jsonImportData;
+    const _opName = siteId ? (_saOperatorMap[siteId] || 'Site ' + siteId) : '';
     const _statusSortOrder = { 0:0, 1:1, 3:2, 4:3, 2:4, 32:5, 15:6 };
     const sorted = selections
       .map((s, i) => ({ ...s, origIdx: i }))
@@ -2438,7 +2667,8 @@
         <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
         <div class="popup-badge info">📥 匯入 JSON</div>
         <div class="popup-title" style="margin-bottom:4px">選擇要帶入的賽事</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">注單號：${esc(ticketId)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:${_opName ? '4' : '10'}px">注單號：${esc(ticketId)}</div>
+        ${_opName ? `<div style="font-size:12px;color:var(--blue);font-weight:700;margin-bottom:10px">OP：${esc(_opName)}</div>` : ''}
         <div id="json-sel-list" style="max-height:340px;overflow-y:auto;padding-right:2px">
           ${sorted.length > 1 ? `
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border-light)">
@@ -2550,6 +2780,7 @@
       score1:           selections[i].score1,
       score2:           selections[i].score2,
       settlementResult: selections[i].settlementResult,
+      siteId:           _jsonImportData.siteId || null,
       };
     });
 
@@ -2560,7 +2791,7 @@
     );
 
     if (matched.length) {
-      _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses);
+      _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses, betInfos);
       return;
     }
 
@@ -2583,7 +2814,7 @@
     _renderJsonPasteState(overlay, `已新增注單 ${ticketId}`);
   }
 
-  function _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses) {
+  function _showMergeDialog(overlay, matched, ticketId, eventNames, eventStatuses, betInfos) {
     const mergeRows = matched.map((g, mi) => {
       const label = g.eventNames.filter(Boolean).join(' / ');
       const tickets = g.orderNos.filter(Boolean).join(', ');
@@ -2594,7 +2825,7 @@
       </button>`;
     }).join('');
 
-    _pendingMergeData = { overlay, matched, ticketId, eventNames, eventStatuses };
+    _pendingMergeData = { overlay, matched, ticketId, eventNames, eventStatuses, betInfos };
 
     overlay.innerHTML = `
       <div class="popup-card msg-popup" style="border-color:var(--border);max-width:480px;width:92%">
@@ -2626,9 +2857,9 @@
   }
   function _doSeparate() {
     if (!_pendingMergeData) return;
-    const { overlay, ticketId, eventNames, eventStatuses } = _pendingMergeData;
+    const { overlay, ticketId, eventNames, eventStatuses, betInfos } = _pendingMergeData;
     _pendingMergeData = null;
-    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses);
+    _applyJsonNewGroup(overlay, ticketId, eventNames, eventStatuses, betInfos);
   }
 
   // ── Record CRUD ──
@@ -3338,6 +3569,7 @@
     const eventName = names[eventIdx] || names[0] || '';
     if (!r.eventNotes) r.eventNotes = {};
     const note = r.eventNotes[eventName] || r.eventNote || '';
+    const initialText = note || (r.additionalInfo ? r.additionalInfo.trim() : '');
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
     const overlay = document.createElement('div');
@@ -3355,7 +3587,12 @@
           <span style="font-size:12px;color:var(--text-sec);font-family:monospace;word-break:break-all">${esc(eventId)}</span>
           <button class="btn-icon-sm" title="複製 EventId" data-copy="${esc(eventId)}" onclick="copyText(this.dataset.copy,this)" style="flex-shrink:0">📋</button>
         </div>` : ''}
-        <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(note)}</textarea>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="msg-time-input-${id}-${eventIdx}" type="text" placeholder="e.g. 08/07/2026 07:00 (UTC+0)" value="${esc(_getEventTime(eventName))}"
+            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>
+        <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(initialText)}</textarea>
         <button class="btn-copy-reply" onclick="saveCopyMsg('${id}',${eventIdx},this)">📋 複製記錄</button>
       </div>`;
     document.body.appendChild(overlay);
@@ -3377,15 +3614,19 @@
     if (!r.eventNotes) r.eventNotes = {};
     if (!r.eventNoteTimes) r.eventNoteTimes = {};
     const ta = document.getElementById(`msg-textarea-${id}-${eventIdx}`);
+    const ti = document.getElementById(`msg-time-input-${id}-${eventIdx}`);
+    const timeVal = (ti ? ti.value : '').trim();
+    if (timeVal) _saveEventTime(eventName, timeVal);
     r.eventNotes[eventName] = ta ? ta.value : '';
     if (r.eventNotes[eventName]) r.eventNoteTimes[eventName] = Date.now();
     save();
     _refreshNoteHints();
     const betInfo = r.betInfos && r.betInfos[eventIdx];
     const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
+    const note = (r.eventNotes[eventName] || '').replace(/\{time\}/g, timeVal);
     const parts = [eventName];
     if (eventId) parts.push(`EventId: ${eventId}`);
-    if (r.eventNotes[eventName]) parts.push(r.eventNotes[eventName]);
+    if (note) parts.push(note);
     copyText(parts.join('\n'), btn);
   }
 
@@ -3469,10 +3710,19 @@
         <button class="popup-close-btn" onclick="dismissPopup()">×</button>
         <div class="popup-badge success">✅ 已建立計時器</div>
         <div class="submit-content-box">${esc(content)}</div>
-        <button class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
+        <button id="submit-copy-btn" class="btn-copy-reply" onclick="copyAndClose(_pendingCopy,this)">📋 複製內容</button>
       </div>`;
     document.body.appendChild(overlay);
     attachOverlayClose(overlay);
+    // Auto-copy on open
+    navigator.clipboard.writeText(content).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = content; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    });
+    const copyBtn = document.getElementById('submit-copy-btn');
+    if (copyBtn) { copyBtn.textContent = '✓ 已複製'; copyBtn.classList.add('copied'); }
   }
 
   // ── Tick timers ──
@@ -3666,6 +3916,7 @@
     _grpMigrateFromRecords();
     _grpDedupCase();
     initFormGroups();
+    trInit();
     setInterval(tickTimers, 1000);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') pruneOldCompleted();
@@ -3729,6 +3980,7 @@
       const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : 'var(--text-muted)';
       const timeNote  = upcoming ? ' · 尚未開賽' : stale ? ' · 超過24小時' : '';
       const timeHtml  = ev.startDate ? `<span style="font-size:11px;color:${timeColor};white-space:nowrap">${_jsonToUtc8(ev.startDate)}${timeNote}</span>` : '';
+      const storedTime = ev.correctTime !== undefined ? ev.correctTime : _getEventTime(hintKey);
       return `
       <div class="msg-event-row" id="msg-ev-${i}" style="${borderStyle}">
         <div class="msg-event-header">
@@ -3740,6 +3992,11 @@
             ${statusBadge}${hintIcon}${timeHtml}
             <span class="msg-event-id">EventId: ${esc(String(ev.eventId))}</span>
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+          <input id="msg-time-${i}" type="text" placeholder="e.g. 08/07/2026 07:00 (UTC+0)" value="${esc(storedTime)}"
+            style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
         </div>
         <textarea class="msg-event-notes" id="msg-notes-${i}" placeholder="備註（留空則不複製此賽事）...">${esc(ev.notes || '')}</textarea>
       </div>`;
@@ -3826,6 +4083,8 @@
     _msgEvents.forEach((ev, i) => {
       const ta = document.getElementById(`msg-notes-${i}`);
       if (ta) ev.notes = ta.value;
+      const ti = document.getElementById(`msg-time-${i}`);
+      if (ti) ev.correctTime = ti.value;
     });
   }
 
@@ -3839,17 +4098,32 @@
   function _copyMsgCompose() {
     _saveCurrentMsgNotes();
     const includeEventId = document.getElementById('msg-include-eventid')?.checked !== false;
+    // save times to event time store
+    _msgEvents.forEach(ev => { if (ev.correctTime && ev.correctTime.trim()) _saveEventTime(ev.eventName, ev.correctTime.trim()); });
     const parts = _msgEvents
       .filter(ev => ev.notes && ev.notes.trim())
-      .map(ev => includeEventId
-        ? `${ev.eventName}\nEventId: ${ev.eventId}\n${ev.notes.trim()}`
-        : `${ev.eventName}\n${ev.notes.trim()}`);
+      .map(ev => {
+        const timeVal = (ev.correctTime || '').trim();
+        const notes = ev.notes.trim().replace(/\{time\}/g, timeVal);
+        return includeEventId
+          ? `${ev.eventName}\nEventId: ${ev.eventId}\n${notes}`
+          : `${ev.eventName}\n${notes}`;
+      });
     if (!parts.length) { alert('請至少填寫一筆備註'); return; }
     // save notes (including links) to standalone store so 📌 works later
     _msgEvents.forEach(ev => { if (ev.notes && ev.notes.trim()) _ensSet(ev.eventName, ev.notes); });
     // update 📌 on form if any matching event names are already there
     const allFormNames = formGroups.flatMap(g => g.eventNames.filter(n => n.trim()));
     if (allFormNames.length) _renderNoteHints(allFormNames);
+    // agent name only on last block when combining multiple events
+    const _composeAgent = getAgentName();
+    if (_composeAgent && parts.length > 1) {
+      const suffix = ` - ${_composeAgent}`;
+      parts.forEach((p, i) => {
+        parts[i] = p.trimEnd().replace(new RegExp(suffix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + '$'), '').trimEnd();
+      });
+      parts[parts.length - 1] = parts[parts.length - 1] + suffix;
+    }
     const text = parts.join('\n\n');
     navigator.clipboard.writeText(text).then(() => _closeMsgCompose()).catch(() => {
       const ta = document.createElement('textarea');
@@ -3879,10 +4153,12 @@
   var _saLoading = false;
   var _saPerEventReasons = {};
   var _saShowPerEventReasons = false;
+  var _saWrongStartTime = '';
   var _saShowReasonPanel = false;
   var _saShowHistoryPanel = false;
   var _saShowReasonManager = false;
   var _saManagingReasonType = 'resettlement';
+  var _saCustomFillText = '';
   var _saQueryHistory = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'queryHistory') || '[]'); } catch(e) { return []; } })();
   var _saCustomResettlementReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customResettlementReasons') || '{}'); } catch(e) { return {}; } })();
   var _saCustomCancellationReasons = (() => { try { return JSON.parse(localStorage.getItem(SA_PREFIX+'customCancellationReasons') || '{}'); } catch(e) { return {}; } })();
@@ -3908,6 +4184,7 @@
     '_custom_fill': { english: '', chinese: '', korean: '' },
     'player_retired': { english: 'Player retired', chinese: '选手退赛', korean: '기권' },
     'postponed': { english: 'Postponed', chinese: '延期', korean: '연기' },
+    'wrong_start_time': { english: 'Wrong start time, correct start time is {time} (GMT+0)', chinese: '开赛时间有误，正确开赛时间为 {time} (GMT+0)', korean: '시작 시간 오류, 정확한 시작 시간은 {time} (GMT+0) 입니다' },
     'not_played': { english: 'Not played', chinese: '赛事未进行', korean: '경기 미실시' },
     'walkover': { english: 'Walkover', chinese: '不战而胜', korean: '부전승' },
   };
@@ -4143,7 +4420,7 @@
 
     data.forEach((item,i)=>{
       const rk = customReasons&&customReasons[i]!==undefined ? customReasons[i] : _saResettlementReason;
-      const rt = reasonOpts[rk] || reasonOpts[''];
+      const rt = rk === '_custom_fill' ? { english: _saCustomFillText, chinese: _saCustomFillText, korean: _saCustomFillText } : (reasonOpts[rk] || reasonOpts['']);
       const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
       const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Resettlement History: ${_saTranslateHistory(item.statusHistory,'english')}\nBet Status: ${item.betStatus}\nFirst Settlement Time: ${_saFormatDateTime(item.firstSettlementTime)}\nLast Update Time: ${_saFormatDateTime(item.lastUpdateTime)}\nReason for Resettlement: ${rt.english}`;
       const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事重新结算历史：${_saTranslateHistory(item.statusHistory,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n第一次结算时间：${_saFormatDateTime(item.firstSettlementTime)}\n最后更新时间：${_saFormatDateTime(item.lastUpdateTime)}\n重新结算原因：${rt.chinese}`;
@@ -4170,7 +4447,7 @@
 
     data.forEach((item,i)=>{
       const rk=customReasons&&customReasons[i]!==undefined?customReasons[i]:_saCancellationReason;
-      const rt=reasonOpts[rk]||reasonOpts[''];
+      const rt=rk==='_custom_fill'?{english:_saCustomFillText,chinese:_saCustomFillText,korean:_saCustomFillText}:(reasonOpts[rk]||reasonOpts['']);
       const ef=data.length>1?`Event${i+1}`:'Event', cf=data.length>1?`赛事${i+1}`:'赛事', kf=data.length>1?`이벤트${i+1}`:'이벤트';
       const enB=`Bet ID: ${item.betId}\n${ef}: ${item.eventName}\nEvent Status: ${item.eventStatus}\nBet Status: ${item.betStatus}\nUpdate Time: ${_saFormatDateTime(item.updateTime)}\nReason of Cancelation: ${rt.english}`;
       const cnB=`注单号：${item.betId}\n${cf}：${item.eventName}\n赛事状态：${_saTranslateStatus(item.eventStatus,'chinese')}\n注单状态：${_saTranslateStatus(item.betStatus,'chinese')}\n更新时间：${_saFormatDateTime(item.updateTime)}\n取消原因：${rt.chinese}`;
@@ -4273,7 +4550,7 @@
     }
     _saResults = null; _saError = ''; _saCopyStatus = '';
     _saPerEventReasons = {}; _saShowPerEventReasons = false;
-    _saResettlementReason = ''; _saCancellationReason = '';
+    _saResettlementReason = ''; _saCancellationReason = ''; _saCustomFillText = '';
     const ta = document.getElementById('sa-json-input');
     if (ta) ta.value = '';
 
@@ -4436,12 +4713,16 @@
       } else {
         const items = _saResults.analyzedData.map((item,i) => {
           const curKey = _saPerEventReasons[i] !== undefined ? _saPerEventReasons[i] : _saCurrentReason();
+          const showInput = curKey === '_custom_fill';
           return `<div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:8px 10px">
             <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:5px">Event ${i+1}: ${_saEsc(item.eventName)}</div>
-            <select onchange="_saPerEventReasons[${i}]=this.value"
+            <select onchange="_saPerEventReasons[${i}]=this.value;_saRenderResults()"
               style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
               ${_saReasonOptionsHtml(curKey, _saAnalysisType)}
             </select>
+            ${showInput ? `<input type="text" value="${_saEsc(_saCustomFillText)}" placeholder="输入原因（三语共用）..."
+              oninput="_saCustomFillText=this.value;_saRegenerateWithCustomReasons()"
+              style="width:100%;box-sizing:border-box;margin-top:5px;padding:5px 8px;font-size:11px;border:1px solid var(--blue-light);border-radius:6px;background:var(--surface);color:var(--text-pri);outline:none">` : ''}
           </div>`;
         }).join('');
         perEventHtml = `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px">
@@ -4477,7 +4758,15 @@
         <pre style="white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text-pri);margin:0;line-height:1.5">${_saEsc(_saResults[_saPreviewLang]||'')}</pre>
       </div>`;
 
-    el.innerHTML = perEventHtml + copyBtns + previewHtml;
+    const globalCustomFillHtml = (_saCurrentReason() === '_custom_fill' && !_saShowPerEventReasons)
+      ? `<div style="background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">✏️ 自行填写原因（三语共用）</div>
+          <input type="text" value="${_saEsc(_saCustomFillText)}" placeholder="输入原因..."
+            oninput="_saCustomFillText=this.value;if(_saResults)_saRegenerateWithCustomReasons()"
+            style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:12px;border:1px solid var(--blue-light);border-radius:6px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>` : '';
+
+    el.innerHTML = perEventHtml + globalCustomFillHtml + copyBtns + previewHtml;
   }
 
   function _saRenderActionBtns() {
@@ -4509,6 +4798,15 @@
           </button>`;
         }).join('')}
         </div>
+        ${curReason === '_custom_fill' ? `
+        <div style="margin-top:8px;border-top:1px solid var(--border-light);padding-top:8px">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">自行填写原因（三语共用）</div>
+          <input type="text" id="sa-custom-fill-input" value="${_saEsc(_saCustomFillText)}"
+            placeholder="输入原因..."
+            onclick="event.stopPropagation()"
+            oninput="_saCustomFillText=this.value;if(_saResults)_saRegenerateWithCustomReasons()"
+            style="width:100%;box-sizing:border-box;padding:5px 8px;font-size:11px;border:1px solid var(--blue-light);border-radius:6px;background:var(--surface);color:var(--text-pri);outline:none">
+        </div>` : ''}
       </div>` : '';
 
     const hPanelHtml = _saShowHistoryPanel ? `
@@ -4542,6 +4840,8 @@
       </div>` : '';
 
     el.innerHTML = `
+      <button onclick="_saToggleType()" title="${_saEsc(typeTitle)}"
+        style="width:34px;height:34px;border-radius:50%;background:${typeColor};color:white;border:none;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">${_saEsc(typeLabel)}</button>
       <div style="position:relative">
         ${rPanelHtml}
         <button onclick="event.stopPropagation();_saShowReasonPanel=!_saShowReasonPanel;_saShowHistoryPanel=false;_saRenderActionBtns()"
@@ -4557,8 +4857,6 @@
           ${_saQueryHistory.length>0?`<span style="position:absolute;top:-3px;right:-3px;background:#ef4444;color:white;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">${_saQueryHistory.length}</span>`:''}
         </button>
       </div>
-      <button onclick="_saToggleType()" title="${_saEsc(typeTitle)}"
-        style="width:34px;height:34px;border-radius:50%;background:${typeColor};color:white;border:none;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s">${_saEsc(typeLabel)}</button>
       <button onclick="_saShowReasonManager=true;_saRenderReasonManager()" title="管理自訂原因"
         style="width:34px;height:34px;border-radius:50%;background:var(--surface2);color:var(--text-sec);border:1px solid var(--border);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚙️</button>`;
   }
@@ -4722,23 +5020,44 @@
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
     document.getElementById('tabbtn-' + tab).classList.add('active');
+    // Always clean up all tabs' listeners/timers before setting up the active one
+    document.removeEventListener('click', _saHandleOutsideClick);
+    _saClearIdleTimer();
+    const saTab = document.getElementById('tab-analyzer');
+    saTab.removeEventListener('click', _saOnAnalyzerActivity);
+    saTab.removeEventListener('keydown', _saOnAnalyzerActivity);
+    const ctTab = document.getElementById('tab-cancel');
+    ctTab.removeEventListener('click', _ctOnCancelActivity);
+    ctTab.removeEventListener('keydown', _ctOnCancelActivity);
+    _ctClearIdleTimer();
+    const trTab = document.getElementById('tab-translate');
+    trTab.removeEventListener('click', _trOnTranslateActivity);
+    trTab.removeEventListener('keydown', _trOnTranslateActivity);
+    _trClearIdleTimer();
+    const sbTab = document.getElementById('tab-sysbets');
+    sbTab.removeEventListener('click', _sbOnSysbetsActivity);
+    sbTab.removeEventListener('keydown', _sbOnSysbetsActivity);
+    _sbClearIdleTimer();
     if (tab === 'analyzer') {
       _saRenderLeft();
       _saRenderResults();
       _saRenderActionBtns();
       document.addEventListener('click', _saHandleOutsideClick, { once: false });
-      const tabEl = document.getElementById('tab-analyzer');
-      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
-      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
-      tabEl.addEventListener('click', _saOnAnalyzerActivity);
-      tabEl.addEventListener('keydown', _saOnAnalyzerActivity);
+      saTab.addEventListener('click', _saOnAnalyzerActivity);
+      saTab.addEventListener('keydown', _saOnAnalyzerActivity);
       _saStartIdleTimer();
-    } else {
-      document.removeEventListener('click', _saHandleOutsideClick);
-      _saClearIdleTimer();
-      const tabEl = document.getElementById('tab-analyzer');
-      tabEl.removeEventListener('click', _saOnAnalyzerActivity);
-      tabEl.removeEventListener('keydown', _saOnAnalyzerActivity);
+    } else if (tab === 'cancel') {
+      ctTab.addEventListener('click', _ctOnCancelActivity);
+      ctTab.addEventListener('keydown', _ctOnCancelActivity);
+      _ctStartIdleTimer();
+    } else if (tab === 'translate') {
+      trTab.addEventListener('click', _trOnTranslateActivity);
+      trTab.addEventListener('keydown', _trOnTranslateActivity);
+      _trStartIdleTimer();
+    } else if (tab === 'sysbets') {
+      sbTab.addEventListener('click', _sbOnSysbetsActivity);
+      sbTab.addEventListener('keydown', _sbOnSysbetsActivity);
+      _sbStartIdleTimer();
     }
   }
 
@@ -4797,11 +5116,111 @@
   var _ctPreviewTab = 'excel';
   var _ctDate = '';
   var _ctBrand = '';
+  var _ctIdleTimer = null;
+  var _ctIdleSecs = 0;
 
   function _ctToUTC8(dateStr) {
-    var d = new Date(dateStr);
+    if (!dateStr) return null;
+    var s = String(dateStr);
+    var d = s.endsWith('Z') ? new Date(s) : new Date(s + 'Z');
     if (isNaN(d.getTime())) return null;
     return new Date(d.getTime() + 8 * 3600000);
+  }
+
+  function _ctStartIdleTimer() {
+    clearInterval(_ctIdleTimer);
+    _ctIdleSecs = 60;
+    _ctUpdateIdleIndicator();
+    _ctIdleTimer = setInterval(function() {
+      _ctIdleSecs--;
+      _ctUpdateIdleIndicator();
+      if (_ctIdleSecs <= 0) { clearInterval(_ctIdleTimer); _ctIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _ctClearIdleTimer() {
+    clearInterval(_ctIdleTimer); _ctIdleTimer = null; _ctIdleSecs = 0; _ctUpdateIdleIndicator();
+  }
+
+  function _ctUpdateIdleIndicator() {
+    var el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_ctIdleSecs > 0) { el.textContent = '↩ ' + _ctIdleSecs + 's'; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _ctOnCancelActivity() { _ctStartIdleTimer(); }
+
+  var _trIdleTimer = null;
+  var _trIdleSecs = 0;
+
+  function _trStartIdleTimer() {
+    clearInterval(_trIdleTimer);
+    _trIdleSecs = 60;
+    _trUpdateIdleIndicator();
+    _trIdleTimer = setInterval(function() {
+      _trIdleSecs--;
+      _trUpdateIdleIndicator();
+      if (_trIdleSecs <= 0) { clearInterval(_trIdleTimer); _trIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _trClearIdleTimer() {
+    clearInterval(_trIdleTimer); _trIdleTimer = null; _trIdleSecs = 0; _trUpdateIdleIndicator();
+  }
+
+  function _trUpdateIdleIndicator() {
+    var el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_trIdleSecs > 0) { el.textContent = '↩ ' + _trIdleSecs + 's'; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _trOnTranslateActivity() { _trStartIdleTimer(); }
+
+  var _sbIdleTimer = null;
+  var _sbIdleSecs = 0;
+
+  function _sbStartIdleTimer() {
+    clearInterval(_sbIdleTimer);
+    _sbIdleSecs = 60;
+    _sbUpdateIdleIndicator();
+    _sbIdleTimer = setInterval(function() {
+      _sbIdleSecs--;
+      _sbUpdateIdleIndicator();
+      if (_sbIdleSecs <= 0) { clearInterval(_sbIdleTimer); _sbIdleTimer = null; switchTab('reminder'); }
+    }, 1000);
+  }
+
+  function _sbClearIdleTimer() {
+    clearInterval(_sbIdleTimer); _sbIdleTimer = null; _sbIdleSecs = 0; _sbUpdateIdleIndicator();
+  }
+
+  function _sbUpdateIdleIndicator() {
+    var el = document.getElementById('sa-idle-indicator');
+    if (!el) return;
+    if (_sbIdleSecs > 0) { el.textContent = '↩ ' + _sbIdleSecs + 's'; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
+
+  function _sbOnSysbetsActivity() { _sbStartIdleTimer(); }
+
+  function _ctPasteAndUpdate() {
+    var prevId = _ctTicketId;
+    var prevChecked = _ctRows.map(function(r) { return r.checked; });
+    navigator.clipboard.readText().then(function(text) {
+      var el = document.getElementById('ct-json-input');
+      if (el) el.value = text;
+      _ctExtract();
+      if (_ctTicketId && _ctTicketId !== prevId) {
+        _ctFillNowTime();
+      } else if (_ctTicketId && _ctTicketId === prevId && prevChecked.length > 0) {
+        _ctRows.forEach(function(r, i) { if (i < prevChecked.length) r.checked = prevChecked[i]; });
+        _ctRenderTable();
+      }
+    }).catch(function() {
+      alert('無法讀取剪貼簿，請手動貼上');
+    });
   }
 
   function _ctTimeUTC8() {
@@ -4827,26 +5246,21 @@
   }
 
   function _ctStatusLabel(s) {
-    var map = {0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled'};
-    return map[s] !== undefined ? map[s] : 'Unknown';
+    var map = {0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
+    return (s !== null && s !== undefined && map[s] !== undefined) ? map[s] : (s === null || s === undefined ? '-' : 'Unknown('+s+')');
   }
 
-  function _ctExtractDoneTime(data, raw) {
+  function _ctExtractDoneTime(data) {
     if (data.SettlementHistory && Array.isArray(data.SettlementHistory) && data.SettlementHistory.length > 0) {
       var last = data.SettlementHistory[data.SettlementHistory.length - 1];
-      var d = last.DateUpdated || last.UpdateDate || last.Date;
-      if (d) {
-        var utc8 = _ctToUTC8(d);
+      if (last.DateUpdated) {
+        var utc8 = _ctToUTC8(last.DateUpdated);
         if (utc8) return ('0'+utc8.getUTCHours()).slice(-2) + ':' + ('0'+utc8.getUTCMinutes()).slice(-2);
       }
     }
-    var matches = (raw || '').match(/"UpdateDate"\s*:\s*"([^"]+)"/g);
-    if (matches && matches.length > 0) {
-      var lastMatch = matches[matches.length - 1].match(/"UpdateDate"\s*:\s*"([^"]+)"/);
-      if (lastMatch) {
-        var utc8b = _ctToUTC8(lastMatch[1]);
-        if (utc8b) return ('0'+utc8b.getUTCHours()).slice(-2) + ':' + ('0'+utc8b.getUTCMinutes()).slice(-2);
-      }
+    if (data.UpdateDate) {
+      var utc8b = _ctToUTC8(data.UpdateDate);
+      if (utc8b) return ('0'+utc8b.getUTCHours()).slice(-2) + ':' + ('0'+utc8b.getUTCMinutes()).slice(-2);
     }
     return '';
   }
@@ -4862,7 +5276,13 @@
       return;
     }
     var tidMatch = raw.match(/"SQLTicketId"\s*:\s*(\d+)/);
-    _ctTicketId = tidMatch ? tidMatch[1] : '';
+    var newTicketId = tidMatch ? tidMatch[1] : '';
+    // Save current checked state before overwriting rows (same ticket → preserve user's selections)
+    var _ctPrevChecked = {};
+    if (newTicketId && newTicketId === _ctTicketId) {
+      _ctRows.forEach(function(r, i) { _ctPrevChecked[i] = r.checked; });
+    }
+    _ctTicketId = newTicketId;
 
     var data;
     try { data = JSON.parse(raw); } catch(e) {
@@ -4873,20 +5293,27 @@
       return;
     }
 
-    // Extract ticket date (UTC+8)
-    var rawDate = data.CreatedDate || data.BetDate || data.Date || data.CreatedAt || '';
-    if (rawDate) {
-      var dd = _ctToUTC8(rawDate);
-      _ctDate = dd ? dd.getUTCFullYear() + '-' + ('0'+(dd.getUTCMonth()+1)).slice(-2) + '-' + ('0'+dd.getUTCDate()).slice(-2) : String(rawDate).slice(0,10);
-    } else { _ctDate = ''; }
+    var selections = data.Selections || [];
 
-    // Extract brand/operator
-    _ctBrand = data.OperatorName || data.BrandName || data.ClientName || data.SiteName || data.Operator || data.AgentName || '';
+    // Find SelectionIndex values merged into 0VS combined selections (skip those individual legs)
+    var mergedIndices = {};
+    selections.forEach(function(sel) {
+      var selId = sel.SelectionId || '';
+      if (selId.indexOf('0VS') === 0) {
+        selId.substring(3).split('|').forEach(function(p) {
+          var n = parseInt(p); if (!isNaN(n)) mergedIndices[n] = true;
+        });
+      }
+    });
 
-    var selections = data.Selections || (data.data && data.data.Selections) || [];
-    _ctRows = selections.map(function(sel, i) {
-      // Event date → format as "YYYY-MM-DD HH:MM:SS"
-      var rawEd = sel.EventDate || sel.StartDate || sel.EventStartTime || sel.MatchDate || sel.StartTime || '';
+    _ctRows = [];
+    var _ctRowIdx = 0;
+    selections.forEach(function(sel) {
+      var selId = sel.SelectionId || '';
+      if (Object.keys(mergedIndices).length > 0 && selId.indexOf('0VS') !== 0 && mergedIndices[sel.SelectionIndex]) return;
+
+      // StartEventDate → UTC+8 "YYYY-MM-DD HH:MM:SS"
+      var rawEd = sel.StartEventDate || '';
       var edStr = '';
       if (rawEd) {
         var edUtc8 = _ctToUTC8(rawEd);
@@ -4899,24 +5326,30 @@
                   ('0'+edUtc8.getUTCSeconds()).slice(-2);
         } else { edStr = String(rawEd); }
       }
-      return {
-        idx: i,
-        selectionId: sel.SelectionId || '',
-        sport: sel.SportName || sel.Sport || sel.CategoryName || sel.Category || '',
-        league: sel.TournamentName || sel.LeagueName || sel.CompetitionName || sel.League || sel.Tournament || '',
+
+      _ctRows.push({
+        idx: _ctRowIdx++,
+        selectionId: selId,
+        sport: sel.SportName || '',
+        league: sel.LeagueName || '',
         eventDate: edStr,
-        event: sel.EventName || sel.MatchName || sel.Name || '',
-        market: sel.MarketName || sel.MarketType || sel.BetType || '',
-        selection: sel.SelectionName || sel.OutcomeName || sel.Selection || '',
+        event: sel.EventName || '',
+        market: sel.MarketTypeName || '',
+        selection: sel.SelectionName || sel.OutcomeName || '',
         odds: sel.Price !== undefined ? sel.Price : (sel.Odds !== undefined ? sel.Odds : ''),
         status: sel.SelectionStatus !== undefined ? sel.SelectionStatus : -1,
         isLive: sel.IsLive === true,
-        combined: (sel.SelectionId || '').indexOf('0VS') === 0,
-        checked: true
-      };
+        combined: selId.indexOf('0VS') === 0,
+        checked: sel.SelectionStatus === 0
+      });
     });
 
-    _ctDoneTime = _ctExtractDoneTime(data, raw);
+    // Restore checked state if same ticket (overrides status-based default)
+    if (Object.keys(_ctPrevChecked).length > 0) {
+      _ctRows.forEach(function(r, i) { if (_ctPrevChecked[i] !== undefined) r.checked = _ctPrevChecked[i]; });
+    }
+
+    _ctDoneTime = _ctExtractDoneTime(data);
 
     var reqEl = document.getElementById('ct-req-time');
     if (reqEl && !reqEl.value) {
@@ -4955,7 +5388,6 @@
         '<td style="padding:3px 6px" title="'+_ctEsc(r.event)+'">'+_ctEsc(evtShort)+'</td>' +
         '<td style="padding:3px 6px" title="'+_ctEsc(r.market)+'">'+_ctEsc(mktShort)+'</td>' +
         '<td style="padding:3px 6px" title="'+_ctEsc(r.selection)+'">'+_ctEsc(selShort)+'</td>' +
-        '<td style="padding:3px 6px;text-align:right;white-space:nowrap">'+(r.odds!==''?r.odds:'—')+'</td>' +
         '<td style="padding:3px 6px;white-space:nowrap">'+statusLabel+'</td>' +
         '<td style="padding:3px 6px;white-space:nowrap;color:'+(r.isLive?'var(--orange)':'var(--text-muted)')+'">'+typeLabel+'</td>' +
         '</tr>';
@@ -4968,7 +5400,6 @@
       '<th style="padding:4px 6px;text-align:left">賽事</th>' +
       '<th style="padding:4px 6px;text-align:left">市場</th>' +
       '<th style="padding:4px 6px;text-align:left">選擇</th>' +
-      '<th style="padding:4px 6px;text-align:right">賠率</th>' +
       '<th style="padding:4px 6px;text-align:left">狀態</th>' +
       '<th style="padding:4px 6px;text-align:left">類型</th>' +
       '</tr></thead>' +
@@ -5009,36 +5440,41 @@
 
   function _ctBuildExcel() {
     var checked = _ctGetChecked();
+    if (checked.length === 0) return '(No selections checked)';
+
     var reason = _ctGetReason('en');
-    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '';
-    var doneTime = _ctDoneTime || '';
-    var tid = _ctTicketId || '';
+    var reqTime = (document.getElementById('ct-req-time') || {}).value || _ctRequestTime || '__:__';
+    var doneTime = _ctDoneTime || '__:__';
+    var tid = _ctTicketId || '________';
+    var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim() || '________';
 
-    // One line per selection: Sport    League    Prematch/Live    EventDate    EventName    Market
-    var selLines = checked.map(function(r) {
-      var type = r.isLive ? 'Live' : 'Prematch';
-      var parts = [r.sport, r.league, type, r.eventDate, r.event, r.market].filter(Boolean);
-      return parts.join('    ');
-    }).join('\n');
+    // Today's date in UTC+8 (same as original tool)
+    var utc8now = new Date(new Date().getTime() + 8 * 3600000);
+    var todayDate = utc8now.getUTCFullYear() + '-' +
+                    ('0'+(utc8now.getUTCMonth()+1)).slice(-2) + '-' +
+                    ('0'+utc8now.getUTCDate()).slice(-2);
 
-    // Event info block (goes into one spreadsheet cell)
-    var eventInfo = selLines;
-    if (reqTime) eventInfo += '\n' + reqTime + ' pls cancel (' + reason + ')';
-    if (doneTime) eventInfo += '\n' + doneTime + ' Done as requested';
+    // Each selection: tab-separated fields on its own line (matches original)
+    var dataLines = checked.map(function(r) {
+      return r.sport + '\t' + r.league + '\t' + (r.isLive ? 'Live' : 'Prematch') + '\t' + r.eventDate + '\t' + r.event + '\t' + r.market;
+    });
 
-    // Tab-separated: Date | Brand | TicketId | cancel please | EventInfoBlock | CS name
-    // → columns B C D E F G of tracking sheet (A=row#, H=Type filled manually)
-    var csName = getAgentName();
-    return (_ctDate || '') + '\t' + (_ctBrand || '') + '\t' + tid + '\tcancel please\t' + eventInfo + '\t' + csName;
+    var note = reqTime + ' pls cancel (' + reason + ')\n' + doneTime + ' Done as requested';
+    var cellContent = dataLines.join('\n') + '\n\n' + note;
+    // CSV-quote the cell content (escape any " inside)
+    var escaped = cellContent.replace(/"/g, '""');
+
+    var agentName = (document.getElementById('agent-name') || {}).value || '';
+    // B=Date  C=GroupName  D=TicketId  E=cancel please  F=quoted event block  G=agent
+    return todayDate + '\t' + groupName + '\t' + tid + '\tcancel please\t"' + escaped + '"\t' + agentName;
   }
 
   function _ctBuildFirstReply() {
     var checked = _ctGetChecked();
     var tid = _ctTicketId || '';
-    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
-    var target = isPartial ? 'line' : 'bet';
+    var isFullCancel = _ctRows.length > 0 && checked.length === _ctRows.length;
+    var cancelPhrase = isFullCancel ? 'pls cancel the bet, op request' : 'pls cancel the selection, op request';
 
-    // Unique event names, one per line
     var seen = {};
     var events = [];
     checked.forEach(function(r) {
@@ -5046,18 +5482,14 @@
     });
 
     var groupName = ((document.getElementById('ct-group-name') || {}).value || '').trim();
-    return tid + '\n' +
-           events.join('\n') + '\n' +
-           'pls cancel the ' + target + ', op request\n' +
-           (groupName || _ctBrand || '');
+    return tid + '\n' + events.join('\n') + '\n' + cancelPhrase + '\n' + (groupName || '');
   }
 
   function _ctBuildFinalReply() {
     var checked = _ctGetChecked();
     var tid = _ctTicketId || '';
-    var isPartial = checked.length > 0 && checked.length < _ctRows.length;
+    var isFullCancel = _ctRows.length > 0 && checked.length === _ctRows.length;
 
-    // Unique event names, one per line
     var seen = {};
     var events = [];
     checked.forEach(function(r) {
@@ -5065,10 +5497,9 @@
     });
 
     var agentName = getAgentName();
-    // Partial: line cancelled + bet settled; Full: bet cancelled
-    var krMsg = isPartial
-      ? '기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '')
-      : '기다려 주셔서 감사합니다. 베팅이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '');
+    var krMsg = isFullCancel
+      ? '기다려 주셔서 감사합니다. 베팅이 취소되었지만 BO가 업데이트되는 데 5-10분 정도 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '')
+      : '기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다.' + (agentName ? ' - ' + agentName : '');
 
     return tid + '\n' + events.join('\n') + '\n\n' + krMsg;
   }
@@ -5137,6 +5568,556 @@
     });
   }
 
+  // ── Translation Tool ──
+  const TR_KEY = 'tr_';
+  const TR_DEFAULT_PHRASES = [
+    {id:1770584603526,title:'延期24h',category:'結尾語',createdAt:'2026/2/9 上午5:03:23',
+      zh:'经确认此赛事目前似乎延期 ，相关团队会等待24小时确认赛事是否重启，相关注单将会在之后做对应处理，提前感谢您的耐心。 -  Sunny',
+      en:'It has been confirmed that this event appears to be postponed. The relevant team will wait 24 hours to confirm whether the event will resume. Related bets will be handled accordingly afterwards. Thank you in advance for your patience. - Sunny',
+      ko:'이 경기는 현재 연기된 것으로 확인되었습니다. 관련 팀은 경기 재개 여부를 확인하기 위해 24시간 대기할 예정이며, 관련 베팅은 이후 적절히 처리될 것입니다. 양해해 주셔서 미리 감사드립니다. - Sunny'},
+    {id:1763680551051,title:'重结原因',category:'常用語',createdAt:'2025/11/21 上午7:15:51',
+      en:'official score change',zh:'官方分数变更',ko:'공식 점수 변경'},
+    {id:1763680513330,title:'重结原因',category:'常用語',createdAt:'2025/11/21 上午7:15:13',
+      en:'wrong info from feed',zh:'供应商讯息不正确',ko:'피드의 잘못된 정보'},
+    {id:1757914661935,title:'取消原因-延期',category:'結尾語',createdAt:'2025/9/15 下午1:37:41',
+      en:'Thank you for waiting. The line has been canceled due to event postponed and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的等待。由于赛事延期，此盘口已被取消，注单已结算。后台系统需要5-10分钟更新。请稍后再查看。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 이벤트 연기로 인해 라인이 취소되었으며 베팅이 정산되었습니다. BO는 업데이트까지 5-10분이 소요됩니다. 나중에 다시 확인해 주세요. 감사합니다. - Sunny'},
+    {id:1755017220573,title:'取消原因 - 供应商中断',category:'結尾語',createdAt:'2025/8/13 上午12:47:00',
+      en:'Cancelled due to feed interruption, it might cause line/ odds/ information incorrectly. So canceled the related bets.',
+      zh:'由于数据源中断而取消，可能导致赔率/投注线/信息不准确。因此取消相关投注。',
+      ko:'피드 중단으로 인해 취소되었으며, 이로 인해 라인/배당률/정보가 부정확할 수 있습니다. 따라서 관련 베팅을 취소합니다.'},
+    {id:1754170387618,title:'DG9-棄賽取消',category:'結尾語',createdAt:'2025/8/3 上午5:33:07',
+      en:'Thank you for your patience, this bet has been canceled due to abandoned, please check again after 5-10 mins. - Sunny',
+      zh:'感谢您的耐心等待，此投注因为被放弃已被取消，请在5-10分钟后重新检查。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 이 베팅은 포기로 인해 취소되었습니다. 5-10분 후에 다시 확인해 주세요. - Sunny'},
+    {id:1752855216607,title:'盘口赔率正确',category:'結尾語',createdAt:'2025/7/19 上午12:13:36',
+      en:'Thank you for your patience. After confirmation by the relevant team, both the betting market and odds for this bet slip are correct, and this bet is considered valid. - Sunny',
+      zh:'感谢您的耐心等待。经相关团队确认，此投注单的盘口和赔率均正确，此投注被视为有效。- Sunny',
+      ko:'인내심을 가져주셔서 감사합니다. 관련 팀의 확인 결과, 이 배팅 슬립의 베팅 마켓과 배당률이 모두 정확하며, 이 배팅은 유효한 것으로 간주됩니다. - Sunny'},
+    {id:1752855140504,title:'取消原因-退赛',category:'結尾語',createdAt:'2025/7/19 上午12:12:20',
+      en:'Thank you for waiting. The line has been canceled due to player retire and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的等待。由于球员退赛，该线注已被取消，投注已结算。BO需要5-10分钟更新。请稍后再查看。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 선수 기권으로 인해 라인이 취소되었고 베팅이 정산되었습니다. BO가 업데이트되는 데 5-10분이 소요됩니다. 나중에 다시 확인해 주세요. 감사합니다. - Sunny'},
+    {id:1752854998904,title:'取消原因-模拟失败',category:'結尾語',createdAt:'2025/7/19 上午12:09:58',
+      en:'Thank you for waiting. The line has been canceled due to failed simulation and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的等待。由于模拟失败，该线注已被取消，投注已结算。BO需要5-10分钟更新。请稍后再查看。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 시뮬레이션 실패로 인해 라인이 취소되었으며 베팅이 정산되었습니다. BO가 업데이트되는 데 5-10분이 필요합니다. 그 후 다시 확인해 주세요. 감사합니다. - Sunny'},
+    {id:1752854878423,title:'DG9用取消问问',category:'結尾語',createdAt:'2025/7/19 上午12:07:58',
+      en:"For this event we have no official information available yet. Once there is any update, the bets will be settled accordingly. Since it's been long time after the scheduled time, please let us know if you need us to cancel the line, Thank you. - Sunny",
+      zh:'关于此赛事，我们目前还没有官方信息。一旦有任何更新，投注将相应结算。由于已经过了预定时间很长时间，如果您需要我们取消此线注，请告知我们，谢谢。- Sunny',
+      ko:'이 이벤트에 대해서는 아직 공식적인 정보가 없습니다. 업데이트가 있으면 베팅은 그에 따라 정산됩니다. 예정된 시간 이후 오랜 시간이 지났으므로, 라인을 취소해야 한다면 알려주시기 바랍니다. 감사합니다. - Sunny'},
+    {id:1752854645725,title:'线注取消注单结算',category:'結尾語',createdAt:'2025/7/19 上午12:04:05',
+      en:'Thank you for waiting. The line has been canceled and the bet has been settled. BO needs 5-10 mins to be updated. Please check again then. Thank you. - Sunny',
+      zh:'感谢您的耐心等候，经确认该线注已被取消，投注已结算。BO需要5-10分钟更新。谢谢。- Sunny',
+      ko:'기다려 주셔서 감사합니다. 라인이 취소되었고 베팅이 정산되었습니다. BO는 업데이트되는 데 5-10분이 소요됩니다. 그 후에 다시 확인해 주시기 바랍니다. 감사합니다. - Sunny'}
+  ];
+  const TR_DEFAULT_TERMS = [
+    {id:1769883349483,zh:'提前兑现',en:'cashout',ko:'캐시아웃'},
+    {id:1754170335529,zh:'弃赛',en:'abandoned',ko:'포기하'},
+    {id:1754166285642,zh:'赛事',en:'event',ko:'이벤트'},
+    {id:1752854607039,zh:'线注',en:'line',ko:'라인'},
+    {id:1752854386824,zh:'耐心等待',en:'patience',ko:'기다려 주셔서'},
+    {id:1752854371367,zh:'套利玩家',en:'Arbitrage player',ko:'어드밴티지 플레이어'},
+    {id:1752854353876,zh:'延长赛',en:'overtime',ko:'연장전'},
+    {id:1,zh:'盤口',en:'market',ko:'마켓'},
+    {id:2,zh:'賠率',en:'odds',ko:'배당률'},
+    {id:3,zh:'投注',en:'bet',ko:'베팅'},
+    {id:4,zh:'未取得单一钱包资讯',en:'failed to get seamless details',ko:'심리스 서비스 무효 응답'}
+  ];
+  const TR_DEFAULT_CATS = ['稍後語','結尾語','開場語','常用語'];
+
+  var _trLastResult = null;
+  var _trLastInput = '';
+  var _trSubTab = 'translator';
+  var _trPhraseFilter = '';
+  var _trPhraseCat = '';
+
+  function trInit() {
+    if (!localStorage.getItem(TR_KEY+'phrases')) localStorage.setItem(TR_KEY+'phrases', JSON.stringify(TR_DEFAULT_PHRASES));
+    if (!localStorage.getItem(TR_KEY+'terms'))   localStorage.setItem(TR_KEY+'terms',   JSON.stringify(TR_DEFAULT_TERMS));
+    if (!localStorage.getItem(TR_KEY+'cats'))    localStorage.setItem(TR_KEY+'cats',    JSON.stringify(TR_DEFAULT_CATS));
+    trUpdateCounts();
+  }
+
+  function trGetPhrases() { try { return JSON.parse(localStorage.getItem(TR_KEY+'phrases') || '[]'); } catch(e) { return []; } }
+  function trSavePhrases(arr) { localStorage.setItem(TR_KEY+'phrases', JSON.stringify(arr)); trUpdateCounts(); }
+  function trGetTerms()   { try { return JSON.parse(localStorage.getItem(TR_KEY+'terms')   || '[]'); } catch(e) { return []; } }
+  function trSaveTerms(arr)   { localStorage.setItem(TR_KEY+'terms',   JSON.stringify(arr)); trUpdateCounts(); }
+  function trGetCats()    { try { return JSON.parse(localStorage.getItem(TR_KEY+'cats')    || '[]'); } catch(e) { return []; } }
+
+  function trUpdateCounts() {
+    const pc = document.getElementById('tr-phrase-count');
+    const tc = document.getElementById('tr-term-count');
+    if (pc) pc.textContent = trGetPhrases().length;
+    if (tc) tc.textContent = trGetTerms().length;
+  }
+
+  function trSwitchTab(tab) {
+    _trSubTab = tab;
+    ['translator','phrases','terms','settings'].forEach(t => {
+      const btn = document.getElementById('tr-tabbtn-'+t);
+      const pane = document.getElementById('tr-tab-'+t);
+      const active = t === tab;
+      if (btn) {
+        btn.style.color = active ? 'var(--blue)' : 'var(--text-muted)';
+        btn.style.borderBottomColor = active ? 'var(--blue)' : 'transparent';
+        btn.style.fontWeight = active ? '700' : '500';
+      }
+      if (pane) pane.style.display = active ? 'block' : 'none';
+    });
+    if (tab === 'phrases')  { trPopulateCatFilter(); trRenderPhrases(); }
+    if (tab === 'terms')    trRenderTerms();
+    if (tab === 'settings') trRenderSettings();
+  }
+
+  async function trTranslate() {
+    const apiKey = localStorage.getItem(TR_KEY+'api_key');
+    if (!apiKey) { alert('請先在「設定」頁輸入 Claude API Key'); trSwitchTab('settings'); return; }
+    const input = (document.getElementById('tr-input') || {}).value?.trim();
+    if (!input) return;
+
+    const terms = trGetTerms();
+    const termCtx = terms.length
+      ? '\n\nApply this terminology (use consistently):\n' + terms.map(t => `zh:${t.zh} = en:${t.en} = ko:${t.ko}`).join('\n')
+      : '';
+
+    const prompt = `Translate the following text into English, Simplified Chinese (简体中文), and Korean. If the text is already in one of these languages, still provide all three versions.${termCtx}
+
+Text:
+${input}
+
+Reply with JSON only, no extra text: {"detected":"language name in English","en":"...","zh":"...","ko":"..."}`;
+
+    const loadEl = document.getElementById('tr-loading');
+    const resEl  = document.getElementById('tr-results');
+    if (loadEl) loadEl.style.display = 'flex';
+    if (resEl)  resEl.style.display  = 'none';
+
+    try {
+      const proxyUrl = localStorage.getItem(TR_KEY+'proxy_url') || '';
+      const endpoint = proxyUrl ? proxyUrl.replace(/\/$/, '') : 'https://api.anthropic.com/v1/messages';
+      const extraHeaders = proxyUrl ? {} : { 'anthropic-dangerous-allow-browser': 'true' };
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          ...extraHeaders
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'API error ' + res.status);
+      }
+      const data = await res.json();
+      const raw = data.content[0].text;
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('無法解析回應');
+      const result = JSON.parse(match[0]);
+      _trLastResult = result;
+      _trLastInput = input;
+      if (data.usage) {
+        const inp = parseInt(localStorage.getItem(TR_KEY+'total_input_tokens') || '0') + (data.usage.input_tokens || 0);
+        const out = parseInt(localStorage.getItem(TR_KEY+'total_output_tokens') || '0') + (data.usage.output_tokens || 0);
+        localStorage.setItem(TR_KEY+'total_input_tokens', inp);
+        localStorage.setItem(TR_KEY+'total_output_tokens', out);
+        trRenderUsage();
+      }
+      trRenderResults(result);
+    } catch(e) {
+      alert('翻譯失敗：' + e.message);
+    } finally {
+      if (loadEl) loadEl.style.display = 'none';
+    }
+  }
+
+  function trRenderResults(r) {
+    const resEl = document.getElementById('tr-results');
+    if (!resEl) return;
+    function row(label, color, text) {
+      const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div style="border-left:3px solid ${color};padding:10px 14px;background:var(--surface2);border-radius:0 8px 8px 0;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:5px">${label}</div>
+        <div style="font-size:13px;color:var(--text-pri);line-height:1.65;white-space:pre-wrap;word-break:break-word">${safe}</div>
+        <button data-copy="${text.replace(/"/g,'&quot;')}" onclick="copyText(this.dataset.copy,this)"
+          style="margin-top:7px;font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text-sec);cursor:pointer">📋 複製</button>
+      </div>`;
+    }
+    resEl.innerHTML = `
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">原文語言：${(r.detected||'—').replace(/</g,'&lt;')}</div>
+      ${row('English','var(--blue)', r.en||'')}
+      ${row('中文（簡體）','var(--green)', r.zh||'')}
+      ${row('한국어','#a855f7', r.ko||'')}
+      <div style="text-align:right;margin-top:6px">
+        <button onclick="trShowAddPhrase()"
+          style="font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid var(--blue);background:transparent;color:var(--blue);cursor:pointer;font-weight:600">+ 加入造句庫</button>
+      </div>`;
+    resEl.style.display = 'block';
+  }
+
+  function trClear() {
+    const el = document.getElementById('tr-input');
+    if (el) el.value = '';
+    const resEl = document.getElementById('tr-results');
+    if (resEl) { resEl.innerHTML = ''; resEl.style.display = 'none'; }
+    _trLastResult = null;
+    _trLastInput = '';
+  }
+
+  function trShowAddPhrase() {
+    if (!_trLastResult) return;
+    const cats = trGetCats();
+    const overlay = document.createElement('div');
+    overlay.id = 'tr-add-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:10000;display:flex;align-items:center;justify-content:center';
+    const defaultTitle = _trLastInput.slice(0,30).replace(/"/g,'&quot;');
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:12px;padding:20px;width:90%;max-width:420px;box-shadow:var(--shadow-lg)">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:14px">+ 加入造句庫</div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">標題</label>
+          <input id="tr-add-title" value="${defaultTitle}"
+            style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px">分類</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px" id="tr-cat-chips">
+            ${cats.map(c => `<button type="button" onclick="trSelectCat(this,'${c.replace(/'/g,"\\'")}')"
+              style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text-pri);font-size:12px;cursor:pointer">${c.replace(/</g,'&lt;')}</button>`).join('')}
+          </div>
+          <input id="tr-add-cat" placeholder="或輸入新分類" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text-pri);outline:none">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="document.getElementById('tr-add-overlay').remove()"
+            style="padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-sec);cursor:pointer">取消</button>
+          <button onclick="trConfirmAddPhrase()"
+            style="padding:7px 16px;border-radius:6px;border:none;background:var(--blue);color:white;cursor:pointer;font-weight:600">儲存</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  function trSelectCat(btn, cat) {
+    document.querySelectorAll('#tr-cat-chips button').forEach(b => {
+      b.style.background = 'var(--surface2)'; b.style.color = 'var(--text-pri)'; b.style.borderColor = 'var(--border)';
+    });
+    btn.style.background = 'var(--blue)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--blue)';
+    const inp = document.getElementById('tr-add-cat');
+    if (inp) inp.value = cat;
+  }
+
+  function trConfirmAddPhrase() {
+    const title = (document.getElementById('tr-add-title') || {}).value?.trim() || '未命名';
+    const cat   = (document.getElementById('tr-add-cat')   || {}).value?.trim() || '';
+    const r = _trLastResult;
+    if (!r) return;
+    const phrases = trGetPhrases();
+    phrases.unshift({ id: Date.now(), title, category: cat, createdAt: new Date().toLocaleString('zh-TW'),
+      en: r.en||'', zh: r.zh||'', ko: r.ko||'' });
+    trSavePhrases(phrases);
+    if (cat) {
+      const cats = trGetCats();
+      if (!cats.includes(cat)) { cats.push(cat); localStorage.setItem(TR_KEY+'cats', JSON.stringify(cats)); }
+    }
+    document.getElementById('tr-add-overlay')?.remove();
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
+    badge.textContent = '✓ 已加入造句庫';
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 2000);
+  }
+
+  function trPopulateCatFilter() {
+    const sel = document.getElementById('tr-phrase-cat-filter');
+    if (!sel) return;
+    const current = sel.value;
+    const cats = trGetCats();
+    const used = new Set(trGetPhrases().map(p => p.category).filter(Boolean));
+    sel.innerHTML = '<option value="">全部分類</option>' +
+      [...new Set([...cats, ...used])].map(c => `<option value="${c.replace(/"/g,'&quot;')}"${c===current?'selected':''}>${c.replace(/</g,'&lt;')}</option>`).join('');
+  }
+
+  function trRenderPhrases() {
+    const el = document.getElementById('tr-phrases-list');
+    if (!el) return;
+    let list = trGetPhrases();
+    if (_trPhraseCat)    list = list.filter(p => p.category === _trPhraseCat);
+    if (_trPhraseFilter) {
+      const q = _trPhraseFilter.toLowerCase();
+      list = list.filter(p => [p.title,p.en,p.zh,p.ko].some(s => (s||'').toLowerCase().includes(q)));
+    }
+    if (!list.length) {
+      el.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:30px">暫無資料</div>';
+      return;
+    }
+    el.innerHTML = list.map(p => {
+      const langs = [['EN','var(--blue)',p.en],['中(簡)','var(--green)',p.zh],['KR','#a855f7',p.ko]];
+      return `<div style="border:1px solid var(--border-light);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--surface2)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--text-pri);flex:1">${(p.title||'').replace(/</g,'&lt;')}</span>
+          ${p.category ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-light)">${p.category.replace(/</g,'&lt;')}</span>` : ''}
+          <button onclick="trDeletePhrase(${p.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px" title="刪除">🗑</button>
+        </div>
+        ${langs.map(([label,color,text]) => !text ? '' :
+          `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+            <span style="font-size:10px;font-weight:700;color:${color};width:36px;flex-shrink:0;padding-top:2px">${label}</span>
+            <span style="font-size:12px;color:var(--text-sec);flex:1;line-height:1.55;word-break:break-word">${(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+            <button data-copy="${(text||'').replace(/"/g,'&quot;')}" onclick="copyText(this.dataset.copy,this)"
+              style="flex-shrink:0;padding:2px 8px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text-sec);cursor:pointer">📋</button>
+          </div>`).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  function trDeletePhrase(id) {
+    if (!confirm('確定刪除這筆造句？')) return;
+    trSavePhrases(trGetPhrases().filter(p => p.id !== id));
+    trRenderPhrases();
+  }
+
+  function trRenderTerms() {
+    const el = document.getElementById('tr-terms-body');
+    if (!el) return;
+    const terms = trGetTerms();
+    if (!terms.length) {
+      el.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">暫無術語</td></tr>';
+      return;
+    }
+    el.innerHTML = terms.map(t => `
+      <tr style="border-bottom:1px solid var(--border-light)">
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-pri)">${(t.zh||'').replace(/</g,'&lt;')}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-pri)">${(t.en||'').replace(/</g,'&lt;')}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-pri)">${(t.ko||'').replace(/</g,'&lt;')}</td>
+        <td style="padding:8px 12px;text-align:center">
+          <button onclick="trDeleteTerm(${t.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 5px" title="刪除">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function trDeleteTerm(id) {
+    if (!confirm('確定刪除這筆術語？')) return;
+    trSaveTerms(trGetTerms().filter(t => t.id !== id));
+    trRenderTerms();
+  }
+
+  function trAddTerm() {
+    const zh = (document.getElementById('tr-new-zh')||{}).value?.trim() || '';
+    const en = (document.getElementById('tr-new-en')||{}).value?.trim() || '';
+    const ko = (document.getElementById('tr-new-ko')||{}).value?.trim() || '';
+    if (!zh && !en && !ko) return;
+    const terms = trGetTerms();
+    terms.push({ id: Date.now(), zh, en, ko });
+    trSaveTerms(terms);
+    ['tr-new-zh','tr-new-en','tr-new-ko'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    trRenderTerms();
+  }
+
+  function trRenderSettings() {
+    const key = localStorage.getItem(TR_KEY+'api_key') || '';
+    const savedView = document.getElementById('tr-key-saved-view');
+    const editView = document.getElementById('tr-key-edit-view');
+    if (key) {
+      if (savedView) savedView.style.display = 'flex';
+      if (editView) editView.style.display = 'none';
+    } else {
+      if (savedView) savedView.style.display = 'none';
+      if (editView) editView.style.display = '';
+    }
+
+    const proxy = localStorage.getItem(TR_KEY+'proxy_url') || '';
+    const proxySaved = document.getElementById('tr-proxy-saved-view');
+    const proxyEdit = document.getElementById('tr-proxy-edit-view');
+    const proxyDisplay = document.getElementById('tr-proxy-display');
+    if (proxy) {
+      if (proxyDisplay) proxyDisplay.textContent = proxy;
+      if (proxySaved) proxySaved.style.display = 'flex';
+      if (proxyEdit) proxyEdit.style.display = 'none';
+    } else {
+      if (proxySaved) proxySaved.style.display = 'none';
+      if (proxyEdit) proxyEdit.style.display = '';
+    }
+    trRenderUsage();
+  }
+
+  function trRenderUsage() {
+    const inp = parseInt(localStorage.getItem(TR_KEY+'total_input_tokens') || '0');
+    const out = parseInt(localStorage.getItem(TR_KEY+'total_output_tokens') || '0');
+    const cost = (inp / 1e6 * 1.0) + (out / 1e6 * 5.0);
+    const el = document.getElementById('tr-usage-body');
+    if (!el) return;
+    function fmt(n) { return n >= 1000 ? (n/1000).toFixed(1) + 'K' : n.toString(); }
+    const statsHtml = inp === 0 && out === 0
+      ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">尚無使用記錄</div>`
+      : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">輸入 Tokens</div>
+            <div style="font-size:18px;font-weight:700;color:var(--blue)">${fmt(inp)}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">輸出 Tokens</div>
+            <div style="font-size:18px;font-weight:700;color:var(--green)">${fmt(out)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted)">預估費用（Haiku 4.5）</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text-pri)">≈ $${cost < 0.001 ? cost.toFixed(6) : cost.toFixed(4)} USD</div>
+          </div>
+          <button onclick="trResetUsage()" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px">重置</button>
+        </div>`;
+    el.innerHTML = statsHtml + `
+      <details style="margin-top:2px">
+        <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:4px">
+          <span style="font-size:10px">▶</span> 從 Console 手動同步
+        </summary>
+        <div style="margin-top:8px;padding:10px;background:var(--surface2);border-radius:8px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">在 <b>console.anthropic.com/settings/usage</b> 查看後填入，會覆蓋目前數值。</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">Total tokens in</div>
+              <input id="tr-sync-inp" type="number" min="0" value="${inp}"
+                style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">Total tokens out</div>
+              <input id="tr-sync-out" type="number" min="0" value="${out}"
+                style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-pri);outline:none">
+            </div>
+          </div>
+          <button onclick="trSyncUsage()" style="width:100%;padding:7px;border:none;border-radius:6px;background:var(--blue);color:white;cursor:pointer;font-size:12px;font-weight:600">同步</button>
+        </div>
+      </details>`;
+  }
+
+  function trSyncUsage() {
+    const inp = parseInt(document.getElementById('tr-sync-inp')?.value || '0');
+    const out = parseInt(document.getElementById('tr-sync-out')?.value || '0');
+    localStorage.setItem(TR_KEY+'total_input_tokens', isNaN(inp) ? 0 : inp);
+    localStorage.setItem(TR_KEY+'total_output_tokens', isNaN(out) ? 0 : out);
+    trRenderUsage();
+  }
+
+  function trResetUsage() {
+    if (!confirm('確定要重置使用量統計？')) return;
+    localStorage.removeItem(TR_KEY+'total_input_tokens');
+    localStorage.removeItem(TR_KEY+'total_output_tokens');
+    trRenderUsage();
+  }
+
+  function trEditApiKey() {
+    const key = localStorage.getItem(TR_KEY+'api_key') || '';
+    const inp = document.getElementById('tr-api-key-input');
+    if (inp) inp.value = key;
+    const savedView = document.getElementById('tr-key-saved-view');
+    const editView = document.getElementById('tr-key-edit-view');
+    if (savedView) savedView.style.display = 'none';
+    if (editView) editView.style.display = '';
+    if (inp) inp.focus();
+  }
+
+  function trEditProxyUrl() {
+    const proxy = localStorage.getItem(TR_KEY+'proxy_url') || '';
+    const inp = document.getElementById('tr-proxy-url-input');
+    if (inp) inp.value = proxy;
+    const proxySaved = document.getElementById('tr-proxy-saved-view');
+    const proxyEdit = document.getElementById('tr-proxy-edit-view');
+    if (proxySaved) proxySaved.style.display = 'none';
+    if (proxyEdit) proxyEdit.style.display = '';
+    if (inp) inp.focus();
+  }
+
+  function trSaveProxyUrl() {
+    const val = (document.getElementById('tr-proxy-url-input')||{}).value?.trim() || '';
+    if (val) localStorage.setItem(TR_KEY+'proxy_url', val);
+    else localStorage.removeItem(TR_KEY+'proxy_url');
+    trRenderSettings();
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
+    badge.textContent = '✓ Proxy URL 已儲存';
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 2000);
+  }
+
+  function trSaveApiKey() {
+    const val = (document.getElementById('tr-api-key-input')||{}).value?.trim() || '';
+    if (val) localStorage.setItem(TR_KEY+'api_key', val);
+    else localStorage.removeItem(TR_KEY+'api_key');
+    trRenderSettings();
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
+    badge.textContent = '✓ API Key 已儲存';
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 2000);
+  }
+
+  function trTestApiKey() {
+    const apiKey = localStorage.getItem(TR_KEY+'api_key');
+    if (!apiKey) { alert('請先輸入並儲存 API Key'); return; }
+    const btn = document.getElementById('tr-test-btn');
+    if (btn) { btn.textContent = '測試中...'; btn.disabled = true; }
+    const _testProxy = localStorage.getItem(TR_KEY+'proxy_url') || '';
+    const _testEndpoint = _testProxy ? _testProxy.replace(/\/$/, '') : 'https://api.anthropic.com/v1/messages';
+    const _testExtraHeaders = _testProxy ? {} : { 'anthropic-dangerous-allow-browser': 'true' };
+    fetch(_testEndpoint, {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ..._testExtraHeaders },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+    }).then(r => {
+      if (r.ok) alert('✅ API Key 有效！');
+      else r.json().then(e => alert('❌ ' + (e.error?.message || 'Key 無效'))).catch(() => alert('❌ Key 無效'));
+    }).catch(e => alert('❌ 連線失敗：' + e.message))
+    .finally(() => { if (btn) { btn.textContent = '測試 Key'; btn.disabled = false; } });
+  }
+
+  function trExport() {
+    const data = { phraseBank: trGetPhrases(), termBank: trGetTerms(), categories: trGetCats(), timestamp: new Date().toISOString(), version: '2.0' };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'translation_backup_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+  }
+
+  function trImport() {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          let phrases = (data.phraseBank || []).map(p => {
+            if (p.en !== undefined || p.zh !== undefined || p.ko !== undefined) return p;
+            const langs = {};
+            if (p.originalLang) langs[p.originalLang] = p.original;
+            if (p.lang1) langs[p.lang1] = p.translation1;
+            if (p.lang2) langs[p.lang2] = p.translation2;
+            return { id: p.id, title: p.title, category: p.category, createdAt: p.createdAt, en: langs['en']||'', zh: langs['zh']||'', ko: langs['ko']||'' };
+          });
+          trSavePhrases(phrases);
+          if (data.termBank) trSaveTerms(data.termBank);
+          if (data.categories) localStorage.setItem(TR_KEY+'cats', JSON.stringify(data.categories));
+          trUpdateCounts();
+          alert(`匯入成功：${phrases.length} 筆造句、${(data.termBank||[]).length} 筆術語`);
+          if (_trSubTab === 'phrases') { trPopulateCatFilter(); trRenderPhrases(); }
+          if (_trSubTab === 'terms')   trRenderTerms();
+        } catch(e) { alert('匯入失敗：' + e.message); }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
   function _ctClear() {
     _ctRows = []; _ctTicketId = ''; _ctDoneTime = ''; _ctRequestTime = ''; _ctDate = ''; _ctBrand = '';
     var jsonEl = document.getElementById('ct-json-input');
@@ -5157,6 +6138,788 @@
     _ctUpdatePreview();
   }
 
+
+  // ── 串關計算機 ────────────────────────────────────────────────────────────
+  var _sbData = null;
+  var _sbBonusPctOverride = null; // null = use JSON value, number = manual override (decimal, e.g. 0.02)
+
+  function sbClear() {
+    var el = document.getElementById('sb-json-input');
+    if (el) el.value = '';
+    var res = document.getElementById('sb-results');
+    if (res) { res.innerHTML = ''; res.style.display = 'none'; }
+    var sel = document.getElementById('sb-sel-results');
+    if (sel) { sel.innerHTML = ''; sel.style.display = 'none'; }
+    _sbData = null;
+    _sbBonusPctOverride = null;
+  }
+
+  function sbC(n, k) {
+    if (k > n || k < 0) return 0;
+    if (k === 0 || k === n) return 1;
+    var r = 1;
+    for (var i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+    return Math.round(r);
+  }
+
+  function sbCombinations(n, k) {
+    var result = [], combo = [];
+    function go(start) {
+      if (combo.length === k) { result.push(combo.slice()); return; }
+      for (var i = start; i < n; i++) { combo.push(i); go(i + 1); combo.pop(); }
+    }
+    go(0);
+    return result;
+  }
+
+  function sbGetComboSizes(n, total) {
+    for (var kMin = 1; kMin <= n; kMin++) {
+      var sum = 0;
+      for (var k = kMin; k <= n; k++) sum += sbC(n, k);
+      if (sum === total) {
+        var sizes = [];
+        for (var k = kMin; k <= n; k++) sizes.push(k);
+        return sizes;
+      }
+    }
+    var sizes = [];
+    for (var k = 2; k <= n; k++) sizes.push(k);
+    return sizes;
+  }
+
+  function sbFactor(sel) {
+    var s = sel.SelectionStatus;
+    if (s === 2)  return sel.TrueOdds;           // Won
+    if (s === 17) return (1 + sel.TrueOdds) / 2; // Half Won: ((odds-1)/2)+1
+    if (s === 16) return 0.5;                     // Half Lost
+    if (s === 3 || s === 4 || s === 15 || s === 32) return 1; // Draw/Canceled/Declined/Cashout
+    return 0;                                     // Lost (1) or Opened (0)
+  }
+
+  function sbStatusTag(sel) {
+    var s = sel.SelectionStatus;
+    if (s === 2)  return '<span style="color:var(--green);font-weight:700">✅ 贏</span>';
+    if (s === 17) return '<span style="color:#f59e0b;font-weight:700">🔶 半贏</span>';
+    if (s === 16) return '<span style="color:#f59e0b;font-weight:700">🔸 半輸</span>';
+    if (s === 1)  return '<span style="color:var(--red,#ef4444);font-weight:700">❌ 輸</span>';
+    if (s === 3)  return '<span style="color:var(--text-muted);font-weight:700">🤝 和局</span>';
+    if (s === 4)  return '<span style="color:var(--text-muted);font-weight:700">🚫 取消</span>';
+    if (s === 15) return '<span style="color:var(--text-muted);font-weight:700">⛔ 拒絕</span>';
+    if (s === 32) return '<span style="color:var(--blue);font-weight:700">💸 套現</span>';
+    if (s === 0)  return '<span style="color:var(--text-muted)">⏳ 進行中</span>';
+    return '<span style="color:var(--text-muted)">⏳ 待定</span>';
+  }
+
+  function sbStatusText(sel) {
+    var s = sel.SelectionStatus;
+    if (s === 2)  return '✅赢';
+    if (s === 17) return '🔶半赢';
+    if (s === 16) return '🔸半输';
+    if (s === 1)  return '❌输';
+    if (s === 3)  return '🤝和局';
+    if (s === 4)  return '🚫取消';
+    if (s === 15) return '⛔拒绝';
+    if (s === 32) return '💸套现';
+    if (s === 0)  return '⏳进行中';
+    return '⏳待定';
+  }
+
+  function sbSelName(sel) {
+    return (sel.SelectionName || '').replace(/</g,'&lt;');
+  }
+
+  function sbSelNameText(sel) {
+    return sel.SelectionName || '';
+  }
+
+  function sbEventName(sel) {
+    return (sel.EventName || '').replace(/</g,'&lt;');
+  }
+
+  function sbLeague(sel) {
+    return (sel.LeagueName || '').replace(/</g,'&lt;');
+  }
+
+  function sbBetTypeName(n, total) {
+    var map = { '3:4':'Trixie', '3:7':'Patent', '4:11':'Yankee', '4:15':'Lucky 15',
+                '5:26':'Super Yankee', '5:31':'Lucky 31', '6:57':'亨氏 Heinz',
+                '6:63':'Lucky 63', '7:120':'Super Heinz', '7:127':'Lucky 127',
+                '8:247':'Goliath', '8:255':'Lucky 255' };
+    return map[n+':'+total] || ('系統投注 ' + total + '串');
+  }
+
+  function sbFmt(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function sbFmtOdds(n) { return n.toFixed(4).replace(/\.?0+$/, '') || '0'; }
+  function sbRnd(x, mode) { return mode === 1 ? Math.round(x * 100) / 100 : Math.floor(x * 100) / 100; }
+  function sbPctStr(v) { var p = Math.round(v * 10000) / 100; return p % 1 === 0 ? p.toFixed(0) : p.toFixed(2).replace(/\.?0+$/,''); }
+  function sbSetBonusPct(v) {
+    var n = parseFloat(v);
+    _sbBonusPctOverride = (isNaN(n) || v === '') ? null : n / 100;
+    sbRender();
+  }
+
+  function sbCircle(i) {
+    return '('+(i+1)+')';
+  }
+
+  function sbCurrSym(currency) {
+    var map = { CNY:'¥', THB:'฿', USD:'$', EUR:'€', GBP:'£', HKD:'HK$', KRW:'₩', JPY:'¥', VND:'₫', MYR:'RM', IDR:'Rp' };
+    return map[currency] || (currency ? currency+' ' : '');
+  }
+
+  function sbGetStatusText(sel, lang) {
+    var m = {
+      zh:{2:'赢',17:'半赢',16:'半输',1:'输',3:'和局',4:'取消',15:'拒绝',32:'套现',0:'进行中'},
+      en:{2:'Won',17:'Half Won',16:'Half Lost',1:'Lost',3:'Draw',4:'Canceled',15:'Declined',32:'Cashout',0:'Open'},
+      ko:{2:'승',17:'반승',16:'반패',1:'패',3:'무',4:'취소',15:'거절',32:'캐시아웃',0:'진행중'}
+    };
+    return (m[lang]||m.zh)[sel.SelectionStatus]||'Open';
+  }
+
+  function sbEffPartLang(sel, i, lang) {
+    var s = sel.SelectionStatus, f = sbFactor(sel);
+    var hw = {zh:'半赢',en:'HW',ko:'반승'};
+    var hl = {zh:'半输',en:'HL',ko:'반패'};
+    var ca = {zh:'取消',en:'Cancel',ko:'취소'};
+    var dr = {zh:'和局',en:'Draw',ko:'무'};
+    var dc = {zh:'拒绝',en:'Declined',ko:'거절'};
+    var co = {zh:'套现',en:'Cashout',ko:'캐시아웃'};
+    if (s===17) return sbCircle(i)+'@(1+'+sel.TrueOdds+')÷2='+f.toFixed(4).replace(/\.?0+$/,'')+'('+(hw[lang]||hw.zh)+')';
+    if (s===16) return sbCircle(i)+'@0.5('+(hl[lang]||hl.zh)+')';
+    if (s===4)  return sbCircle(i)+'@1('+(ca[lang]||ca.zh)+')';
+    if (s===3)  return sbCircle(i)+'@1('+(dr[lang]||dr.zh)+')';
+    if (s===15) return sbCircle(i)+'@1('+(dc[lang]||dc.zh)+')';
+    if (s===32) return sbCircle(i)+'@1('+(co[lang]||co.zh)+')';
+    return sbCircle(i)+'@'+sel.TrueOdds;
+  }
+
+  function sbParse() {
+    var raw = (document.getElementById('sb-json-input') || {}).value || '';
+    var data;
+    try { data = JSON.parse(raw.trim()); } catch(e) { alert('JSON 格式錯誤：' + e.message); return; }
+    var bet = data.Bets && data.Bets[0];
+    if (!bet) { alert('找不到 Bets 資料'); return; }
+    var allSels = data.Selections || [];
+    if (!allSels.length) { alert('找不到 Selections 資料'); return; }
+    var mapped = bet.MappedSelections;
+    var sels = (mapped && mapped.length > 0
+      ? allSels.filter(function(s){ return mapped.indexOf(s.SelectionIndex) !== -1; })
+      : allSels.slice()
+    ).sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
+    var N = bet.NumberOfLines || sels.length;
+    var stakePerBet = bet.Stake || 0;
+    var totalStake = stakePerBet * (bet.NumberOfBets || 1);
+    var tidM = raw.match(/"TicketId"\s*:\s*(\d+)/);
+    var ticketId = tidM ? tidM[1] : String(bet.TicketId || data.SQLTicketId || '');
+    var currency = (data.Customer && data.Customer.CurrencyData && data.Customer.CurrencyData.Code) || '';
+    var cs = sbCurrSym(currency);
+    var factors = sels.map(sbFactor);
+    var isParlay = (bet.NumberOfBets === 1);
+    var roundingMode = (data.CalculationSettings && data.CalculationSettings.GainRoundingMode) || 3;
+
+    if (isParlay) {
+      var betName = N + '串1 串關';
+      var product = 1, hasLoss = false;
+      for (var i = 0; i < sels.length; i++) {
+        if (factors[i] === 0) { hasLoss = true; break; }
+        product *= factors[i];
+      }
+      var baseGain = hasLoss ? 0 : sbRnd(stakePerBet * product, roundingMode);
+      var bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
+      var bonusPctJson = bonusObj ? (bonusObj.Percentage || 0) : 0;
+      var bonusMax  = bonusObj ? (bonusObj.MaxWin || null) : null;
+      _sbBonusPctOverride = null;
+      // bonusPct / bonusGain / totalGain are computed live in sbRender()
+      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, roundingMode,
+        bonusPct:0, bonusGain:0, totalGain:baseGain };
+    } else {
+      var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
+      var comboSizes = (bet.ComboSize > 0) ? [bet.ComboSize] : sbGetComboSizes(N, bet.NumberOfBets || 0);
+      var groups = {}, totalGain = 0;
+      for (var ci = 0; ci < comboSizes.length; ci++) {
+        var k = comboSizes[ci];
+        var combos = sbCombinations(N, k), winCombos = [], loseCombos = 0;
+        for (var j = 0; j < combos.length; j++) {
+          var combo = combos[j], prod = 1, lost = false;
+          for (var m = 0; m < combo.length; m++) {
+            if (factors[combo[m]] === 0) { lost = true; break; }
+            prod *= factors[combo[m]];
+          }
+          if (lost) { loseCombos++; }
+          else { var g = stakePerBet * prod; winCombos.push({ idx:combo, odds:prod, gain:g }); totalGain += g; }
+        }
+        groups[k] = { win:winCombos, lose:loseCombos, total:winCombos.reduce(function(a,b){return a+b.gain;},0) };
+      }
+      totalGain = sbRnd(totalGain, roundingMode);
+      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, comboSizes, groups, totalGain, roundingMode };
+    }
+    sbRender();
+  }
+
+  function sbSelRow(d, i) {
+    var s = d.sels[i], factorNote = '';
+    if (s.SelectionStatus === 17 || s.SelectionStatus === 16) {
+      var f = sbFactor(s);
+      factorNote = '<span style="font-size:10px;color:#f59e0b;margin-left:4px">（有效 @' + f.toFixed(4).replace(/\.?0+$/,'') + '）</span>';
+    }
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<div style="font-size:16px;flex-shrink:0;width:22px;text-align:center;font-weight:700;color:var(--blue)">' + sbCircle(i) + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:12px;font-weight:600;color:var(--text-pri);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sbSelName(s) + ' <span style="color:var(--text-muted);font-weight:400">@' + s.TrueOdds + '</span></div>'
+      + '<div style="font-size:10px;color:var(--text-muted);margin-top:1px">' + sbEventName(s) + '</div>'
+      + '</div><div style="flex-shrink:0;text-align:right">' + sbStatusTag(s) + factorNote + '</div></div>';
+  }
+
+  function sbReportCard() {
+    var defs = [{lang:'zh',label:'中文',btn:'复制'},{lang:'en',label:'English',btn:'Copy'},{lang:'ko',label:'한국어',btn:'복사'}];
+    var html = '<div class="card" style="padding:16px"><div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:12px">客户报告</div>';
+    for (var i=0; i<defs.length; i++) {
+      var ld = defs[i];
+      var txt = _sbData.isParlay ? sbBuildParlayReportLang(ld.lang) : sbBuildSystemReportLang(ld.lang);
+      var esc = txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '<div style="margin-bottom:'+(i<2?'14':'0')+'px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+        +'<span style="font-size:12px;font-weight:700;color:var(--text-muted)">'+ld.label+'</span>'
+        +'<button onclick="copyText(document.getElementById(\'sbr-'+ld.lang+'\').textContent,this)" style="padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:11px">📋 '+ld.btn+'</button>'
+        +'</div>'
+        +'<pre id="sbr-'+ld.lang+'" style="font-size:11px;color:var(--text-sec);white-space:pre-wrap;word-break:break-word;background:var(--surface2);border-radius:8px;padding:10px;margin:0;line-height:1.65">'+esc+'</pre></div>';
+    }
+    return html+'</div>';
+  }
+
+  function sbEffectivePart(sel, i) {
+    var s = sel.SelectionStatus, f = sbFactor(sel);
+    if (s === 17) return sbCircle(i) + ' ' + f.toFixed(4).replace(/\.?0+$/,'') + '(半贏)';
+    if (s === 16) return sbCircle(i) + ' 0.5(半輸)';
+    if (s === 4)  return sbCircle(i) + ' 1(取消)';
+    if (s === 3)  return sbCircle(i) + ' 1(和局)';
+    if (s === 15) return sbCircle(i) + ' 1(拒絕)';
+    if (s === 32) return sbCircle(i) + ' 1(套現)';
+    return sbCircle(i) + ' ' + sel.TrueOdds;
+  }
+  function sbEffectivePartText(sel, i) {
+    var s = sel.SelectionStatus, f = sbFactor(sel);
+    if (s === 17) return sbCircle(i) + '@' + f.toFixed(4).replace(/\.?0+$/,'') + '(半赢)';
+    if (s === 16) return sbCircle(i) + '@0.5(半输)';
+    return sbCircle(i) + '@' + sel.TrueOdds;
+  }
+
+  function sbRenderSelections() {
+    var d = _sbData;
+    var html = '<div class="card" style="padding:16px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px;flex-shrink:0">選項結果</div>'
+      + '<div style="overflow-y:auto;flex:1">';
+    for (var i = 0; i < d.sels.length; i++) html += sbSelRow(d, i);
+    return html + '</div></div>';
+  }
+
+  function sbRender() {
+    if (!_sbData) return;
+    if (_sbData.isParlay) {
+      var pct = _sbBonusPctOverride !== null ? _sbBonusPctOverride : _sbData.bonusPctJson;
+      _sbData.bonusPct  = pct;
+      _sbData.bonusGain = (_sbData.hasLoss || !_sbData.bonusPctJson) ? 0 : sbRnd(_sbData.baseGain * pct, _sbData.roundingMode);
+      _sbData.totalGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
+    }
+    var sel = document.getElementById('sb-sel-results');
+    if (sel) { sel.innerHTML = sbRenderSelections(); sel.style.display = 'block'; }
+    var res = document.getElementById('sb-results');
+    if (!res) return;
+    res.innerHTML = _sbData.isParlay ? sbRenderParlay() : sbRenderSystem();
+    res.style.display = 'block';
+  }
+
+  // ── Parlay renderer ──────────────────────────────────────────────────────
+  function sbRenderParlay() {
+    var d = _sbData;
+    var gainColor = d.hasLoss ? 'var(--red,#ef4444)' : 'var(--green)';
+
+    // Header
+    var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+      + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">注单号 ' + d.ticketId + '</div></div>'
+      + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">投注</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
+      + '</div>';
+
+    var cols = d.bonusPctJson > 0 ? 3 : 2;
+    html += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px">'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:10px;color:var(--text-muted)">基本派彩</div>'
+      + '<div style="font-size:15px;font-weight:700;color:' + gainColor + '">' + d.cs + sbFmt(d.baseGain) + '</div></div>';
+    if (d.bonusPctJson > 0) {
+      html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+        + '<div style="font-size:10px;color:var(--text-muted)">串關加成 (' + sbPctStr(d.bonusPct) + '%)</div>'
+        + '<div style="font-size:15px;font-weight:700;color:#f59e0b">+' + d.cs + sbFmt(d.bonusGain) + '</div></div>';
+    }
+    html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
+      + '</div></div>';
+
+    // Formula
+    html += '<div class="card" style="padding:16px;margin-bottom:12px">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px">結算算式</div>'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:10px;font-family:monospace;font-size:12px">';
+    if (d.hasLoss) {
+      html += '<div style="color:var(--red,#ef4444)">含落空選項 → 串關派彩 = 0</div>';
+    } else {
+      var parts = d.sels.map(function(s,i){ return sbEffectivePart(s,i); });
+      html += '<div style="color:var(--text-pri);margin-bottom:6px">' + parts.join(' × ') + '</div>'
+        + '<div style="color:var(--text-muted);margin-bottom:8px">= ' + sbFmtOdds(d.product) + '</div>'
+        + '<div style="color:var(--text-pri)">基本派彩 = ' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(d.product)
+        + ' = <span style="color:var(--green);font-weight:700">' + d.cs + sbFmt(d.baseGain) + '</span></div>';
+      if (d.bonusPctJson > 0) {
+        var pctOverrideActive = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+        html += '<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">'
+          + '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:var(--text-pri)">'
+          + '串關加成 <input type="text" inputmode="decimal" value="' + sbPctStr(d.bonusPct) + '"'
+          + ' style="width:48px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text-pri);font-size:12px;text-align:center"'
+          + ' oninput="sbSetBonusPct(this.value)"> %'
+          + (pctOverrideActive ? ' <span style="font-size:10px;color:var(--text-muted)">(JSON: ' + sbPctStr(d.bonusPctJson) + '%)</span>' : '')
+          + '</div>'
+          + '<div style="margin-top:3px;color:var(--text-muted);font-size:11px">'
+          + '= ' + d.cs + sbFmt(d.baseGain) + ' × ' + sbPctStr(d.bonusPct) + '%'
+          + ' = <span style="color:#f59e0b;font-weight:700">+' + d.cs + sbFmt(d.bonusGain) + '</span></div>'
+          + '<div style="margin-top:4px;color:var(--text-pri);font-weight:700">'
+          + d.cs + sbFmt(d.baseGain) + ' + ' + d.cs + sbFmt(d.bonusGain)
+          + ' = <span style="color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</span></div>'
+          + '</div>';
+      }
+    }
+    html += '</div>'
+      + '<div style="border-top:2px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">總派彩</div>'
+      + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
+      + '</div></div>';
+
+    return html + sbReportCard();
+  }
+
+  function sbBuildParlayReportLang(lang) {
+    if (!_sbData || !_sbData.isParlay) return '';
+    var d = _sbData, lines = [];
+    var betNameLang = d.N + (lang==='en' ? '-Fold Parlay' : lang==='ko' ? '폴드 파레이' : '串1 串关');
+    if (lang === 'en') {
+      lines.push('Ticket ID: ' + d.ticketId);
+      lines.push(betNameLang + ' | Stake ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('Results:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = ' (eff.@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+')';
+        else if (s.SelectionStatus===16) note = ' (eff.@0.5)';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'en')+note+'');
+      }
+      lines.push('');
+      lines.push('Settlement:');
+      if (d.hasLoss) {
+        lines.push('Contains losing selection → Parlay payout = 0');
+      } else {
+        var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'en'); });
+        lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
+        lines.push('Base Payout: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        if (d.bonusPctJson > 0) {
+          lines.push('');
+          var _pctOvrEn = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+          if (_pctOvrEn) {
+            var _cnEn = d.sels.map(function(s,i){return (s.SelectionStatus===4||s.SelectionStatus===15)?sbCircle(i)+' '+sbSelNameText(s):null;}).filter(Boolean).join(', ');
+            lines.push('*Combo Bonus tier adjusted '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'%'
+              +(_cnEn ? ' due to '+_cnEn+' being Canceled' : ''));
+          }
+          lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('');
+          lines.push('Total Payout: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+        }
+      }
+    } else if (lang === 'ko') {
+      lines.push('주문번호: ' + d.ticketId);
+      lines.push(betNameLang + ' | 배팅 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('결과:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（유효@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（유효@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'ko')+note+'');
+      }
+      lines.push('');
+      lines.push('정산식:');
+      if (d.hasLoss) {
+        lines.push('낙첨 선택 포함 → 파레이 배당 = 0');
+      } else {
+        var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'ko'); });
+        lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
+        lines.push('기본 배당: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        if (d.bonusPctJson > 0) {
+          lines.push('');
+          var _pctOvrKo = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+          if (_pctOvrKo) {
+            var _cnKo = d.sels.map(function(s,i){return (s.SelectionStatus===4||s.SelectionStatus===15)?sbCircle(i)+' '+sbSelNameText(s):null;}).filter(Boolean).join(', ');
+            lines.push('*콤보 보너스 등급 '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'% 조정'
+              +(_cnKo ? '（'+_cnKo+' 취소로 인해）' : ''));
+          }
+          lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('');
+          lines.push('최종 배당: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+        }
+      }
+    } else {
+      lines.push('注单号：' + d.ticketId);
+      lines.push(betNameLang + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('选项结果：');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（有效@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（有效@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'');
+      }
+      lines.push('');
+      lines.push('结算算式：');
+      if (d.hasLoss) {
+        lines.push('含落空选项 → 串关派彩 = 0');
+      } else {
+        var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'zh'); });
+        lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
+        lines.push('基本派彩：'+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        if (d.bonusPctJson > 0) {
+          lines.push('');
+          var _pctOvrZh = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
+          if (_pctOvrZh) {
+            var _cnZh = d.sels.map(function(s,i){return (s.SelectionStatus===4||s.SelectionStatus===15)?sbCircle(i)+' '+sbSelNameText(s):null;}).filter(Boolean).join('、');
+            lines.push('*串关加成级距从 '+sbPctStr(d.bonusPctJson)+'% 下调至 '+sbPctStr(d.bonusPct)+'%'
+              +(_cnZh ? '（因 '+_cnZh+' 取消）' : ''));
+          }
+          lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('');
+          lines.push('最终派彩：'+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+        }
+      }
+    }
+    return lines.join('\n');
+  }
+
+  // ── System bet renderer ──────────────────────────────────────────────────
+  function sbRenderSystem() {
+    var d = _sbData;
+    var csn = {2:'雙串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'};
+    var winTotal = d.comboSizes.reduce(function(a,k){return a+d.groups[k].win.length;},0);
+
+    var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+      + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">注单号 ' + d.ticketId + '</div></div>'
+      + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">總投注</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:10px;color:var(--text-muted)">每注</div><div style="font-size:15px;font-weight:700;color:var(--blue)">' + d.cs + sbFmt(d.stakePerBet) + '</div></div>'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:10px;color:var(--text-muted)">共 ' + d.bet.NumberOfBets + ' 注</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--green)">中 ' + winTotal + ' 注</div></div>'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div><div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
+      + '</div></div>';
+
+    html += '<div class="card" style="padding:16px;margin-bottom:12px">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:12px">結算算式（每注 ' + d.cs + sbFmt(d.stakePerBet) + '）</div>';
+    for (var ci = 0; ci < d.comboSizes.length; ci++) {
+      var k = d.comboSizes[ci], g = d.groups[k];
+      var sizeName = csn[k] || (k+'串'), totalInSize = g.win.length + g.lose;
+      html += '<div style="margin-bottom:14px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--text-pri)">▌' + sizeName
+        + ' <span style="color:var(--text-muted);font-weight:400">（' + totalInSize + '注中 ' + g.win.length + ' 注）</span></div>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(g.total) + '</div></div>';
+      if (g.win.length > 0) {
+        html += '<div style="background:var(--surface2);border-radius:8px;padding:8px;font-family:monospace;font-size:11px">';
+        for (var wi = 0; wi < g.win.length; wi++) {
+          var w = g.win[wi];
+          var ep = w.idx.map(function(i){ return sbEffectivePart(d.sels[i], i); });
+          html += '<div style="padding:2px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px">'
+            + '<span style="color:var(--text-pri)">' + ep.join(' × ') + ' = ' + sbFmtOdds(w.odds) + '</span>'
+            + '<span style="color:var(--green);flex-shrink:0">× ' + d.cs + sbFmt(d.stakePerBet) + ' = <b>' + d.cs + sbFmt(w.gain) + '</b></span>'
+            + '</div>';
+        }
+        html += '</div>';
+      } else { html += '<div style="font-size:11px;color:var(--text-muted);padding:4px 0">全部落空</div>'; }
+      html += '</div>';
+    }
+    html += '<div style="border-top:2px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;align-items:center">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">總派彩</div>'
+      + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
+      + '</div></div>';
+
+    return html + sbReportCard();
+  }
+
+  function sbBuildSystemReportLang(lang) {
+    if (!_sbData || _sbData.isParlay) return '';
+    var d = _sbData, lines = [];
+    var csn = {
+      zh:{2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'},
+      en:{2:'Doubles',3:'Trebles',4:'4-Folds',5:'5-Folds',6:'6-Folds',7:'7-Folds',8:'8-Folds'},
+      ko:{2:'더블',3:'트레블',4:'4폴드',5:'5폴드',6:'6폴드',7:'7폴드',8:'8폴드'}
+    };
+    var csnL = csn[lang] || csn.zh;
+    if (lang === 'en') {
+      lines.push('Ticket ID: ' + d.ticketId);
+      lines.push(d.betName + ' | Per Bet ' + d.cs + sbFmt(d.stakePerBet) + ' | Total ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('Results:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = ' (eff.@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+')';
+        else if (s.SelectionStatus===16) note = ' (eff.@0.5)';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'en')+note+'');
+      }
+      lines.push('');
+      lines.push('Settlement:');
+      for (var ci = 0; ci < d.comboSizes.length; ci++) {
+        var k = d.comboSizes[ci], g = d.groups[k];
+        var sn = csnL[k]||(k+'-Folds'), tot = g.win.length+g.lose;
+        lines.push('');
+        lines.push('▌'+sn+' ('+g.win.length+'/'+tot+' won) Total: '+d.cs+sbFmt(g.total));
+        for (var wi=0;wi<g.win.length;wi++) {
+          var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'en'); });
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+        }
+        if (g.win.length===0) lines.push('  All lost');
+      }
+    } else if (lang === 'ko') {
+      lines.push('주문번호: ' + d.ticketId);
+      lines.push(d.betName + ' | 건당 ' + d.cs + sbFmt(d.stakePerBet) + ' | 합계 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('결과:');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（유효@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（유효@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'ko')+note+'');
+      }
+      lines.push('');
+      lines.push('정산식:');
+      for (var ci = 0; ci < d.comboSizes.length; ci++) {
+        var k = d.comboSizes[ci], g = d.groups[k];
+        var sn = csnL[k]||(k+'폴드'), tot = g.win.length+g.lose;
+        lines.push('');
+        lines.push('▌'+sn+' ('+tot+'건 중 '+g.win.length+'건) 합계: '+d.cs+sbFmt(g.total));
+        for (var wi=0;wi<g.win.length;wi++) {
+          var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'ko'); });
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+        }
+        if (g.win.length===0) lines.push('  전부 낙첨');
+      }
+    } else {
+      lines.push('注单号：' + d.ticketId);
+      lines.push(d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push('');
+      lines.push('选项结果：');
+      for (var i = 0; i < d.sels.length; i++) {
+        var s = d.sels[i], note = '';
+        if (s.SelectionStatus===17) note = '（有效@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
+        else if (s.SelectionStatus===16) note = '（有效@0.5）';
+        lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'');
+      }
+      lines.push('');
+      lines.push('结算算式：');
+      for (var ci = 0; ci < d.comboSizes.length; ci++) {
+        var k = d.comboSizes[ci], g = d.groups[k];
+        var sn = csnL[k]||(k+'串'), tot = g.win.length+g.lose;
+        lines.push('');
+        lines.push('▌'+sn+'（'+tot+'注中 '+g.win.length+' 注）合计：'+d.cs+sbFmt(g.total));
+        for (var wi=0;wi<g.win.length;wi++) {
+          var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'zh'); });
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+        }
+        if (g.win.length===0) lines.push('  全部落空');
+      }
+    }
+    var totalLabel = lang==='en' ? 'Total Payout: ' : lang==='ko' ? '총 배당: ' : '派彩合计：';
+    lines.push('');
+    lines.push(totalLabel + d.cs + sbFmt(d.totalGain));
+    return lines.join('\n');
+  }
+
+  function sbCopyReport() {
+    var el = document.getElementById('sbr-zh') || document.getElementById('sbr-en');
+    if (el) copyText(el.textContent, null);
+  }
 </script>
+
+<div id="tab-translate" class="tab-content">
+  <div style="max-width:860px;width:100%;margin:0 auto;padding:16px">
+    <!-- Sub-tab nav -->
+    <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:16px">
+      <button id="tr-tabbtn-translator" onclick="trSwitchTab('translator')"
+        style="padding:9px 18px;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-1px;transition:color 0.15s">
+        🌐 翻譯器</button>
+      <button id="tr-tabbtn-phrases" onclick="trSwitchTab('phrases')"
+        style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
+        📚 造句庫 (<span id="tr-phrase-count">0</span>)</button>
+      <button id="tr-tabbtn-terms" onclick="trSwitchTab('terms')"
+        style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
+        📖 術語庫 (<span id="tr-term-count">0</span>)</button>
+      <button id="tr-tabbtn-settings" onclick="trSwitchTab('settings')"
+        style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
+        ⚙️ 設定</button>
+    </div>
+
+    <!-- 翻譯器 -->
+    <div id="tr-tab-translator">
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">輸入文字（自動偵測語言）</div>
+        <textarea id="tr-input" placeholder="在此輸入要翻譯的文字..."
+          onkeydown="if(event.ctrlKey&&event.key==='Enter')trTranslate()"
+          style="width:100%;box-sizing:border-box;height:120px;font-size:13px;font-family:inherit;line-height:1.65;background:var(--surface2);color:var(--text-pri);border:1px solid var(--border);border-radius:8px;padding:10px 12px;resize:vertical;outline:none"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <button onclick="trTranslate()"
+            style="padding:8px 22px;font-size:13px;font-weight:600;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer">
+            🌐 翻譯</button>
+          <button onclick="trClear()"
+            style="padding:8px 16px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer">
+            清空</button>
+          <span style="font-size:11px;color:var(--text-muted)">Ctrl+Enter 快速翻譯</span>
+        </div>
+      </div>
+      <div id="tr-loading" style="display:none;align-items:center;gap:10px;padding:16px;color:var(--text-muted);font-size:13px">
+        <div style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></div>
+        翻譯中...
+      </div>
+      <div id="tr-results" style="display:none"></div>
+    </div>
+
+    <!-- 造句庫 -->
+    <div id="tr-tab-phrases" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input id="tr-phrase-search" placeholder="搜尋標題或內容..."
+          oninput="_trPhraseFilter=this.value;trRenderPhrases()"
+          style="flex:1;min-width:150px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+        <select id="tr-phrase-cat-filter" onchange="_trPhraseCat=this.value;trRenderPhrases()"
+          style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <option value="">全部分類</option>
+        </select>
+      </div>
+      <div id="tr-phrases-list"></div>
+    </div>
+
+    <!-- 術語庫 -->
+    <div id="tr-tab-terms" style="display:none">
+      <div class="card" style="padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:8px">新增術語</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="tr-new-zh" placeholder="中文"
+            style="flex:1;min-width:90px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <input id="tr-new-en" placeholder="English"
+            style="flex:1;min-width:90px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <input id="tr-new-ko" placeholder="한국어"
+            style="flex:1;min-width:90px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+          <button onclick="trAddTerm()"
+            style="padding:7px 16px;border:none;border-radius:6px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">新增</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">中文</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">English</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">한국어</th>
+              <th style="padding:10px 12px;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="tr-terms-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 設定 -->
+    <div id="tr-tab-settings" style="display:none">
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🔑 Claude API Key</div>
+        <!-- saved view -->
+        <div id="tr-key-saved-view" style="display:none;align-items:center;gap:10px">
+          <span style="font-size:13px;color:var(--text-muted);font-family:monospace;letter-spacing:2px">••••••••••••••••••••</span>
+          <span id="tr-key-status" style="font-size:12px;color:var(--green)">✓ 已設定</span>
+          <button onclick="trEditApiKey()" style="margin-left:auto;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">編輯</button>
+          <button id="tr-test-btn" onclick="trTestApiKey()" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">測試</button>
+        </div>
+        <!-- edit view -->
+        <div id="tr-key-edit-view">
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
+            在 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--blue)">console.anthropic.com</a> 取得，格式：<code style="background:var(--surface2);padding:1px 5px;border-radius:3px">sk-ant-api03-...</code><br>
+            Key 只存在你的瀏覽器 localStorage，不會傳送到任何第三方。
+          </div>
+          <div style="display:flex;gap:8px">
+            <input id="tr-api-key-input" type="password" placeholder="sk-ant-api03-..."
+              style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
+            <button onclick="trSaveApiKey()"
+              style="padding:8px 16px;border:none;border-radius:8px;background:var(--green);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🌐 Proxy URL（解決 CORS）</div>
+        <!-- saved view -->
+        <div id="tr-proxy-saved-view" style="display:none;align-items:center;gap:10px">
+          <span id="tr-proxy-display" style="font-size:12px;color:var(--text-muted);font-family:monospace;word-break:break-all"></span>
+          <button onclick="trEditProxyUrl()" style="margin-left:auto;flex-shrink:0;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px">編輯</button>
+        </div>
+        <!-- edit view -->
+        <div id="tr-proxy-edit-view">
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">
+            瀏覽器直接呼叫 Anthropic API 會被 CORS 封鎖。請部署一個 Cloudflare Worker 作為代理，並在此填入 Worker URL。<br>
+            留空則直接呼叫 <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">api.anthropic.com</code>（僅 localhost 可用）。
+          </div>
+          <div style="display:flex;gap:8px">
+            <input id="tr-proxy-url-input" type="url" placeholder="https://your-worker.your-name.workers.dev"
+              style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none">
+            <button onclick="trSaveProxyUrl()"
+              style="padding:8px 16px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">儲存</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:12px">📊 使用量統計</div>
+        <div id="tr-usage-body"></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">定價：Haiku 4.5 — 輸入 $1.00 / 輸出 $5.00（每百萬 tokens）　｜　<a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener" style="color:var(--blue)">查看帳單 →</a></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">📦 匯入 / 匯出</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="trImport()"
+            style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">📂 匯入 JSON</button>
+          <button onclick="trExport()"
+            style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">💾 匯出 JSON</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">支援匯入舊格式（original + translation1/2）自動轉換</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-sysbets" class="tab-content">
+  <div class="container">
+    <div style="display:flex;gap:12px;align-items:stretch;height:290px;margin-bottom:12px">
+      <div style="flex:0 0 300px;min-width:260px;display:flex;flex-direction:column">
+        <div class="card" style="padding:14px;flex:1;display:flex;flex-direction:column;overflow:hidden">
+          <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🎰 串關計算機</div>
+          <textarea id="sb-json-input" placeholder="在此貼上投注 JSON…"
+            onpaste="setTimeout(sbParse,0)"
+            style="flex:1;width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none;resize:none;min-height:0"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-shrink:0">
+            <button onclick="sbParse()" style="flex:1;padding:9px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">解析計算</button>
+            <button onclick="sbClear()" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">清除</button>
+          </div>
+        </div>
+      </div>
+      <div id="sb-sel-results" style="display:none;flex:1;min-width:220px;overflow-y:auto"></div>
+    </div>
+    <div id="sb-results" style="display:none"></div>
+  </div>
+</div>
 </body>
 </html>
