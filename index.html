@@ -6330,7 +6330,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       var bonusMax  = bonusObj ? (bonusObj.MaxWin || null) : null;
       _sbBonusPctOverride = null;
       // bonusPct / bonusGain / totalGain are computed live in sbRender()
-      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, roundingMode,
+      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, roundingMode,
         bonusPct:0, bonusGain:0, totalGain:baseGain };
     } else {
       var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
@@ -6351,7 +6351,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         groups[k] = { win:winCombos, lose:loseCombos, total:winCombos.reduce(function(a,b){return a+b.gain;},0) };
       }
       totalGain = sbRnd(totalGain, roundingMode);
-      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, comboSizes, groups, totalGain, roundingMode };
+      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, comboSizes, groups, totalGain, roundingMode };
     }
     sbRender();
   }
@@ -6500,10 +6500,11 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   function sbBuildParlayReportLang(lang) {
     if (!_sbData || !_sbData.isParlay) return '';
     var d = _sbData, lines = [];
+    var rc = d.currency ? d.currency + ' ' : '';
     var betNameLang = d.N + (lang==='en' ? '-Fold Parlay' : lang==='ko' ? '폴드 파레이' : '串1 串关');
     if (lang === 'en') {
       lines.push('Ticket ID: ' + d.ticketId);
-      lines.push(betNameLang + ' | Stake ' + d.cs + sbFmt(d.totalStake));
+      lines.push(betNameLang + ' | Stake ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6519,7 +6520,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       } else {
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'en'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
-        lines.push('Base Payout: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        lines.push('Base Payout: '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrEn = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6528,14 +6529,14 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             lines.push('*Combo Bonus tier adjusted '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'%'
               +(_cnEn ? ' due to '+_cnEn+' being Canceled' : ''));
           }
-          lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('Total Payout: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push('Total Payout: '+rc+sbFmt(d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     } else if (lang === 'ko') {
       lines.push('주문번호: ' + d.ticketId);
-      lines.push(betNameLang + ' | 배팅 ' + d.cs + sbFmt(d.totalStake));
+      lines.push(betNameLang + ' | 배팅 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6551,7 +6552,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       } else {
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'ko'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
-        lines.push('기본 배당: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        lines.push('기본 배당: '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrKo = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6560,14 +6561,14 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             lines.push('*콤보 보너스 등급 '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'% 조정'
               +(_cnKo ? '（'+_cnKo+' 취소로 인해）' : ''));
           }
-          lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('최종 배당: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push('최종 배당: '+rc+sbFmt(d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     } else {
       lines.push('注单号：' + d.ticketId);
-      lines.push(betNameLang + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push(betNameLang + ' | 投注 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6583,7 +6584,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       } else {
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'zh'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
-        lines.push('基本派彩：'+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        lines.push('基本派彩：'+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrZh = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6592,9 +6593,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             lines.push('*串关加成级距从 '+sbPctStr(d.bonusPctJson)+'% 下调至 '+sbPctStr(d.bonusPct)+'%'
               +(_cnZh ? '（因 '+_cnZh+' 取消）' : ''));
           }
-          lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('最终派彩：'+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push('最终派彩：'+rc+sbFmt(d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     }
@@ -6659,6 +6660,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   function sbBuildSystemReportLang(lang) {
     if (!_sbData || _sbData.isParlay) return '';
     var d = _sbData, lines = [];
+    var rc = d.currency ? d.currency + ' ' : '';
     var csn = {
       zh:{2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'},
       en:{2:'Doubles',3:'Trebles',4:'4-Folds',5:'5-Folds',6:'6-Folds',7:'7-Folds',8:'8-Folds'},
@@ -6667,7 +6669,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var csnL = csn[lang] || csn.zh;
     if (lang === 'en') {
       lines.push('Ticket ID: ' + d.ticketId);
-      lines.push(d.betName + ' | Per Bet ' + d.cs + sbFmt(d.stakePerBet) + ' | Total ' + d.cs + sbFmt(d.totalStake));
+      lines.push(d.betName + ' | Per Bet ' + rc + sbFmt(d.stakePerBet) + ' | Total ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6682,16 +6684,16 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var k = d.comboSizes[ci], g = d.groups[k];
         var sn = csnL[k]||(k+'-Folds'), tot = g.win.length+g.lose;
         lines.push('');
-        lines.push('▌'+sn+' ('+g.win.length+'/'+tot+' won) Total: '+d.cs+sbFmt(g.total));
+        lines.push('▌'+sn+' ('+g.win.length+'/'+tot+' won) Total: '+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'en'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+rc+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  All lost');
       }
     } else if (lang === 'ko') {
       lines.push('주문번호: ' + d.ticketId);
-      lines.push(d.betName + ' | 건당 ' + d.cs + sbFmt(d.stakePerBet) + ' | 합계 ' + d.cs + sbFmt(d.totalStake));
+      lines.push(d.betName + ' | 건당 ' + rc + sbFmt(d.stakePerBet) + ' | 합계 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6706,16 +6708,16 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var k = d.comboSizes[ci], g = d.groups[k];
         var sn = csnL[k]||(k+'폴드'), tot = g.win.length+g.lose;
         lines.push('');
-        lines.push('▌'+sn+' ('+tot+'건 중 '+g.win.length+'건) 합계: '+d.cs+sbFmt(g.total));
+        lines.push('▌'+sn+' ('+tot+'건 중 '+g.win.length+'건) 합계: '+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'ko'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+rc+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  전부 낙첨');
       }
     } else {
       lines.push('注单号：' + d.ticketId);
-      lines.push(d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push(d.betName + ' | 每注 ' + rc + sbFmt(d.stakePerBet) + ' | 总注 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6730,17 +6732,17 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var k = d.comboSizes[ci], g = d.groups[k];
         var sn = csnL[k]||(k+'串'), tot = g.win.length+g.lose;
         lines.push('');
-        lines.push('▌'+sn+'（'+tot+'注中 '+g.win.length+' 注）合计：'+d.cs+sbFmt(g.total));
+        lines.push('▌'+sn+'（'+tot+'注中 '+g.win.length+' 注）合计：'+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'zh'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+rc+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  全部落空');
       }
     }
     var totalLabel = lang==='en' ? 'Total Payout: ' : lang==='ko' ? '총 배당: ' : '派彩合计：';
     lines.push('');
-    lines.push(totalLabel + d.cs + sbFmt(d.totalGain));
+    lines.push(totalLabel + rc + sbFmt(d.totalGain));
     return lines.join('\n');
   }
 
