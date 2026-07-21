@@ -6148,6 +6148,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     if (el) el.value = '';
     var res = document.getElementById('sb-results');
     if (res) { res.innerHTML = ''; res.style.display = 'none'; }
+    var sel = document.getElementById('sb-sel-results');
+    if (sel) { sel.innerHTML = ''; sel.style.display = 'none'; }
     _sbData = null;
     _sbBonusPctOverride = null;
   }
@@ -6402,6 +6404,14 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     return sbCircle(i) + '@' + sel.TrueOdds;
   }
 
+  function sbRenderSelections() {
+    var d = _sbData;
+    var html = '<div class="card" style="padding:16px">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px">選項結果</div>';
+    for (var i = 0; i < d.sels.length; i++) html += sbSelRow(d, i);
+    return html + '</div>';
+  }
+
   function sbRender() {
     if (!_sbData) return;
     if (_sbData.isParlay) {
@@ -6410,6 +6420,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       _sbData.bonusGain = (_sbData.hasLoss || !_sbData.bonusPctJson) ? 0 : sbRnd(_sbData.baseGain * pct, _sbData.roundingMode);
       _sbData.totalGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
     }
+    var sel = document.getElementById('sb-sel-results');
+    if (sel) { sel.innerHTML = sbRenderSelections(); sel.style.display = 'block'; }
     var res = document.getElementById('sb-results');
     if (!res) return;
     res.innerHTML = _sbData.isParlay ? sbRenderParlay() : sbRenderSystem();
@@ -6444,12 +6456,6 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div>'
       + '<div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
       + '</div></div>';
-
-    // Selections
-    html += '<div class="card" style="padding:16px;margin-bottom:12px">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px">選項結果</div>';
-    for (var i = 0; i < d.sels.length; i++) html += sbSelRow(d, i);
-    html += '</div>';
 
     // Formula
     html += '<div class="card" style="padding:16px;margin-bottom:12px">'
@@ -6616,11 +6622,6 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
       + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div><div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
       + '</div></div>';
-
-    html += '<div class="card" style="padding:16px;margin-bottom:12px">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:10px">選項結果</div>';
-    for (var i = 0; i < d.sels.length; i++) html += sbSelRow(d, i);
-    html += '</div>';
 
     html += '<div class="card" style="padding:16px;margin-bottom:12px">'
       + '<div style="font-size:13px;font-weight:700;color:var(--text-pri);margin-bottom:12px">結算算式（每注 ' + d.cs + sbFmt(d.stakePerBet) + '）</div>';
@@ -6901,14 +6902,19 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
 
 <div id="tab-sysbets" class="tab-content">
   <div class="container">
-    <div class="card" style="padding:16px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🎰 串關計算機</div>
-      <textarea id="sb-json-input" placeholder="在此貼上投注 JSON…"
-        style="width:100%;box-sizing:border-box;height:110px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none;resize:vertical"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button onclick="sbParse()" style="flex:1;padding:9px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">解析計算</button>
-        <button onclick="sbClear()" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">清除</button>
+    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px">
+      <div style="flex:0 0 300px;min-width:260px">
+        <div class="card" style="padding:14px">
+          <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">🎰 串關計算機</div>
+          <textarea id="sb-json-input" placeholder="在此貼上投注 JSON…"
+            style="width:100%;box-sizing:border-box;height:160px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:monospace;background:var(--surface2);color:var(--text-pri);outline:none;resize:vertical"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button onclick="sbParse()" style="flex:1;padding:9px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">解析計算</button>
+            <button onclick="sbClear()" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">清除</button>
+          </div>
+        </div>
       </div>
+      <div id="sb-sel-results" style="display:none;flex:1;min-width:220px"></div>
     </div>
     <div id="sb-results" style="display:none"></div>
   </div>
