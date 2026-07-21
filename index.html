@@ -6474,8 +6474,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var pctOverrideActive = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
         html += '<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">'
           + '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:var(--text-pri)">'
-          + '串關加成 <input type="number" value="' + sbPctStr(d.bonusPct) + '" step="0.5" min="0" max="100"'
-          + ' style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text-pri);font-size:12px;text-align:center"'
+          + '串關加成 <input type="text" inputmode="decimal" value="' + sbPctStr(d.bonusPct) + '"'
+          + ' style="width:48px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text-pri);font-size:12px;text-align:center"'
           + ' oninput="sbSetBonusPct(this.value)"> %'
           + (pctOverrideActive ? ' <span style="font-size:10px;color:var(--text-muted)">(JSON: ' + sbPctStr(d.bonusPctJson) + '%)</span>' : '')
           + '</div>'
