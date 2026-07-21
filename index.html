@@ -6578,7 +6578,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'');
       }
       lines.push('');
-      lines.push('结算算式：');
+      lines.push('结算赔率：');
       if (d.hasLoss) {
         lines.push('含落空选项 → 串关派彩 = 0');
       } else {
@@ -6727,7 +6727,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'');
       }
       lines.push('');
-      lines.push('结算算式：');
+      lines.push('结算赔率：');
       for (var ci = 0; ci < d.comboSizes.length; ci++) {
         var k = d.comboSizes[ci], g = d.groups[k];
         var sn = csnL[k]||(k+'串'), tot = g.win.length+g.lose;
