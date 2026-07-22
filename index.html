@@ -6346,7 +6346,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         bonusPct:0, bonusGain:0, grossGain:baseGain, totalGain:baseGain };
     } else {
       var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
-      var comboSizes = (bet.ComboSize > 0) ? [bet.ComboSize] : sbGetComboSizes(N, bet.NumberOfBets || 0);
+      var _nbets = bet.NumberOfBets || 0;
+      var comboSizes = (bet.ComboSize > 0 && sbC(N, bet.ComboSize) === _nbets)
+        ? [bet.ComboSize] : sbGetComboSizes(N, _nbets);
       var groups = {}, totalGain = 0;
       for (var ci = 0; ci < comboSizes.length; ci++) {
         var k = comboSizes[ci];
