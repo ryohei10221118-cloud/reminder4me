@@ -6452,7 +6452,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     // Header
     var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
-      + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
+      + '<div>' + (d.N > 1 ? '<div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>' : '')
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">注单号 ' + d.ticketId + '</div></div>'
       + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">投注</div>'
       + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
@@ -6531,7 +6531,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var betNameLang = d.N + (lang==='en' ? '-Fold Parlay' : lang==='ko' ? '폴드 파레이' : '串1 串关');
     if (lang === 'en') {
       lines.push('Ticket ID: ' + d.ticketId);
-      lines.push(betNameLang + ' | Stake ' + rc + sbFmt(d.totalStake));
+      lines.push((d.N > 1 ? betNameLang + ' | ' : '') + 'Stake ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6568,7 +6568,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       }
     } else if (lang === 'ko') {
       lines.push('주문번호: ' + d.ticketId);
-      lines.push(betNameLang + ' | 배팅 ' + rc + sbFmt(d.totalStake));
+      lines.push((d.N > 1 ? betNameLang + ' | ' : '') + '배팅 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6605,7 +6605,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       }
     } else {
       lines.push('注单号：' + d.ticketId);
-      lines.push(betNameLang + ' | 投注 ' + rc + sbFmt(d.totalStake));
+      lines.push((d.N > 1 ? betNameLang + ' | ' : '') + '投注 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
