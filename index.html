@@ -2419,7 +2419,8 @@
   function _qrCombinedCopyHint(lang, btn) {
     const timeVal = _getQrTimeInput();
     const rows = document.querySelectorAll('.qr-event-sel-row');
-    const parts = [];   // {text, url}
+    // Group events by QR index so same template = merged event names
+    const groupOrder = [], groups = {};
     rows.forEach(row => {
       const cb = row.querySelector('.qr-event-cb');
       if (!cb || !cb.checked) return;
@@ -2431,10 +2432,17 @@
       const eventName = cb.dataset.name || '';
       const evTime = timeVal || _getEventTime(eventName);
       if (evTime && eventName) _saveEventTime(eventName, evTime);
-      let text = qr[lang] || '';
-      text = text.replace(/\{time\}/g, evTime);
-      if (qr.attachName && eventName) text = eventName + '\n' + text;
-      parts.push({ text: text.trimEnd(), url: qr.hasUrl ? _hintPopupUrl : '' });
+      if (!groups[qrIdx]) { groups[qrIdx] = { qr, names: [], evTime: evTime || '' }; groupOrder.push(qrIdx); }
+      groups[qrIdx].names.push(eventName);
+      if (!groups[qrIdx].evTime && evTime) groups[qrIdx].evTime = evTime;
+    });
+    const parts = [];
+    groupOrder.forEach(function(qrIdx) {
+      const g = groups[qrIdx];
+      let text = g.qr[lang] || '';
+      text = text.replace(/\{time\}/g, g.evTime);
+      if (g.qr.attachName && g.names.length) text = g.names.join('\n') + '\n' + text;
+      parts.push({ text: text.trimEnd(), url: g.qr.hasUrl ? _hintPopupUrl : '' });
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
     const agentName = getAgentName();
