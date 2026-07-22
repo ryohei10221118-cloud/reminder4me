@@ -6338,10 +6338,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       var bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
       var bonusPctJson = bonusObj ? (bonusObj.Percentage || 0) : 0;
       var bonusMax  = bonusObj ? (bonusObj.MaxWin || null) : null;
+      var freeBetObj = bet.FreeBet;
+      var freeBetAmount = (freeBetObj && freeBetObj.Amount > 0) ? freeBetObj.Amount : 0;
       _sbBonusPctOverride = null;
-      // bonusPct / bonusGain / totalGain are computed live in sbRender()
-      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, roundingMode,
-        bonusPct:0, bonusGain:0, totalGain:baseGain };
+      // bonusPct / bonusGain / totalGain / grossGain are computed live in sbRender()
+      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, freeBetAmount, roundingMode,
+        bonusPct:0, bonusGain:0, grossGain:baseGain, totalGain:baseGain };
     } else {
       var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
       var comboSizes = (bet.ComboSize > 0) ? [bet.ComboSize] : sbGetComboSizes(N, bet.NumberOfBets || 0);
@@ -6429,7 +6431,10 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       var pct = _sbBonusPctOverride !== null ? _sbBonusPctOverride : _sbData.bonusPctJson;
       _sbData.bonusPct  = pct;
       _sbData.bonusGain = (_sbData.hasLoss || !_sbData.bonusPctJson) ? 0 : sbRnd(_sbData.baseGain * pct, _sbData.roundingMode);
-      _sbData.totalGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
+      _sbData.grossGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
+      _sbData.totalGain = _sbData.freeBetAmount > 0
+        ? sbRnd(_sbData.grossGain - _sbData.freeBetAmount, _sbData.roundingMode)
+        : _sbData.grossGain;
     }
     var sel = document.getElementById('sb-sel-results');
     if (sel) { sel.innerHTML = sbRenderSelections(); sel.style.display = 'block'; }
@@ -6453,7 +6458,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
       + '</div>';
 
-    var cols = d.bonusPctJson > 0 ? 3 : 2;
+    var hasFB = d.freeBetAmount > 0;
+    var cols = 2 + (d.bonusPctJson > 0 ? 1 : 0) + (hasFB ? 1 : 0);
     html += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px">'
       + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
       + '<div style="font-size:10px;color:var(--text-muted)">基本派彩</div>'
@@ -6463,8 +6469,13 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         + '<div style="font-size:10px;color:var(--text-muted)">串關加成 (' + sbPctStr(d.bonusPct) + '%)</div>'
         + '<div style="font-size:15px;font-weight:700;color:#f59e0b">+' + d.cs + sbFmt(d.bonusGain) + '</div></div>';
     }
+    if (hasFB) {
+      html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+        + '<div style="font-size:10px;color:var(--text-muted)">Free Bet 扣除</div>'
+        + '<div style="font-size:15px;font-weight:700;color:var(--red,#ef4444)">-' + d.cs + sbFmt(d.freeBetAmount) + '</div></div>';
+    }
     html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
-      + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div>'
+      + '<div style="font-size:10px;color:var(--text-muted)">' + (hasFB ? '實際派彩' : '總派彩') + '</div>'
       + '<div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
       + '</div></div>';
 
@@ -6480,6 +6491,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         + '<div style="color:var(--text-muted);margin-bottom:8px">= ' + sbFmtOdds(d.product) + '</div>'
         + '<div style="color:var(--text-pri)">基本派彩 = ' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(d.product)
         + ' = <span style="color:var(--green);font-weight:700">' + d.cs + sbFmt(d.baseGain) + '</span></div>';
+      if (d.freeBetAmount > 0) {
+        html += '<div style="margin-top:6px;color:var(--red,#ef4444)">Free Bet 扣除本金 = -' + d.cs + sbFmt(d.freeBetAmount) + '</div>'
+          + '<div style="margin-top:3px;color:var(--text-pri);font-weight:700">'
+          + d.cs + sbFmt(d.baseGain) + ' - ' + d.cs + sbFmt(d.freeBetAmount)
+          + ' = <span style="color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</span></div>';
+      }
       if (d.bonusPctJson > 0) {
         var pctOverrideActive = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
         html += '<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">'
@@ -6500,7 +6517,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     }
     html += '</div>'
       + '<div style="border-top:2px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">總派彩</div>'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">' + (d.freeBetAmount > 0 ? '實際派彩' : '總派彩') + '</div>'
       + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
       + '</div></div>';
 
@@ -6531,6 +6548,11 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'en'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('Base Payout: '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
+        if (d.freeBetAmount > 0) {
+          lines.push('Free Bet deduction: -'+rc+sbFmt(d.freeBetAmount));
+          lines.push('');
+          lines.push('Actual Payout: '+rc+sbFmt(d.baseGain)+' - '+rc+sbFmt(d.freeBetAmount)+' = '+rc+sbFmt(d.totalGain));
+        }
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrEn = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6541,7 +6563,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           }
           lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('Total Payout: '+rc+sbFmt(d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
+          lines.push((d.freeBetAmount > 0 ? 'Actual' : 'Total')+' Payout: '+rc+sbFmt(d.freeBetAmount > 0 ? d.totalGain - d.bonusGain : d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     } else if (lang === 'ko') {
@@ -6563,6 +6585,11 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'ko'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('기본 배당: '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
+        if (d.freeBetAmount > 0) {
+          lines.push('프리벳 차감: -'+rc+sbFmt(d.freeBetAmount));
+          lines.push('');
+          lines.push('실제 배당: '+rc+sbFmt(d.baseGain)+' - '+rc+sbFmt(d.freeBetAmount)+' = '+rc+sbFmt(d.totalGain));
+        }
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrKo = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6573,7 +6600,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           }
           lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('최종 배당: '+rc+sbFmt(d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
+          lines.push((d.freeBetAmount > 0 ? '실제' : '최종')+' 배당: '+rc+sbFmt(d.freeBetAmount > 0 ? d.totalGain - d.bonusGain : d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     } else {
@@ -6595,6 +6622,11 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'zh'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
         lines.push('基本派彩：'+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
+        if (d.freeBetAmount > 0) {
+          lines.push('Free Bet 扣除本金：-'+rc+sbFmt(d.freeBetAmount));
+          lines.push('');
+          lines.push('实际派彩：'+rc+sbFmt(d.baseGain)+' - '+rc+sbFmt(d.freeBetAmount)+' = '+rc+sbFmt(d.totalGain));
+        }
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrZh = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6605,7 +6637,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           }
           lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('最终派彩：'+rc+sbFmt(d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
+          lines.push((d.freeBetAmount > 0 ? '实际' : '最终')+'派彩：'+rc+sbFmt(d.freeBetAmount > 0 ? d.totalGain - d.bonusGain : d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     }
