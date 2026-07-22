@@ -5690,7 +5690,9 @@
       ? '\n\nApply this terminology (use consistently):\n' + terms.map(t => `zh:${t.zh} = en:${t.en} = ko:${t.ko}`).join('\n')
       : '';
 
-    const prompt = `Translate the following text into English, Simplified Chinese (简体中文), and Korean. If the text is already in one of these languages, still provide all three versions.${termCtx}
+    const prompt = `You are a sports betting customer support translator. Domain context: online sportsbook, bet settlement, event cancellations. Key terminology: 取消/cancel = "Canceled" (not abandoned), 套现 = "Cashout", 延迟 = "Delayed", 退款 = "Refund", 结算 = "Settlement". Always spell these correctly.
+
+Translate the following text into English, Simplified Chinese (简体中文), and Korean. If the text is already in one of these languages, still provide all three versions.${termCtx}
 
 Text:
 ${input}
