@@ -4017,7 +4017,7 @@
           <button onclick="_closeMsgCompose()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;padding:2px 4px;border-radius:5px" onmouseover="this.style.color='var(--text-pri)'" onmouseout="this.style.color='var(--text-muted)'">×</button>
         </div>
         <div style="padding:16px 20px 20px;display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
-          <textarea class="msg-textarea" id="msg-compose-ta" placeholder="貼入注單 JSON（可連續貼多張）..." style="height:88px;flex-shrink:0;margin-bottom:6px"></textarea>
+          <textarea class="msg-textarea" id="msg-compose-ta" placeholder="貼入注單 JSON 或賽事訊息（含 EventId）..." style="height:88px;flex-shrink:0;margin-bottom:6px"></textarea>
           <div id="msg-parse-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px;padding:6px 10px;background:var(--red-bg);border-radius:6px;flex-shrink:0"></div>
           ${_msgEvents.length > 0 ? `
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;flex-shrink:0">${_msgEvents.length} 場賽事</div>
@@ -4028,7 +4028,7 @@
             </label>
             <button class="btn-copy-reply" style="width:100%;margin:0;flex-shrink:0" onclick="_copyMsgCompose()">📋 複製</button>
           ` : `
-            <div style="text-align:center;padding:28px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 後賽事會自動出現在這裡</div>
+            <div style="text-align:center;padding:28px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 或賽事訊息後會自動出現在這裡</div>
           `}
         </div>
       </div>`;
@@ -4036,6 +4036,41 @@
     const ta = overlay.querySelector('#msg-compose-ta');
     ta.addEventListener('paste', () => setTimeout(() => _parseMsgJson(overlay), 80));
     setTimeout(() => ta.focus(), 50);
+  }
+
+  function _parseTeamsMsg(text) {
+    // Find all 15-20 digit event IDs in the text
+    const ID_RE = /\b(\d{15,20})\b/g;
+    let m, positions = [];
+    while ((m = ID_RE.exec(text)) !== null) positions.push({ id: m[1], pos: m.index });
+    if (!positions.length) return [];
+
+    const events = [];
+    for (let i = 0; i < positions.length; i++) {
+      // Each segment: from the start of current ID's "block" to the next ID
+      const segStart = i === 0 ? 0 : positions[i - 1].pos + positions[i - 1].id.length;
+      const segEnd   = i < positions.length - 1 ? positions[i + 1].pos : text.length;
+      const segment  = text.slice(i === 0 ? 0 : positions[i].pos, segEnd).trim();
+      const eventId  = positions[i].id;
+
+      const lines = segment.split('\n').map(l => l.trim()).filter(l => l);
+      let eventName = null, noteLines = [];
+
+      for (const line of lines) {
+        if (line.includes(eventId)) {
+          // Strip "event id:" prefix and the ID itself; keep any remainder as note
+          const rem = line.replace(/event\s*id\s*[:\s]*/i, '').replace(eventId, '').trim();
+          if (rem) noteLines.push(rem);
+          continue;
+        }
+        if (!eventName && /\bvs\b/i.test(line)) { eventName = line; continue; }
+        noteLines.push(line);
+      }
+      if (eventId && eventName) {
+        events.push({ eventId, eventName, notes: noteLines.join('\n'), status: null, startDate: null });
+      }
+    }
+    return events;
   }
 
   function _parseMsgJson(overlay) {
@@ -4047,7 +4082,19 @@
     const err = document.getElementById('msg-parse-err');
     let data;
     try { data = JSON.parse(raw); } catch(e) {
-      if (err) { err.textContent = '⚠ JSON 格式錯誤，請確認後再試'; err.style.display = 'block'; }
+      // Not JSON — try Teams message format
+      const teamsEvents = _parseTeamsMsg(raw);
+      if (teamsEvents.length) {
+        const existingIds = new Set(_msgEvents.map(e => String(e.eventId)));
+        teamsEvents.forEach(ev => {
+          if (!existingIds.has(ev.eventId)) { _msgEvents.push(ev); existingIds.add(ev.eventId); }
+        });
+        if (err) err.style.display = 'none';
+        ta.value = '';
+        _renderMsgCompose(overlay);
+      } else {
+        if (err) { err.textContent = '⚠ 無法識別格式，請貼入 JSON 或含 EventId 的賽事訊息'; err.style.display = 'block'; }
+      }
       return;
     }
 
