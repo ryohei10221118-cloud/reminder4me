@@ -6705,7 +6705,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   // ── System bet renderer ──────────────────────────────────────────────────
   function sbRenderSystem() {
     var d = _sbData;
-    var csn = {1:'單注',2:'雙串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'};
+    var csn = {1:'單注',2:'二串一',3:'三串一',4:'四串一',5:'五串一',6:'六串一',7:'七串一',8:'八串一'};
     var winTotal = d.comboSizes.reduce(function(a,k){return a+d.groups[k].win.length;},0);
 
     var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
@@ -6762,7 +6762,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var d = _sbData, lines = [];
     var rc = d.currency ? d.currency + ' ' : '';
     var csn = {
-      zh:{1:'单注',2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'},
+      zh:{1:'单注',2:'二串一',3:'三串一',4:'四串一',5:'五串一',6:'六串一',7:'七串一',8:'八串一'},
       en:{1:'Singles',2:'Doubles',3:'Trebles',4:'4-Folds',5:'5-Folds',6:'6-Folds',7:'7-Folds',8:'8-Folds'},
       ko:{1:'싱글',2:'더블',3:'트레블',4:'4폴드',5:'5폴드',6:'6폴드',7:'7폴드',8:'8폴드'}
     };
