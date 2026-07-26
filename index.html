@@ -6307,6 +6307,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     return '系統投注 ' + total + '串';
   }
 
+  function sbSystemBetNameLang(d, lang) {
+    if (!d.singleComboK) return d.betName; // named type (Heinz, Yankee…) — already in English
+    var prefix = { zh:'系統投注', en:'System', ko:'시스템' };
+    return (prefix[lang] || prefix.zh) + ' ' + d.singleComboK + '/' + d.N;
+  }
+
   function sbFmt(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function sbFmtOdds(n) { return n.toFixed(4).replace(/\.?0+$/, '') || '0'; }
   function sbRnd(x, mode) { return mode === 1 ? Math.round(x * 100) / 100 : Math.floor(x * 100) / 100; }
@@ -6414,7 +6420,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         groups[k] = { win:winCombos, lose:loseCombos, total:winCombos.reduce(function(a,b){return a+b.gain;},0) };
       }
       totalGain = sbRnd(totalGain, roundingMode);
-      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, comboSizes, groups, totalGain, roundingMode };
+      var singleComboK = (comboSizes.length === 1 && sbC(N, comboSizes[0]) === _nbets) ? comboSizes[0] : null;
+      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, comboSizes, groups, totalGain, roundingMode, singleComboK };
     }
     sbRender();
   }
@@ -6762,7 +6769,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var csnL = csn[lang] || csn.zh;
     if (lang === 'en') {
       lines.push('Ticket ID: ' + d.ticketId);
-      lines.push(d.betName + ' | Per Bet ' + rc + sbFmt(d.stakePerBet) + ' | Total ' + rc + sbFmt(d.totalStake));
+      lines.push(sbSystemBetNameLang(d,'en') + ' | Per Bet ' + rc + sbFmt(d.stakePerBet) + ' | Total ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6786,7 +6793,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       }
     } else if (lang === 'ko') {
       lines.push('주문번호: ' + d.ticketId);
-      lines.push(d.betName + ' | 건당 ' + rc + sbFmt(d.stakePerBet) + ' | 합계 ' + rc + sbFmt(d.totalStake));
+      lines.push(sbSystemBetNameLang(d,'ko') + ' | 건당 ' + rc + sbFmt(d.stakePerBet) + ' | 합계 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
@@ -6810,7 +6817,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       }
     } else {
       lines.push('注单号：' + d.ticketId);
-      lines.push(d.betName + ' | 每注 ' + rc + sbFmt(d.stakePerBet) + ' | 总注 ' + rc + sbFmt(d.totalStake));
+      lines.push(sbSystemBetNameLang(d,'zh') + ' | 每注 ' + rc + sbFmt(d.stakePerBet) + ' | 总注 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
