@@ -6297,12 +6297,14 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     return (sel.LeagueName || '').replace(/</g,'&lt;');
   }
 
-  function sbBetTypeName(n, total) {
+  function sbBetTypeName(n, total, comboSize) {
     var map = { '3:4':'Trixie', '3:7':'Patent', '4:11':'Yankee', '4:15':'Lucky 15',
                 '5:26':'Super Yankee', '5:31':'Lucky 31', '6:57':'亨氏 Heinz',
                 '6:63':'Lucky 63', '7:120':'Super Heinz', '7:127':'Lucky 127',
                 '8:247':'Goliath', '8:255':'Lucky 255' };
-    return map[n+':'+total] || ('系統投注 ' + total + '串');
+    if (map[n+':'+total]) return map[n+':'+total];
+    if (comboSize > 0 && sbC(n, comboSize) === total) return '系統投注 ' + comboSize + '/' + n;
+    return '系統投注 ' + total + '串';
   }
 
   function sbFmt(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
@@ -6392,7 +6394,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, freeBetAmount, roundingMode,
         bonusPct:0, bonusGain:0, grossGain:baseGain, totalGain:baseGain };
     } else {
-      var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
+      var betName = sbBetTypeName(N, bet.NumberOfBets || 0, bet.ComboSize || 0);
       var _nbets = bet.NumberOfBets || 0;
       var comboSizes = (bet.ComboSize > 0 && sbC(N, bet.ComboSize) === _nbets)
         ? [bet.ComboSize] : sbGetComboSizes(N, _nbets);
