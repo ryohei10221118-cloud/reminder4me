@@ -6841,8 +6841,13 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       }
     }
     var totalLabel = lang==='en' ? 'Total Payout: ' : lang==='ko' ? '총 배당: ' : '派彩合计：';
+    var winParts = d.comboSizes.filter(function(k){ return d.groups[k].total > 0; });
     lines.push('');
-    lines.push(totalLabel + rc + sbFmt(d.totalGain));
+    if (winParts.length > 1) {
+      lines.push(totalLabel + winParts.map(function(k){ return rc+sbFmt(d.groups[k].total); }).join(' + ') + ' = ' + rc + sbFmt(d.totalGain));
+    } else {
+      lines.push(totalLabel + rc + sbFmt(d.totalGain));
+    }
     return lines.join('\n');
   }
 
