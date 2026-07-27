@@ -6787,7 +6787,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push('▌'+sn+' ('+g.win.length+'/'+tot+' won) Total: '+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'en'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+rc+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  All lost');
       }
@@ -6811,7 +6811,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push('▌'+sn+' ('+tot+'건 중 '+g.win.length+'건) 합계: '+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'ko'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+rc+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  전부 낙첨');
       }
@@ -6835,7 +6835,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         lines.push('▌'+sn+'（'+tot+'注中 '+g.win.length+' 注）合计：'+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'zh'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+rc+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  全部落空');
       }
