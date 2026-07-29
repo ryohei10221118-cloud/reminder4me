@@ -6491,7 +6491,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       _sbData.bonusGain = (_sbData.hasLoss || !_sbData.bonusPctJson) ? 0 : sbRnd(_sbData.baseGain * pct, _sbData.roundingMode);
       _sbData.grossGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
       _sbData.totalGain = _sbData.freeBetAmount > 0
-        ? sbRnd(_sbData.grossGain - _sbData.freeBetAmount, _sbData.roundingMode)
+        ? Math.max(0, sbRnd(_sbData.grossGain - _sbData.freeBetAmount, _sbData.roundingMode))
         : _sbData.grossGain;
     }
     var sel = document.getElementById('sb-sel-results');
