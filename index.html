@@ -4325,7 +4325,8 @@
       try {
         const xml = _saParseXML(record.reqparams);
         [...xml.getElementsByTagName('Selection')].forEach(sel => {
-          const lineId = sel.getAttribute('LineID'), eventName = sel.getAttribute('EventName');
+          const lineId = sel.getAttribute('LineID');
+          const eventName = sel.getAttribute('EventName')||sel.getAttribute('SelectionName')||sel.getAttribute('LineName')||'';
           if (!lineId||!eventName) return;
           const purchaseEl = sel.parentNode?.parentNode;
           const purchaseId = purchaseEl?.getAttribute('PurchaseID') || _saGetPurchaseId(record);
@@ -4410,7 +4411,8 @@
       try{
         const xml=_saParseXML(record.reqparams);
         [...xml.getElementsByTagName('Selection')].forEach(sel=>{
-          const lineId=sel.getAttribute('LineID'),eventName=sel.getAttribute('EventName');
+          const lineId=sel.getAttribute('LineID');
+          const eventName=sel.getAttribute('EventName')||sel.getAttribute('SelectionName')||sel.getAttribute('LineName')||'';
           if(!lineId||!eventName)return;
           const purchaseEl=sel.parentNode?.parentNode;
           const purchaseId=purchaseEl?.getAttribute('PurchaseID')||_saGetPurchaseId(record);
@@ -4439,8 +4441,9 @@
     lineTracking.forEach(t=>{
       if(t.statusHistory.length>0){
         t.statusHistory.sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+        const cancelEntry=t.statusHistory.find(h=>h.newStatus==='Canceled');
         const last=t.statusHistory[t.statusHistory.length-1];
-        if(last.newStatus==='Canceled'){
+        if(cancelEntry){
           let finalBetStatus='N/A';
           if(t.betId&&betStatusTracking.has(t.betId)){
             const bs=betStatusTracking.get(t.betId).sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
@@ -4450,7 +4453,7 @@
             betId:t.betId||'N/A',purchaseId:t.purchaseId||'',
             eventName:t.eventName,sport:t.branchName,league:t.leagueName,market:t.eventTypeName,
             siteId:t.siteId,eventStatus:'Canceled',betStatus:finalBetStatus,
-            updateTime:last.dateUTC,
+            updateTime:cancelEntry.dateUTC,
             totalEventsInBet:t.betId?Math.max(betEventCount.get(t.betId)||1,betNumberOfLines.get(t.betId)||1):1
           });
         }
