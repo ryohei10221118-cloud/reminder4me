@@ -6371,7 +6371,22 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       ? allSels.filter(function(s){ return mapped.indexOf(s.SelectionIndex) !== -1; })
       : allSels.slice()
     ).sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
-    var N = bet.NumberOfLines || sels.length;
+    // Expand virtual composite selections (SelectionName/LineTypeName contain '|')
+    var expandedSels = [];
+    sels.forEach(function(s) {
+      if ((s.SelectionName || '').includes('|') && (s.LineTypeName || '').includes('|')) {
+        var parts = allSels.filter(function(c) {
+          return c.EventId === s.EventId
+            && !(c.SelectionName || '').includes('|')
+            && !(c.LineTypeName || '').includes('|');
+        });
+        expandedSels = expandedSels.concat(parts.length ? parts : [s]);
+      } else {
+        expandedSels.push(s);
+      }
+    });
+    sels = expandedSels.sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
+    var N = sels.length || bet.NumberOfLines || 1;
     var stakePerBet = bet.Stake || 0;
     var totalStake = stakePerBet * (bet.NumberOfBets || 1);
     var tidM = raw.match(/"TicketId"\s*:\s*(\d+)/);
