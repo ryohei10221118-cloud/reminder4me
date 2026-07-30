@@ -2419,7 +2419,8 @@
   function _qrCombinedCopyHint(lang, btn) {
     const timeVal = _getQrTimeInput();
     const rows = document.querySelectorAll('.qr-event-sel-row');
-    const parts = [];   // {text, url}
+    // Group events by QR index so same template = merged event names
+    const groupOrder = [], groups = {};
     rows.forEach(row => {
       const cb = row.querySelector('.qr-event-cb');
       if (!cb || !cb.checked) return;
@@ -2431,10 +2432,17 @@
       const eventName = cb.dataset.name || '';
       const evTime = timeVal || _getEventTime(eventName);
       if (evTime && eventName) _saveEventTime(eventName, evTime);
-      let text = qr[lang] || '';
-      text = text.replace(/\{time\}/g, evTime);
-      if (qr.attachName && eventName) text = eventName + '\n' + text;
-      parts.push({ text: text.trimEnd(), url: qr.hasUrl ? _hintPopupUrl : '' });
+      if (!groups[qrIdx]) { groups[qrIdx] = { qr, names: [], evTime: evTime || '' }; groupOrder.push(qrIdx); }
+      groups[qrIdx].names.push(eventName);
+      if (!groups[qrIdx].evTime && evTime) groups[qrIdx].evTime = evTime;
+    });
+    const parts = [];
+    groupOrder.forEach(function(qrIdx) {
+      const g = groups[qrIdx];
+      let text = g.qr[lang] || '';
+      text = text.replace(/\{time\}/g, g.evTime);
+      if (g.qr.attachName && g.names.length) text = g.names.join('\n\n') + '\n' + text;
+      parts.push({ text: text.trimEnd(), url: g.qr.hasUrl ? _hintPopupUrl : '' });
     });
     if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
     const agentName = getAgentName();
@@ -4009,7 +4017,7 @@
           <button onclick="_closeMsgCompose()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;padding:2px 4px;border-radius:5px" onmouseover="this.style.color='var(--text-pri)'" onmouseout="this.style.color='var(--text-muted)'">×</button>
         </div>
         <div style="padding:16px 20px 20px;display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
-          <textarea class="msg-textarea" id="msg-compose-ta" placeholder="貼入注單 JSON（可連續貼多張）..." style="height:88px;flex-shrink:0;margin-bottom:6px"></textarea>
+          <textarea class="msg-textarea" id="msg-compose-ta" placeholder="貼入注單 JSON 或賽事訊息（含 EventId）..." style="height:88px;flex-shrink:0;margin-bottom:6px"></textarea>
           <div id="msg-parse-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px;padding:6px 10px;background:var(--red-bg);border-radius:6px;flex-shrink:0"></div>
           ${_msgEvents.length > 0 ? `
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;flex-shrink:0">${_msgEvents.length} 場賽事</div>
@@ -4020,7 +4028,7 @@
             </label>
             <button class="btn-copy-reply" style="width:100%;margin:0;flex-shrink:0" onclick="_copyMsgCompose()">📋 複製</button>
           ` : `
-            <div style="text-align:center;padding:28px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 後賽事會自動出現在這裡</div>
+            <div style="text-align:center;padding:28px 0 8px;color:var(--text-muted);font-size:13px;flex:1">貼入 JSON 或賽事訊息後會自動出現在這裡</div>
           `}
         </div>
       </div>`;
@@ -4028,6 +4036,41 @@
     const ta = overlay.querySelector('#msg-compose-ta');
     ta.addEventListener('paste', () => setTimeout(() => _parseMsgJson(overlay), 80));
     setTimeout(() => ta.focus(), 50);
+  }
+
+  function _parseTeamsMsg(text) {
+    // Find all 15-20 digit event IDs in the text
+    const ID_RE = /\b(\d{15,20})\b/g;
+    let m, positions = [];
+    while ((m = ID_RE.exec(text)) !== null) positions.push({ id: m[1], pos: m.index });
+    if (!positions.length) return [];
+
+    const events = [];
+    for (let i = 0; i < positions.length; i++) {
+      // Each segment: from the start of current ID's "block" to the next ID
+      const segStart = i === 0 ? 0 : positions[i - 1].pos + positions[i - 1].id.length;
+      const segEnd   = i < positions.length - 1 ? positions[i + 1].pos : text.length;
+      const segment  = text.slice(i === 0 ? 0 : positions[i].pos, segEnd).trim();
+      const eventId  = positions[i].id;
+
+      const lines = segment.split('\n').map(l => l.trim()).filter(l => l);
+      let eventName = null, noteLines = [];
+
+      for (const line of lines) {
+        if (line.includes(eventId)) {
+          // Strip "event id:" prefix and the ID itself; keep any remainder as note
+          const rem = line.replace(/event\s*id\s*[:\s]*/i, '').replace(eventId, '').trim();
+          if (rem) noteLines.push(rem);
+          continue;
+        }
+        if (!eventName && /\bvs\b/i.test(line)) { eventName = line; continue; }
+        noteLines.push(line);
+      }
+      if (eventId && eventName) {
+        events.push({ eventId, eventName, notes: noteLines.join('\n'), status: null, startDate: null });
+      }
+    }
+    return events;
   }
 
   function _parseMsgJson(overlay) {
@@ -4039,7 +4082,19 @@
     const err = document.getElementById('msg-parse-err');
     let data;
     try { data = JSON.parse(raw); } catch(e) {
-      if (err) { err.textContent = '⚠ JSON 格式錯誤，請確認後再試'; err.style.display = 'block'; }
+      // Not JSON — try Teams message format
+      const teamsEvents = _parseTeamsMsg(raw);
+      if (teamsEvents.length) {
+        const existingIds = new Set(_msgEvents.map(e => String(e.eventId)));
+        teamsEvents.forEach(ev => {
+          if (!existingIds.has(ev.eventId)) { _msgEvents.push(ev); existingIds.add(ev.eventId); }
+        });
+        if (err) err.style.display = 'none';
+        ta.value = '';
+        _renderMsgCompose(overlay);
+      } else {
+        if (err) { err.textContent = '⚠ 無法識別格式，請貼入 JSON 或含 EventId 的賽事訊息'; err.style.display = 'block'; }
+      }
       return;
     }
 
@@ -4270,7 +4325,8 @@
       try {
         const xml = _saParseXML(record.reqparams);
         [...xml.getElementsByTagName('Selection')].forEach(sel => {
-          const lineId = sel.getAttribute('LineID'), eventName = sel.getAttribute('EventName');
+          const lineId = sel.getAttribute('LineID');
+          const eventName = sel.getAttribute('EventName')||sel.getAttribute('SelectionName')||sel.getAttribute('LineName')||'';
           if (!lineId||!eventName) return;
           const purchaseEl = sel.parentNode?.parentNode;
           const purchaseId = purchaseEl?.getAttribute('PurchaseID') || _saGetPurchaseId(record);
@@ -4355,7 +4411,8 @@
       try{
         const xml=_saParseXML(record.reqparams);
         [...xml.getElementsByTagName('Selection')].forEach(sel=>{
-          const lineId=sel.getAttribute('LineID'),eventName=sel.getAttribute('EventName');
+          const lineId=sel.getAttribute('LineID');
+          const eventName=sel.getAttribute('EventName')||sel.getAttribute('SelectionName')||sel.getAttribute('LineName')||'';
           if(!lineId||!eventName)return;
           const purchaseEl=sel.parentNode?.parentNode;
           const purchaseId=purchaseEl?.getAttribute('PurchaseID')||_saGetPurchaseId(record);
@@ -4384,8 +4441,9 @@
     lineTracking.forEach(t=>{
       if(t.statusHistory.length>0){
         t.statusHistory.sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
+        const cancelEntry=t.statusHistory.find(h=>h.newStatus==='Canceled');
         const last=t.statusHistory[t.statusHistory.length-1];
-        if(last.newStatus==='Canceled'){
+        if(cancelEntry){
           let finalBetStatus='N/A';
           if(t.betId&&betStatusTracking.has(t.betId)){
             const bs=betStatusTracking.get(t.betId).sort((a,b)=>new Date(a.dateUTC)-new Date(b.dateUTC));
@@ -4395,7 +4453,7 @@
             betId:t.betId||'N/A',purchaseId:t.purchaseId||'',
             eventName:t.eventName,sport:t.branchName,league:t.leagueName,market:t.eventTypeName,
             siteId:t.siteId,eventStatus:'Canceled',betStatus:finalBetStatus,
-            updateTime:last.dateUTC,
+            updateTime:cancelEntry.dateUTC,
             totalEventsInBet:t.betId?Math.max(betEventCount.get(t.betId)||1,betNumberOfLines.get(t.betId)||1):1
           });
         }
@@ -5682,7 +5740,9 @@
       ? '\n\nApply this terminology (use consistently):\n' + terms.map(t => `zh:${t.zh} = en:${t.en} = ko:${t.ko}`).join('\n')
       : '';
 
-    const prompt = `Translate the following text into English, Simplified Chinese (简体中文), and Korean. If the text is already in one of these languages, still provide all three versions.${termCtx}
+    const prompt = `You are a sports betting customer support translator. Domain context: online sportsbook, bet settlement, event cancellations. Key terminology: 取消/cancel = "Canceled" (not abandoned), 套现 = "Cashout", 延迟 = "Delayed", 退款 = "Refund", 结算 = "Settlement". Always spell these correctly.
+
+Translate the following text into English, Simplified Chinese (简体中文), and Korean. If the text is already in one of these languages, still provide all three versions.${termCtx}
 
 Text:
 ${input}
@@ -6240,12 +6300,20 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     return (sel.LeagueName || '').replace(/</g,'&lt;');
   }
 
-  function sbBetTypeName(n, total) {
+  function sbBetTypeName(n, total, comboSize) {
     var map = { '3:4':'Trixie', '3:7':'Patent', '4:11':'Yankee', '4:15':'Lucky 15',
                 '5:26':'Super Yankee', '5:31':'Lucky 31', '6:57':'亨氏 Heinz',
                 '6:63':'Lucky 63', '7:120':'Super Heinz', '7:127':'Lucky 127',
                 '8:247':'Goliath', '8:255':'Lucky 255' };
-    return map[n+':'+total] || ('系統投注 ' + total + '串');
+    if (map[n+':'+total]) return map[n+':'+total];
+    if (comboSize > 0 && sbC(n, comboSize) === total) return '系統投注 ' + comboSize + '/' + n;
+    return '系統投注 ' + total + '串';
+  }
+
+  function sbSystemBetNameLang(d, lang) {
+    if (!d.singleComboK) return d.betName; // named type (Heinz, Yankee…) — already in English
+    var prefix = { zh:'系統投注', en:'System', ko:'시스템' };
+    return (prefix[lang] || prefix.zh) + ' ' + d.singleComboK + '/' + d.N;
   }
 
   function sbFmt(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
@@ -6284,13 +6352,13 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     var dr = {zh:'和局',en:'Draw',ko:'무'};
     var dc = {zh:'拒绝',en:'Declined',ko:'거절'};
     var co = {zh:'套现',en:'Cashout',ko:'캐시아웃'};
-    if (s===17) return sbCircle(i)+'@(1+'+sel.TrueOdds+')÷2='+f.toFixed(4).replace(/\.?0+$/,'')+'('+(hw[lang]||hw.zh)+')';
-    if (s===16) return sbCircle(i)+'@0.5('+(hl[lang]||hl.zh)+')';
-    if (s===4)  return sbCircle(i)+'@1('+(ca[lang]||ca.zh)+')';
-    if (s===3)  return sbCircle(i)+'@1('+(dr[lang]||dr.zh)+')';
-    if (s===15) return sbCircle(i)+'@1('+(dc[lang]||dc.zh)+')';
-    if (s===32) return sbCircle(i)+'@1('+(co[lang]||co.zh)+')';
-    return sbCircle(i)+'@'+sel.TrueOdds;
+    if (s===17) return sbCircle(i)+' '+f.toFixed(4).replace(/\.?0+$/,'')+'('+(hw[lang]||hw.zh)+')';
+    if (s===16) return sbCircle(i)+' 0.5('+(hl[lang]||hl.zh)+')';
+    if (s===4)  return sbCircle(i)+' 1('+(ca[lang]||ca.zh)+')';
+    if (s===3)  return sbCircle(i)+' 1('+(dr[lang]||dr.zh)+')';
+    if (s===15) return sbCircle(i)+' 1('+(dc[lang]||dc.zh)+')';
+    if (s===32) return sbCircle(i)+' 1('+(co[lang]||co.zh)+')';
+    return sbCircle(i)+' '+sel.TrueOdds;
   }
 
   function sbParse() {
@@ -6306,7 +6374,22 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       ? allSels.filter(function(s){ return mapped.indexOf(s.SelectionIndex) !== -1; })
       : allSels.slice()
     ).sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
-    var N = bet.NumberOfLines || sels.length;
+    // Expand virtual composite selections (SelectionName/LineTypeName contain '|')
+    var expandedSels = [];
+    sels.forEach(function(s) {
+      if ((s.SelectionName || '').includes('|') && (s.LineTypeName || '').includes('|')) {
+        var parts = allSels.filter(function(c) {
+          return c.EventId === s.EventId
+            && !(c.SelectionName || '').includes('|')
+            && !(c.LineTypeName || '').includes('|');
+        });
+        expandedSels = expandedSels.concat(parts.length ? parts : [s]);
+      } else {
+        expandedSels.push(s);
+      }
+    });
+    sels = expandedSels.sort(function(a,b){ return (a.SelectionIndex||0)-(b.SelectionIndex||0); });
+    var N = sels.length || bet.NumberOfLines || 1;
     var stakePerBet = bet.Stake || 0;
     var totalStake = stakePerBet * (bet.NumberOfBets || 1);
     var tidM = raw.match(/"TicketId"\s*:\s*(\d+)/);
@@ -6328,13 +6411,17 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       var bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
       var bonusPctJson = bonusObj ? (bonusObj.Percentage || 0) : 0;
       var bonusMax  = bonusObj ? (bonusObj.MaxWin || null) : null;
+      var freeBetObj = bet.FreeBet;
+      var freeBetAmount = (freeBetObj && freeBetObj.Amount > 0) ? freeBetObj.Amount : 0;
       _sbBonusPctOverride = null;
-      // bonusPct / bonusGain / totalGain are computed live in sbRender()
-      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, roundingMode,
-        bonusPct:0, bonusGain:0, totalGain:baseGain };
+      // bonusPct / bonusGain / totalGain / grossGain are computed live in sbRender()
+      _sbData = { isParlay:true, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, product, hasLoss, baseGain, bonusPctJson, bonusMax, freeBetAmount, roundingMode,
+        bonusPct:0, bonusGain:0, grossGain:baseGain, totalGain:baseGain };
     } else {
-      var betName = sbBetTypeName(N, bet.NumberOfBets || 0);
-      var comboSizes = (bet.ComboSize > 0) ? [bet.ComboSize] : sbGetComboSizes(N, bet.NumberOfBets || 0);
+      var betName = sbBetTypeName(N, bet.NumberOfBets || 0, bet.ComboSize || 0);
+      var _nbets = bet.NumberOfBets || 0;
+      var comboSizes = (bet.ComboSize > 0 && sbC(N, bet.ComboSize) === _nbets)
+        ? [bet.ComboSize] : sbGetComboSizes(N, _nbets);
       var groups = {}, totalGain = 0;
       for (var ci = 0; ci < comboSizes.length; ci++) {
         var k = comboSizes[ci];
@@ -6351,7 +6438,8 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         groups[k] = { win:winCombos, lose:loseCombos, total:winCombos.reduce(function(a,b){return a+b.gain;},0) };
       }
       totalGain = sbRnd(totalGain, roundingMode);
-      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, factors, comboSizes, groups, totalGain, roundingMode };
+      var singleComboK = (comboSizes.length === 1 && sbC(N, comboSizes[0]) === _nbets) ? comboSizes[0] : null;
+      _sbData = { isParlay:false, bet, sels, N, stakePerBet, totalStake, ticketId, betName, cs, currency, factors, comboSizes, groups, totalGain, roundingMode, singleComboK };
     }
     sbRender();
   }
@@ -6419,7 +6507,10 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       var pct = _sbBonusPctOverride !== null ? _sbBonusPctOverride : _sbData.bonusPctJson;
       _sbData.bonusPct  = pct;
       _sbData.bonusGain = (_sbData.hasLoss || !_sbData.bonusPctJson) ? 0 : sbRnd(_sbData.baseGain * pct, _sbData.roundingMode);
-      _sbData.totalGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
+      _sbData.grossGain = sbRnd(_sbData.baseGain + _sbData.bonusGain, _sbData.roundingMode);
+      _sbData.totalGain = _sbData.freeBetAmount > 0
+        ? Math.max(0, sbRnd(_sbData.grossGain - _sbData.freeBetAmount, _sbData.roundingMode))
+        : _sbData.grossGain;
     }
     var sel = document.getElementById('sb-sel-results');
     if (sel) { sel.innerHTML = sbRenderSelections(); sel.style.display = 'block'; }
@@ -6437,13 +6528,14 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     // Header
     var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
-      + '<div><div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>'
+      + '<div>' + (d.N > 1 ? '<div style="font-size:15px;font-weight:700;color:var(--text-pri)">' + d.betName + '</div>' : '')
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">注单号 ' + d.ticketId + '</div></div>'
       + '<div style="text-align:right"><div style="font-size:12px;color:var(--text-muted)">投注</div>'
       + '<div style="font-size:16px;font-weight:700;color:var(--text-pri)">' + d.cs + sbFmt(d.totalStake) + '</div></div>'
       + '</div>';
 
-    var cols = d.bonusPctJson > 0 ? 3 : 2;
+    var hasFB = d.freeBetAmount > 0;
+    var cols = 2 + (d.bonusPctJson > 0 ? 1 : 0) + (hasFB ? 1 : 0);
     html += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px">'
       + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
       + '<div style="font-size:10px;color:var(--text-muted)">基本派彩</div>'
@@ -6453,8 +6545,13 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         + '<div style="font-size:10px;color:var(--text-muted)">串關加成 (' + sbPctStr(d.bonusPct) + '%)</div>'
         + '<div style="font-size:15px;font-weight:700;color:#f59e0b">+' + d.cs + sbFmt(d.bonusGain) + '</div></div>';
     }
+    if (hasFB) {
+      html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+        + '<div style="font-size:10px;color:var(--text-muted)">Free Bet 扣除</div>'
+        + '<div style="font-size:15px;font-weight:700;color:var(--red,#ef4444)">-' + d.cs + sbFmt(d.freeBetAmount) + '</div></div>';
+    }
     html += '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
-      + '<div style="font-size:10px;color:var(--text-muted)">總派彩</div>'
+      + '<div style="font-size:10px;color:var(--text-muted)">' + (hasFB ? '實際派彩' : '總派彩') + '</div>'
       + '<div style="font-size:15px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div></div>'
       + '</div></div>';
 
@@ -6470,6 +6567,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         + '<div style="color:var(--text-muted);margin-bottom:8px">= ' + sbFmtOdds(d.product) + '</div>'
         + '<div style="color:var(--text-pri)">基本派彩 = ' + d.cs + sbFmt(d.stakePerBet) + ' × ' + sbFmtOdds(d.product)
         + ' = <span style="color:var(--green);font-weight:700">' + d.cs + sbFmt(d.baseGain) + '</span></div>';
+      if (d.freeBetAmount > 0) {
+        html += '<div style="margin-top:6px;color:var(--red,#ef4444)">Free Bet 扣除金額 = -' + d.cs + sbFmt(d.freeBetAmount) + '</div>'
+          + '<div style="margin-top:3px;color:var(--text-pri);font-weight:700">'
+          + d.cs + sbFmt(d.baseGain) + ' - ' + d.cs + sbFmt(d.freeBetAmount)
+          + ' = <span style="color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</span></div>';
+      }
       if (d.bonusPctJson > 0) {
         var pctOverrideActive = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
         html += '<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">'
@@ -6490,7 +6593,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     }
     html += '</div>'
       + '<div style="border-top:2px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">總派彩</div>'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-pri)">' + (d.freeBetAmount > 0 ? '實際派彩' : '總派彩') + '</div>'
       + '<div style="font-size:18px;font-weight:700;color:var(--green)">' + d.cs + sbFmt(d.totalGain) + '</div>'
       + '</div></div>';
 
@@ -6500,16 +6603,28 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   function sbBuildParlayReportLang(lang) {
     if (!_sbData || !_sbData.isParlay) return '';
     var d = _sbData, lines = [];
+    var rc = d.currency ? d.currency + ' ' : '';
     var betNameLang = d.N + (lang==='en' ? '-Fold Parlay' : lang==='ko' ? '폴드 파레이' : '串1 串关');
+    var _fbNote = '';
+    if (d.freeBetAmount > 0) {
+      var _cash = sbRnd(d.totalStake - d.freeBetAmount, d.roundingMode);
+      if (_cash <= 0) {
+        _fbNote = lang==='en' ? '（Free Bet）' : lang==='ko' ? '（프리벳）' : '（Free Bet）';
+      } else {
+        var _fbStr = 'Free Bet '+rc+sbFmt(d.freeBetAmount);
+        var _cashStr = (lang==='en' ? 'Cash ' : lang==='ko' ? '현금 ' : '真钱 ') + rc + sbFmt(_cash);
+        _fbNote = '（' + _fbStr + ' + ' + _cashStr + '）';
+      }
+    }
     if (lang === 'en') {
       lines.push('Ticket ID: ' + d.ticketId);
-      lines.push(betNameLang + ' | Stake ' + d.cs + sbFmt(d.totalStake));
+      lines.push((d.N > 1 ? betNameLang + ' | ' : '') + 'Stake ' + rc + sbFmt(d.totalStake) + _fbNote);
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
         var s = d.sels[i], note = '';
-        if (s.SelectionStatus===17) note = ' (eff.@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+')';
-        else if (s.SelectionStatus===16) note = ' (eff.@0.5)';
+        if (s.SelectionStatus===17) note = '\nOdds: (1+'+s.TrueOdds+')÷2='+sbFactor(s).toFixed(4).replace(/\.?0+$/,'');
+        else if (s.SelectionStatus===16) note = '\nOdds: 0.5';
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'en')+note+'');
       }
       lines.push('');
@@ -6519,7 +6634,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       } else {
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'en'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
-        lines.push('Base Payout: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        lines.push('Base Payout: '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
+        if (d.freeBetAmount > 0) {
+          lines.push('Free Bet deduction: -'+rc+sbFmt(d.freeBetAmount));
+          lines.push('');
+          lines.push('Actual Payout: '+rc+sbFmt(d.baseGain)+' - '+rc+sbFmt(d.freeBetAmount)+' = '+rc+sbFmt(d.totalGain));
+        }
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrEn = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6528,20 +6648,20 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             lines.push('*Combo Bonus tier adjusted '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'%'
               +(_cnEn ? ' due to '+_cnEn+' being Canceled' : ''));
           }
-          lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('Combo Bonus ('+sbPctStr(d.bonusPct)+'%): '+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('Total Payout: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push((d.freeBetAmount > 0 ? 'Actual' : 'Total')+' Payout: '+rc+sbFmt(d.freeBetAmount > 0 ? d.totalGain - d.bonusGain : d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     } else if (lang === 'ko') {
       lines.push('주문번호: ' + d.ticketId);
-      lines.push(betNameLang + ' | 배팅 ' + d.cs + sbFmt(d.totalStake));
+      lines.push((d.N > 1 ? betNameLang + ' | ' : '') + '배팅 ' + rc + sbFmt(d.totalStake) + _fbNote);
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
         var s = d.sels[i], note = '';
-        if (s.SelectionStatus===17) note = '（유효@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
-        else if (s.SelectionStatus===16) note = '（유효@0.5）';
+        if (s.SelectionStatus===17) note = '\n배당: (1+'+s.TrueOdds+')÷2='+sbFactor(s).toFixed(4).replace(/\.?0+$/,'');
+        else if (s.SelectionStatus===16) note = '\n배당: 0.5';
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'ko')+note+'');
       }
       lines.push('');
@@ -6551,7 +6671,12 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       } else {
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'ko'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
-        lines.push('기본 배당: '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        lines.push('기본 배당: '+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
+        if (d.freeBetAmount > 0) {
+          lines.push('프리벳 차감: -'+rc+sbFmt(d.freeBetAmount));
+          lines.push('');
+          lines.push('실제 배당: '+rc+sbFmt(d.baseGain)+' - '+rc+sbFmt(d.freeBetAmount)+' = '+rc+sbFmt(d.totalGain));
+        }
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrKo = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6560,30 +6685,35 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             lines.push('*콤보 보너스 등급 '+sbPctStr(d.bonusPctJson)+'% → '+sbPctStr(d.bonusPct)+'% 조정'
               +(_cnKo ? '（'+_cnKo+' 취소로 인해）' : ''));
           }
-          lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('콤보 보너스（'+sbPctStr(d.bonusPct)+'%）: '+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('최종 배당: '+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push((d.freeBetAmount > 0 ? '실제' : '최종')+' 배당: '+rc+sbFmt(d.freeBetAmount > 0 ? d.totalGain - d.bonusGain : d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     } else {
       lines.push('注单号：' + d.ticketId);
-      lines.push(betNameLang + ' | 投注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push((d.N > 1 ? betNameLang + ' | ' : '') + '投注 ' + rc + sbFmt(d.totalStake) + _fbNote);
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
         var s = d.sels[i], note = '';
-        if (s.SelectionStatus===17) note = '（有效@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
-        else if (s.SelectionStatus===16) note = '（有效@0.5）';
+        if (s.SelectionStatus===17) note = '\n赔率为(1+'+s.TrueOdds+')÷2='+sbFactor(s).toFixed(4).replace(/\.?0+$/,'');
+        else if (s.SelectionStatus===16) note = '\n赔率为 0.5';
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'');
       }
       lines.push('');
-      lines.push('结算算式：');
+      lines.push('结算赔率：');
       if (d.hasLoss) {
         lines.push('含落空选项 → 串关派彩 = 0');
       } else {
         var parts = d.sels.map(function(s,i){ return sbEffPartLang(s,i,'zh'); });
         lines.push(parts.join(' × ') + ' = ' + sbFmtOdds(d.product));
-        lines.push('基本派彩：'+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+d.cs+sbFmt(d.baseGain));
+        lines.push('基本派彩：'+rc+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(d.product)+' = '+rc+sbFmt(d.baseGain));
+        if (d.freeBetAmount > 0) {
+          lines.push('Free Bet 扣除金額：-'+rc+sbFmt(d.freeBetAmount));
+          lines.push('');
+          lines.push('实际派彩：'+rc+sbFmt(d.baseGain)+' - '+rc+sbFmt(d.freeBetAmount)+' = '+rc+sbFmt(d.totalGain));
+        }
         if (d.bonusPctJson > 0) {
           lines.push('');
           var _pctOvrZh = _sbBonusPctOverride !== null && Math.abs(_sbBonusPctOverride - d.bonusPctJson) > 0.00001;
@@ -6592,9 +6722,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
             lines.push('*串关加成级距从 '+sbPctStr(d.bonusPctJson)+'% 下调至 '+sbPctStr(d.bonusPct)+'%'
               +(_cnZh ? '（因 '+_cnZh+' 取消）' : ''));
           }
-          lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+d.cs+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+d.cs+sbFmt(d.bonusGain));
+          lines.push('串关加成（'+sbPctStr(d.bonusPct)+'%）：'+rc+sbFmt(d.baseGain)+' × '+sbPctStr(d.bonusPct)+'% = +'+rc+sbFmt(d.bonusGain));
           lines.push('');
-          lines.push('最终派彩：'+d.cs+sbFmt(d.baseGain)+' + '+d.cs+sbFmt(d.bonusGain)+' = '+d.cs+sbFmt(d.totalGain));
+          lines.push((d.freeBetAmount > 0 ? '实际' : '最终')+'派彩：'+rc+sbFmt(d.freeBetAmount > 0 ? d.totalGain - d.bonusGain : d.baseGain)+' + '+rc+sbFmt(d.bonusGain)+' = '+rc+sbFmt(d.totalGain));
         }
       }
     }
@@ -6604,7 +6734,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   // ── System bet renderer ──────────────────────────────────────────────────
   function sbRenderSystem() {
     var d = _sbData;
-    var csn = {2:'雙串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'};
+    var csn = {1:'單注',2:'二串一',3:'三串一',4:'四串一',5:'五串一',6:'六串一',7:'七串一',8:'八串一'};
     var winTotal = d.comboSizes.reduce(function(a,k){return a+d.groups[k].win.length;},0);
 
     var html = '<div class="card" style="padding:16px;margin-bottom:12px">'
@@ -6659,21 +6789,22 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
   function sbBuildSystemReportLang(lang) {
     if (!_sbData || _sbData.isParlay) return '';
     var d = _sbData, lines = [];
+    var rc = d.currency ? d.currency + ' ' : '';
     var csn = {
-      zh:{2:'双串',3:'三串',4:'四串',5:'五串',6:'六串',7:'七串',8:'八串'},
-      en:{2:'Doubles',3:'Trebles',4:'4-Folds',5:'5-Folds',6:'6-Folds',7:'7-Folds',8:'8-Folds'},
-      ko:{2:'더블',3:'트레블',4:'4폴드',5:'5폴드',6:'6폴드',7:'7폴드',8:'8폴드'}
+      zh:{1:'单注',2:'二串一',3:'三串一',4:'四串一',5:'五串一',6:'六串一',7:'七串一',8:'八串一'},
+      en:{1:'Singles',2:'Doubles',3:'Trebles',4:'4-Folds',5:'5-Folds',6:'6-Folds',7:'7-Folds',8:'8-Folds'},
+      ko:{1:'싱글',2:'더블',3:'트레블',4:'4폴드',5:'5폴드',6:'6폴드',7:'7폴드',8:'8폴드'}
     };
     var csnL = csn[lang] || csn.zh;
     if (lang === 'en') {
       lines.push('Ticket ID: ' + d.ticketId);
-      lines.push(d.betName + ' | Per Bet ' + d.cs + sbFmt(d.stakePerBet) + ' | Total ' + d.cs + sbFmt(d.totalStake));
+      lines.push(sbSystemBetNameLang(d,'en') + ' | Per Bet ' + rc + sbFmt(d.stakePerBet) + ' | Total ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('Results:');
       for (var i = 0; i < d.sels.length; i++) {
         var s = d.sels[i], note = '';
-        if (s.SelectionStatus===17) note = ' (eff.@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+')';
-        else if (s.SelectionStatus===16) note = ' (eff.@0.5)';
+        if (s.SelectionStatus===17) note = '\nOdds: (1+'+s.TrueOdds+')÷2='+sbFactor(s).toFixed(4).replace(/\.?0+$/,'');
+        else if (s.SelectionStatus===16) note = '\nOdds: 0.5';
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'en')+note+'');
       }
       lines.push('');
@@ -6682,22 +6813,22 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var k = d.comboSizes[ci], g = d.groups[k];
         var sn = csnL[k]||(k+'-Folds'), tot = g.win.length+g.lose;
         lines.push('');
-        lines.push('▌'+sn+' ('+g.win.length+'/'+tot+' won) Total: '+d.cs+sbFmt(g.total));
+        lines.push('▌'+sn+' ('+g.win.length+'/'+tot+' won) Total: '+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'en'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  All lost');
       }
     } else if (lang === 'ko') {
       lines.push('주문번호: ' + d.ticketId);
-      lines.push(d.betName + ' | 건당 ' + d.cs + sbFmt(d.stakePerBet) + ' | 합계 ' + d.cs + sbFmt(d.totalStake));
+      lines.push(sbSystemBetNameLang(d,'ko') + ' | 건당 ' + rc + sbFmt(d.stakePerBet) + ' | 합계 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('결과:');
       for (var i = 0; i < d.sels.length; i++) {
         var s = d.sels[i], note = '';
-        if (s.SelectionStatus===17) note = '（유효@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
-        else if (s.SelectionStatus===16) note = '（유효@0.5）';
+        if (s.SelectionStatus===17) note = '\n배당: (1+'+s.TrueOdds+')÷2='+sbFactor(s).toFixed(4).replace(/\.?0+$/,'');
+        else if (s.SelectionStatus===16) note = '\n배당: 0.5';
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'ko')+note+'');
       }
       lines.push('');
@@ -6706,41 +6837,46 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
         var k = d.comboSizes[ci], g = d.groups[k];
         var sn = csnL[k]||(k+'폴드'), tot = g.win.length+g.lose;
         lines.push('');
-        lines.push('▌'+sn+' ('+tot+'건 중 '+g.win.length+'건) 합계: '+d.cs+sbFmt(g.total));
+        lines.push('▌'+sn+' ('+tot+'건 중 '+g.win.length+'건) 합계: '+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'ko'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  전부 낙첨');
       }
     } else {
       lines.push('注单号：' + d.ticketId);
-      lines.push(d.betName + ' | 每注 ' + d.cs + sbFmt(d.stakePerBet) + ' | 总注 ' + d.cs + sbFmt(d.totalStake));
+      lines.push(sbSystemBetNameLang(d,'zh') + ' | 每注 ' + rc + sbFmt(d.stakePerBet) + ' | 总注 ' + rc + sbFmt(d.totalStake));
       lines.push('');
       lines.push('选项结果：');
       for (var i = 0; i < d.sels.length; i++) {
         var s = d.sels[i], note = '';
-        if (s.SelectionStatus===17) note = '（有效@'+sbFactor(s).toFixed(4).replace(/\.?0+$/,'')+'）';
-        else if (s.SelectionStatus===16) note = '（有效@0.5）';
+        if (s.SelectionStatus===17) note = '\n赔率为(1+'+s.TrueOdds+')÷2='+sbFactor(s).toFixed(4).replace(/\.?0+$/,'');
+        else if (s.SelectionStatus===16) note = '\n赔率为 0.5';
         lines.push(sbCircle(i)+' '+s.SelectionName+' @'+s.TrueOdds+' → '+sbGetStatusText(s,'zh')+note+'');
       }
       lines.push('');
-      lines.push('结算算式：');
+      lines.push('结算赔率：');
       for (var ci = 0; ci < d.comboSizes.length; ci++) {
         var k = d.comboSizes[ci], g = d.groups[k];
         var sn = csnL[k]||(k+'串'), tot = g.win.length+g.lose;
         lines.push('');
-        lines.push('▌'+sn+'（'+tot+'注中 '+g.win.length+' 注）合计：'+d.cs+sbFmt(g.total));
+        lines.push('▌'+sn+'（'+tot+'注中 '+g.win.length+' 注）合计：'+rc+sbFmt(g.total));
         for (var wi=0;wi<g.win.length;wi++) {
           var w=g.win[wi], pts=w.idx.map(function(i){ return sbEffPartLang(d.sels[i],i,'zh'); });
-          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+d.cs+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+d.cs+sbFmt(w.gain));
+          lines.push('  '+pts.join(' × ')+' = '+sbFmtOdds(w.odds)+'  →  '+sbFmt(d.stakePerBet)+' × '+sbFmtOdds(w.odds)+' = '+sbFmt(w.gain));
         }
         if (g.win.length===0) lines.push('  全部落空');
       }
     }
     var totalLabel = lang==='en' ? 'Total Payout: ' : lang==='ko' ? '총 배당: ' : '派彩合计：';
+    var winParts = d.comboSizes.filter(function(k){ return d.groups[k].total > 0; });
     lines.push('');
-    lines.push(totalLabel + d.cs + sbFmt(d.totalGain));
+    if (winParts.length > 1) {
+      lines.push(totalLabel + winParts.map(function(k){ return sbFmt(d.groups[k].total); }).join(' + ') + ' = ' + rc + sbFmt(d.totalGain));
+    } else {
+      lines.push(totalLabel + rc + sbFmt(d.totalGain));
+    }
     return lines.join('\n');
   }
 
@@ -6885,7 +7021,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       <div class="card" style="padding:16px;margin-bottom:12px">
         <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:12px">📊 使用量統計</div>
         <div id="tr-usage-body"></div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">定價：Haiku 4.5 — 輸入 $1.00 / 輸出 $5.00（每百萬 tokens）　｜　<a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener" style="color:var(--blue)">查看帳單 →</a></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">定價：Haiku 4.5 — 輸入 $1.00 / 輸出 $5.00（每百萬 tokens）　｜　<a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener" style="color:var(--blue)">查看帳單 →</a>　｜　<a href="https://platform.claude.com/usage" target="_blank" rel="noopener" style="color:var(--blue)">查看用量 →</a></div>
       </div>
       <div class="card" style="padding:16px">
         <div style="font-size:14px;font-weight:700;color:var(--text-pri);margin-bottom:10px">📦 匯入 / 匯出</div>
@@ -6913,6 +7049,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           <div style="display:flex;gap:8px;margin-top:8px;flex-shrink:0">
             <button onclick="sbParse()" style="flex:1;padding:9px;border:none;border-radius:8px;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:600">解析計算</button>
             <button onclick="sbClear()" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:13px">清除</button>
+          </div>
+          <div style="margin-top:8px;padding:7px 10px;background:var(--yellow-bg,#fefce8);border:1px solid var(--yellow-border,#fde047);border-radius:7px;font-size:11px;color:var(--yellow-text,#854d0e);flex-shrink:0">
+            ⚠️ 提供给 OP 前请核对 Payout，发现计算错误请将注单号丢给 Sunny 以便安排修复
           </div>
         </div>
       </div>
