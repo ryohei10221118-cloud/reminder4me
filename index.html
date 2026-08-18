@@ -60,13 +60,13 @@
     }
     .header-badge.show { display: inline-block; }
     .notification-btn {
-      padding: 0 12px;
+      padding: 0 8px;
       height: 30px;
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text-sec);
-      font-size: 12px;
+      font-size: 16px;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
@@ -572,8 +572,8 @@
     .bet-score-line { font-size: 12px; color: var(--text-sec); margin-top: 1px; }
     .bet-time-line  { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
     .header-search-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 1; min-width: 0; }
-    .header-search-input { width: 180px; padding: 0 10px; font-size: 12px; height: 30px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text-pri); outline: none; }
-    .header-search-input:focus { border-color: var(--blue); background: var(--surface); }
+    .header-search-input { width: 130px; padding: 0 10px; font-size: 12px; height: 30px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text-pri); outline: none; transition: width .2s; }
+    .header-search-input:focus { width: 200px; border-color: var(--blue); background: var(--surface); }
     .header-search-input::placeholder { color: var(--text-muted); }
     .search-clear-btn { background: none; border: none; font-size: 15px; color: var(--text-muted); cursor: pointer; padding: 0 3px; line-height: 1; }
     .search-clear-btn:hover { color: var(--text-pri); }
@@ -948,12 +948,13 @@
   <span class="header-badge" id="header-badge">0</span>
   <button class="msg-compose-btn" onclick="showMsgComposePopup()">📨 賽事訊息</button>
   <button class="msg-compose-btn" onclick="showNotepadPopup()">📝 記事本</button>
+  <button class="msg-compose-btn" onclick="openDetailPopup()">📄 注單詳情</button>
   <div class="header-search-wrap">
     <input id="records-search" type="text" class="header-search-input" placeholder="搜尋 ID 或賽事…" oninput="onSearchInput()">
     <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" style="display:none">×</button>
   </div>
   <span style="flex:1"></span>
-  <button class="notification-btn" id="notif-btn" onclick="requestNotifPermission()">🔔 開啟通知</button>
+  <button class="notification-btn" id="notif-btn" onclick="requestNotifPermission()">🔔</button>
   <input class="agent-name-input" id="agent-name" type="text" placeholder="你的名字" oninput="saveAgentName()" />
 </div>
 
@@ -2933,6 +2934,18 @@
     save(); fullRender();
   }
 
+  function reviveRecord(id) {
+    const r = records.find(x => x.id === id);
+    if (!r || !r.completedAt) return;
+    r.completedAt         = null;
+    r.stage               = 1;
+    r.createdAt           = Date.now();
+    r.stage2StartAt       = null;
+    r.settledEventIndices = [];
+    save(); fullRender();
+    schedule(r);
+  }
+
   function markAllDone() {
     const active = records.filter(r => !r.completedAt);
     if (!active.length) return;
@@ -3345,9 +3358,9 @@
     if (!btn) return;
     if (!('Notification' in window)) { btn.style.display='none'; return; }
     if (Notification.permission === 'granted') {
-      btn.textContent = '🔔 通知已開啟'; btn.classList.add('granted'); btn.disabled = true;
+      btn.textContent = '🔔'; btn.title = '通知已開啟'; btn.classList.add('granted'); btn.disabled = true;
     } else {
-      btn.textContent = '🔔 開啟通知'; btn.classList.remove('granted'); btn.disabled = false;
+      btn.textContent = '🔔'; btn.title = '開啟通知'; btn.classList.remove('granted'); btn.disabled = false;
     }
   }
   function sendBrowserNotif(r) {
@@ -3511,12 +3524,377 @@
               <div class="record-meta">群組：<b>${esc(r.group)}</b></div>
             </div>
             <div class="record-actions">
+              <button class="btn-icon-sm" style="color:var(--blue);border-color:var(--blue);padding:0 8px" title="復活 — 重新開始倒數" onclick="reviveRecord('${r.id}')">↩ 復活</button>
               <button class="btn-del" onclick="deleteRecord('${r.id}')">刪除</button>
             </div>
           </div>
         </div>`;
     }).join('');
   }
+
+  // ── 注單詳情 popup ──────────────────────────────────────────────────────────
+  var _bdData = null;
+  var _bdParseTimer = null;
+
+  var _saOperatorMap = {
+    1:'Kraken',2:'BetBull',3:'Betcris',4:'Betboro',5:'Rabona',6:'Filbet',
+    7:'SEAgwlt',8:'DGnine',9:'Betsson',10:'Coolbet',11:'NordBet',12:'Placebets',
+    13:'GoalBet',14:'Betcenter',15:'LiveScore',16:'Betsafe',17:'Betway',
+    18:'Matchbook',19:'Pinnacle',20:'Bet365',21:'Unibet',22:'William Hill',
+    23:'888sport',24:'Ladbrokes',25:'Coral',26:'PolyBet',27:'SportPesa',
+    28:'Sportsbet',29:'Betfair',30:'SBTech',31:'GoldenNugget',32:'FanDuel',
+    33:'DraftKings',34:'PointsBet',35:'Barstool',36:'BetMGM',37:'Caesars',
+    38:'twinspires',39:'fubo',40:'WynnBet',41:'BetRivers',42:'MaximBet',
+  };
+
+  function openDetailPopup() {
+    const existing = document.getElementById('popup-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'popup-overlay';
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+      <div class="popup-card" style="border-color:var(--border);width:95%;max-width:820px">
+        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+        <div class="popup-badge info">📄 注單詳情</div>
+        <div id="bd-json-bar" style="display:none;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);margin-bottom:10px;cursor:pointer"
+             onclick="document.getElementById('bd-ta-wrap').style.display='';this.style.display='none'">
+          <span id="bd-json-bar-label" style="font-size:12px;color:var(--green);font-weight:600"></span>
+          <span style="font-size:11px;color:var(--text-muted)">展開 JSON ▼</span>
+        </div>
+        <div id="bd-ta-wrap">
+          <textarea id="bd-json-input" placeholder="貼上 Kraken JSON，自動解析…"
+            style="width:100%;box-sizing:border-box;height:90px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:monospace;background:var(--surface);color:var(--text-pri);resize:vertical;outline:none;margin-bottom:10px"></textarea>
+        </div>
+        <div id="bd-result"></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
+    const ta = overlay.querySelector('#bd-json-input');
+    if (ta) {
+      ta.focus();
+      var _bdFromPaste = false;
+      ta.addEventListener('paste', () => {
+        _bdFromPaste = true;
+        clearTimeout(_bdParseTimer);
+        requestAnimationFrame(bdParse);
+      });
+      ta.addEventListener('input', () => {
+        if (_bdFromPaste) { _bdFromPaste = false; return; }
+        clearTimeout(_bdParseTimer);
+        _bdParseTimer = setTimeout(bdParse, 300);
+      });
+    }
+  }
+
+  function bdParse() {
+    const ta = document.getElementById('bd-json-input');
+    const resultEl = document.getElementById('bd-result');
+    if (!ta || !resultEl) return;
+    const raw = ta.value.trim();
+    if (!raw) { resultEl.innerHTML = ''; return; }
+    let data;
+    try { data = JSON.parse(raw); } catch(e) { resultEl.innerHTML = `<div style="color:var(--red);font-size:12px">⚠ JSON 格式錯誤：${esc(e.message)}</div>`; return; }
+
+    const _rxStr = k => { const m = raw.match(new RegExp('"' + k + '"\\s*:\\s*(\\d+)')); return m ? m[1] : ''; };
+    const ticketId   = _rxStr('SQLTicketId') || String(data.SQLTicketId || '');
+    const purchaseId = ticketId;
+    const reserveId  = _rxStr('ReserveId');
+    const betId      = _rxStr('TicketId');
+
+    const bet = (data.Bets && data.Bets[0]) || data;
+    const N   = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfLegs) || (data.NumberOfLegs) || 1;
+    const nbets = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfBets) || (data.NumberOfBets) || 1;
+
+    const custId = data.Customer && (data.Customer.Id || '');
+    const merchantCode = data.Customer && (data.Customer.MerchCustomerCode || data.Customer.MerchantCustomerCode || data.Customer.MerchantCode || '');
+    const siteId = data.Customer && data.Customer.SiteId;
+    const opName = siteId ? (_saOperatorMap[siteId] || 'Site ' + siteId) : '';
+
+    const currency = bet.Currency || data.Currency || '';
+    const cs = { PHP:'₱', CNY:'¥', THB:'฿', VND:'₫', KRW:'₩', USD:'$', EUR:'€', GBP:'£', HKD:'HK$', SGD:'S$', MYR:'RM', IDR:'Rp', JPY:'¥', AUD:'A$', CAD:'C$' }[currency] || '';
+    const fmt = v => v != null ? Number(v).toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+
+    const totalStake = bet.TotalStake !== undefined ? bet.TotalStake : (bet.Stake || 0);
+    const rawStatus = bet.BetStatus !== undefined ? bet.BetStatus : (bet.Status !== undefined ? bet.Status : null);
+    const statusMap = {0:'Open',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
+    const statusTxt = rawStatus !== null ? (rawStatus + ' — ' + (statusMap[rawStatus] || 'Unknown')) : '—';
+
+    const isSettled = rawStatus !== null && rawStatus !== 0;
+    const payout = isSettled ? (data.Gain !== undefined ? data.Gain : (bet.Gain !== undefined ? bet.Gain : null)) : null;
+    const winLoss = (isSettled && payout !== null && totalStake > 0) ? (payout - totalStake) : null;
+
+    const bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
+    const bonusPct = bonusObj ? (bonusObj.Percentage || 0) : 0;
+    const bonusAmt = bonusObj ? (bonusObj.Amount || null) : null;
+
+    const isSingle = N === 1 && nbets === 1;
+    const isParlay = !isSingle && nbets === 1;
+    const betTypeEn = isSingle ? 'Single Bet'
+                    : isParlay ? `${N}-Fold: ${N} fold${N>1?'s':''} x 1 bet`
+                    : (bet.Name || `System: ${N} legs x ${nbets} bets`);
+    const _btMapPair = {
+      'Single Bet':   ['单注',    '단식'],
+      'Super Heinz':  ['超級亨氏','슈퍼하인즈'],
+      'Super Yankee': ['超級洋基','슈퍼양키'],
+      'Lucky 255':    ['幸運255', '럭키255'],
+      'Lucky 127':    ['幸運127', '럭키127'],
+      'Lucky 63':     ['幸運63',  '럭키63'],
+      'Lucky 31':     ['幸運31',  '럭키31'],
+      'Lucky 15':     ['幸運15',  '럭키15'],
+      'Goliath':      ['大亨',    '골리앗'],
+      'Heinz':        ['亨氏',    '하인즈'],
+      'Yankee':       ['洋基',    '양키'],
+      'Patent':       ['三串七',  '패턴트'],
+      'Trixie':       ['三串四',  '트릭시'],
+    };
+    const _matchPair = () => { const k = Object.keys(_btMapPair).sort((a,b)=>b.length-a.length).find(k=>betTypeEn.includes(k)); return k ? _btMapPair[k] : null; };
+    const _pair = _matchPair();
+    const betTypeZh = _pair ? _pair[0] : (isParlay ? `${N} 串 1` : `系統投注 ${N} 串 ${nbets}`);
+    const betTypeKo = _pair ? _pair[1] : (isParlay ? `${N}폴드 파레이` : `시스템 ${N} x ${nbets}`);
+
+    // Parse selections
+    const rawSels = (data.Selections || []).filter(s => s.EventName && !((s.SelectionName||'').includes('|') && (s.LineTypeName||'').includes('|')));
+    const sels = rawSels.map(s => ({
+      eventId:         String(s.EventId || ''),
+      eventName:       s.EventName || '',
+      leagueName:      s.LeagueName || s.League || s.CompetitionName || '',
+      lineType:        s.MarketTypeName || s.MarketName || s.LineTypeName || '',
+      selectionName:   s.SelectionName || '',
+      odds:            s.TrueOdds !== undefined ? s.TrueOdds : (s.Odds !== undefined ? s.Odds : null),
+      status:          s.SelectionStatus !== undefined ? s.SelectionStatus : null,
+      startDate:       s.StartEventDate || null,
+      settlementResult: s.SettlementResult || s.Result || '',
+    }));
+
+    _bdData = { ticketId, opName, custId, merchantCode, betTypeEn, betTypeZh, betTypeKo,
+                currency, cs, totalStake, payout, winLoss, statusTxt, rawStatus, bonusPct, bonusAmt,
+                purchaseId, reserveId, betId, sels, siteId };
+
+    // Collapse textarea
+    const wrap = document.getElementById('bd-ta-wrap');
+    if (ta && wrap) {
+      wrap.style.display = 'none';
+      const bar = document.getElementById('bd-json-bar');
+      if (bar) { bar.style.display = 'flex'; bar.querySelector('#bd-json-bar-label').textContent = `✓ ${ticketId}`; }
+    }
+
+    bdRender(resultEl);
+  }
+
+  function bdRender(el) {
+    if (!_bdData) { el.innerHTML = ''; return; }
+    const d = _bdData;
+    const fmt = v => v != null ? Number(v).toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+    const payoutStr  = d.payout  !== null ? d.cs + fmt(d.payout)  : '—';
+    const winLossStr = d.winLoss !== null ? (d.winLoss >= 0 ? '+' : '') + d.cs + fmt(d.winLoss) : '—';
+    const winLossColor = d.winLoss !== null ? (d.winLoss > 0 ? 'var(--green)' : d.winLoss < 0 ? 'var(--red)' : 'var(--text-sec)') : 'var(--text-sec)';
+
+    const hdr = (label, val) =>
+      `<div style="min-width:0">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${label}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-pri)">${val || '—'}</div>
+       </div>`;
+    const hdrId = (label, val) =>
+      `<div style="min-width:0">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${label}</div>
+        <div style="font-size:12px;color:var(--blue);font-weight:600;word-break:break-all;cursor:pointer"
+             title="點擊複製" data-copy="${esc(String(val||''))}"
+             onclick="if(this.dataset.copy){copyText(this.dataset.copy,this)}">${esc(String(val||'')) || '—'}</div>
+       </div>`;
+    const hdrWinLoss = () =>
+      `<div style="min-width:0">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Win / Loss</div>
+        <div style="font-size:12px;font-weight:600;color:${winLossColor}">${winLossStr + (d.currency && d.winLoss !== null ? ' ' + d.currency : '')}</div>
+       </div>`;
+    const hdrStatus = () => {
+      const stColor = {0:'var(--blue)',1:'var(--red)',2:'var(--green)',3:'var(--text-muted)',4:'var(--text-muted)',15:'var(--text-muted)',16:'var(--orange)',17:'var(--green)',32:'var(--orange)'};
+      const stBg    = {0:'rgba(59,130,246,.12)',1:'rgba(239,68,68,.12)',2:'rgba(34,197,94,.12)',3:'rgba(100,116,139,.12)',4:'rgba(100,116,139,.12)',15:'rgba(100,116,139,.12)',16:'rgba(249,115,22,.12)',17:'rgba(34,197,94,.12)',32:'rgba(249,115,22,.12)'};
+      const c  = d.rawStatus !== null && d.rawStatus !== undefined ? stColor[d.rawStatus] : null;
+      const bg = d.rawStatus !== null && d.rawStatus !== undefined ? stBg[d.rawStatus]    : null;
+      const badge = c ? `<span style="font-size:12px;font-weight:700;color:${c};background:${bg};padding:2px 10px;border-radius:20px;display:inline-block">${esc(d.statusTxt)}</span>` : esc(d.statusTxt);
+      return `<div style="min-width:0"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Status</div><div style="font-size:12px;font-weight:600">${badge}</div></div>`;
+    };
+
+    const selStatusPill = s => {
+      const cfg = {
+        0:{c:'var(--blue)',bg:'rgba(59,130,246,.12)',t:'進行中'},
+        1:{c:'var(--red)',bg:'rgba(239,68,68,.12)',t:'輸'},
+        2:{c:'var(--green)',bg:'rgba(34,197,94,.12)',t:'贏'},
+        3:{c:'var(--text-muted)',bg:'rgba(100,116,139,.12)',t:'平局'},
+        4:{c:'var(--text-muted)',bg:'rgba(100,116,139,.12)',t:'取消'},
+        16:{c:'var(--orange)',bg:'rgba(249,115,22,.12)',t:'半輸'},
+        17:{c:'var(--green)',bg:'rgba(34,197,94,.12)',t:'半贏'},
+        32:{c:'var(--orange)',bg:'rgba(249,115,22,.12)',t:'提前'},
+      };
+      const v = s !== null && s !== undefined ? cfg[s] : null;
+      return v ? `<span style="font-size:10px;font-weight:700;color:${v.c};background:${v.bg};padding:2px 7px;border-radius:20px;white-space:nowrap">${v.t}</span>` : '';
+    };
+
+    // per-selection text builder (EN / ZH / KO)
+    function bdSelText(sel, lang) {
+      const result = sel.settlementResult ? sel.settlementResult + ' -> ' : '';
+      const statusLabel = {
+        en:{0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled',16:'Half Lost',17:'Half Won',32:'Cashout'},
+        zh:{0:'進行中',1:'輸',2:'贏',3:'平局',4:'取消',16:'半輸',17:'半贏',32:'提前結算'},
+        ko:{0:'진행중',1:'패',2:'승',3:'무',4:'취소',16:'반패',17:'반승',32:'캐시아웃'},
+      }[lang];
+      const stTxt = sel.status !== null && sel.status !== undefined && statusLabel ? (statusLabel[sel.status] || '') : '';
+      const resultLine = (result || stTxt) ? (result + stTxt) : '';
+      const timeStr = sel.startDate ? _ctToUTC8(sel.startDate) : '';
+      if (lang === 'en') return [
+        `League: ${sel.leagueName}`,
+        `Event: ${sel.eventName}`,
+        `Market: ${sel.lineType}`,
+        sel.selectionName ? `Selection: ${sel.selectionName}` : '',
+        `Odds: ${sel.odds !== null && sel.odds !== undefined ? sel.odds : 'n/a'} EU`,
+        resultLine ? `Result: ${resultLine}` : '',
+        timeStr ? `Event Time: ${timeStr}` : '',
+      ].filter(Boolean).join('\n');
+      if (lang === 'zh') return [
+        `联赛：${sel.leagueName}`,
+        `赛事：${sel.eventName}`,
+        `盘口：${sel.lineType}`,
+        sel.selectionName ? `投注选项：${sel.selectionName}` : '',
+        `赔率：${sel.odds !== null && sel.odds !== undefined ? sel.odds : 'n/a'} EU`,
+        resultLine ? `赛果：${resultLine}` : '',
+        timeStr ? `赛事时间：${timeStr}` : '',
+      ].filter(Boolean).join('\n');
+      if (lang === 'ko') return [
+        `리그：${sel.leagueName}`,
+        `경기：${sel.eventName}`,
+        `마켓：${sel.lineType}`,
+        sel.selectionName ? `베팅 선택：${sel.selectionName}` : '',
+        `배당：${sel.odds !== null && sel.odds !== undefined ? sel.odds : 'n/a'} EU`,
+        resultLine ? `결과：${resultLine}` : '',
+        timeStr ? `경기시간：${timeStr}` : '',
+      ].filter(Boolean).join('\n');
+      return '';
+    }
+
+    function _ctToUTC8(raw) {
+      if (!raw) return '';
+      try {
+        const d = new Date(raw.endsWith('Z') || raw.includes('+') ? raw : raw + 'Z');
+        const offset = 8 * 60;
+        const utc8 = new Date(d.getTime() + offset * 60000);
+        const pad = n => String(n).padStart(2,'0');
+        return `${utc8.getUTCFullYear()}-${pad(utc8.getUTCMonth()+1)}-${pad(utc8.getUTCDate())} ${pad(utc8.getUTCHours())}:${pad(utc8.getUTCMinutes())}:${pad(utc8.getUTCSeconds())} (UTC+8)`;
+      } catch { return raw; }
+    }
+
+    const statusMap = {0:'Open',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
+
+    // full report text per language
+    const headerText = lang => {
+      const labels = {
+        en: { ticket:'Ticket ID', type:'Bet Type', stake:'Stake', payout:'Payout', wl:'Win/Loss', status:'Status' },
+        zh: { ticket:'注单号', type:'投注类型', stake:'投注额', payout:'派彩', wl:'盈亏', status:'状态' },
+        ko: { ticket:'주문번호', type:'투자유형', stake:'배팅금', payout:'지급금액', wl:'손익', status:'상태' },
+      }[lang];
+      const statusLabels = {en:statusMap,zh:{0:'进行中',1:'输',2:'赢',3:'平局',4:'取消',15:'拒绝',16:'半输',17:'半赢',32:'提前结算'},ko:{0:'진행중',1:'패',2:'승',3:'무',4:'취소',15:'거부',16:'반패',17:'반승',32:'캐시아웃'}};
+      const stTxt = d.rawStatus !== null && d.rawStatus !== undefined ? (statusLabels[lang][d.rawStatus] || statusMap[d.rawStatus] || 'Unknown') : '—';
+      const lines = [`${labels.ticket}：${d.ticketId}`, `${labels.type}：${lang==='en'?d.betTypeEn:lang==='zh'?d.betTypeZh:d.betTypeKo}`];
+      return lines.join('\n');
+    };
+
+    const buildReport = lang => {
+      const lines = [headerText(lang), ''];
+      d.sels.forEach(sel => { lines.push(bdSelText(sel, lang)); lines.push(''); });
+      return lines.join('\n').trim();
+    };
+
+    // Checkbox area for import
+    const selCheckboxes = d.sels.map((sel, i) => {
+      const pill = selStatusPill(sel.status);
+      const marketLine = [sel.lineType, sel.selectionName].filter(Boolean).join(' / ');
+      return `
+        <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer;transition:background .15s"
+               onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
+          <input type="checkbox" class="bd-sel-cb" data-idx="${i}" style="margin-top:2px;accent-color:var(--blue);flex-shrink:0">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:12px;font-weight:600;color:var(--text-pri)">${esc(sel.eventName)}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${esc(marketLine)}</div>
+          </div>
+          ${pill}
+        </label>`;
+    }).join('');
+
+    const copyBtn = lang => `<button class="btn-icon-sm" style="flex-shrink:0" onclick="copyText(document.getElementById('bd-text-${lang}').textContent,this)">📋 複製</button>`;
+    const textBox = (lang, text) => `
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:700;color:var(--text-muted)">${lang.toUpperCase()}</span>
+          ${copyBtn(lang)}
+        </div>
+        <pre id="bd-text-${lang}" style="font-size:11px;font-family:inherit;white-space:pre-wrap;word-break:break-word;background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;margin:0;color:var(--text-pri)">${esc(buildReport(lang))}</pre>
+      </div>`;
+
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;padding:12px;border:1px solid var(--border-light);border-radius:8px;background:var(--surface2);margin-bottom:12px;font-size:12px">
+        ${hdr('Operator', esc(d.opName))}
+        ${hdrId('Customer ID', d.custId)}
+        ${hdr('Merchant Code', esc(d.merchantCode))}
+        ${hdr('Bet Type', esc(d.betTypeEn))}
+        ${hdr('Stake', d.cs + fmt(d.totalStake) + (d.currency ? ' ' + d.currency : ''))}
+        ${d.payout !== null ? hdr('Payout', payoutStr + (d.currency ? ' ' + d.currency : '')) : ''}
+        ${hdrWinLoss()}
+        ${hdrStatus()}
+        ${hdr('Enhanced %', d.bonusPct ? (Math.round(d.bonusPct * 10000) / 100) + '%' : '—')}
+        ${hdr('Enhanced Winning', d.bonusAmt !== null ? d.cs + fmt(d.bonusAmt) : '—')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;border:1px solid var(--border-light);border-radius:8px;background:var(--surface2);margin-bottom:12px;font-size:12px">
+        ${hdrId('Purchase ID', d.purchaseId)}
+        ${hdrId('Bet ID', d.betId)}
+        ${hdrId('Reserve ID', d.reserveId)}
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:700;color:var(--red)">🚩 勾選問題賽事</span>
+          <button class="btn-popup-done" style="padding:0 14px;height:30px;font-size:12px" onclick="bdImport()">⬆ 導入提醒工具</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">${selCheckboxes}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${textBox('en', buildReport('en'))}
+        ${textBox('zh', buildReport('zh'))}
+        ${textBox('ko', buildReport('ko'))}
+      </div>`;
+  }
+
+  function bdImport() {
+    if (!_bdData) return;
+    const cbs = document.querySelectorAll('.bd-sel-cb:checked');
+    if (!cbs.length) { alert('請至少勾選一個賽事'); return; }
+    const indices = Array.from(cbs).map(cb => parseInt(cb.dataset.idx));
+    const { ticketId, sels } = _bdData;
+    const eventNames   = indices.map(i => sels[i].eventName);
+    const eventStatuses = indices.map(i => sels[i].status);
+    const betInfos = indices.map(i => {
+      const sel = sels[i];
+      return {
+        eventId: sel.eventId,
+        leagueName: sel.leagueName,
+        lineType: sel.lineType,
+        selectionName: sel.selectionName,
+        status: sel.status,
+        settlementResult: sel.settlementResult,
+        startDate: sel.startDate,
+      };
+    });
+    closeMsgPopup();
+    switchTab('reminder');
+    syncGroupValues();
+    const hasData = formGroups.length > 1 || formGroups[0].orderNos.some(o=>o.trim()) || formGroups[0].eventNames.some(e=>e.trim());
+    if (hasData) {
+      formGroups.push({ id: `g${++groupCounter}`, orderNos: [ticketId], eventNames, eventStatuses, betInfos });
+    } else {
+      formGroups[0] = { id: formGroups[0].id, orderNos: [ticketId], eventNames, eventStatuses, betInfos };
+    }
+    renderFormGroups();
+    _renderNoteHints(formGroups.flatMap(g => g.eventNames.filter(Boolean)));
+  }
+  // ── end 注單詳情 ────────────────────────────────────────────────────────────
 
   // ── Popups ──
   function renderPopup(r, forceFinal = false) {
@@ -3570,43 +3948,111 @@
     attachOverlayClose(overlay);
   }
 
+  function saveAllCopyMsg(id, btn) {
+    const r = records.find(x => x.id === id);
+    if (!r) return;
+    const names = getEventNames(r);
+    if (!r.eventNotes) r.eventNotes = {};
+    if (!r.eventNoteTimes) r.eventNoteTimes = {};
+    const blocks = [];
+    names.forEach((eventName, ei) => {
+      const ta = document.getElementById(`msg-textarea-${id}-${ei}`);
+      const ti = document.getElementById(`msg-time-input-${id}-${ei}`);
+      const timeVal = (ti ? ti.value : '').trim();
+      if (timeVal) _saveEventTime(eventName, timeVal);
+      r.eventNotes[eventName] = ta ? ta.value : '';
+      if (r.eventNotes[eventName]) r.eventNoteTimes[eventName] = Date.now();
+      const betInfo = r.betInfos && r.betInfos[ei];
+      const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
+      const note = (r.eventNotes[eventName] || '').replace(/\{time\}/g, timeVal);
+      const parts = [eventName];
+      if (eventId) parts.push(`EventId: ${eventId}`);
+      if (note) parts.push(note);
+      blocks.push(parts.join('\n'));
+    });
+    save();
+    _refreshNoteHints();
+    copyText(blocks.join('\n\n'), btn);
+  }
+
   function openMsgPopup(id, eventIdx) {
     const r = records.find(x => x.id === id);
     if (!r) return;
     const names = getEventNames(r);
-    const eventName = names[eventIdx] || names[0] || '';
     if (!r.eventNotes) r.eventNotes = {};
-    const note = r.eventNotes[eventName] || r.eventNote || '';
-    const initialText = note || (r.additionalInfo ? r.additionalInfo.trim() : '');
+    if (!r.eventNoteTimes) r.eventNoteTimes = {};
     const existing = document.getElementById('popup-overlay');
     if (existing) existing.remove();
     const overlay = document.createElement('div');
     overlay.id = 'popup-overlay';
     overlay.className = 'popup-overlay';
-    const betInfo = r.betInfos && r.betInfos[eventIdx];
-    const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
-    overlay.innerHTML = `
-      <div class="popup-card msg-popup" style="border-color:var(--border)">
-        <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
-        <div class="popup-badge info">📝 賽事記錄</div>
-        <div class="popup-title">🏆 ${esc(eventName)}</div>
-        ${eventId ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-          <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">EventId</span>
-          <span style="font-size:12px;color:var(--text-sec);font-family:monospace;word-break:break-all">${esc(eventId)}</span>
-          <button class="btn-icon-sm" title="複製 EventId" data-copy="${esc(eventId)}" onclick="copyText(this.dataset.copy,this)" style="flex-shrink:0">📋</button>
-        </div>` : ''}
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
-          <input id="msg-time-input-${id}-${eventIdx}" type="text" placeholder="e.g. 08/07/2026 07:00 (UTC+0)" value="${esc(_getEventTime(eventName))}"
-            style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
-        </div>
-        <textarea class="msg-textarea" id="msg-textarea-${id}-${eventIdx}" placeholder="在此輸入賽事相關訊息...">${esc(initialText)}</textarea>
-        <button class="btn-copy-reply" onclick="saveCopyMsg('${id}',${eventIdx},this)">📋 複製記錄</button>
-      </div>`;
+
+    if (names.length > 1) {
+      const eventsHtml = names.map((eventName, ei) => {
+        const betInfo = r.betInfos && r.betInfos[ei];
+        const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
+        const note = r.eventNotes[eventName] || '';
+        const timeVal = _getEventTime(eventName) || '';
+        return `
+          <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-pri);margin-bottom:6px">🏆 ${esc(eventName)}</div>
+            ${eventId ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:10px;color:var(--text-muted)">EventId</span>
+              <span style="font-size:11px;color:var(--text-sec);font-family:monospace;word-break:break-all">${esc(eventId)}</span>
+              <button class="btn-icon-sm" title="複製 EventId" data-copy="${esc(eventId)}" onclick="copyText(this.dataset.copy,this)" style="flex-shrink:0">📋</button>
+            </div>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:10px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+              <input id="msg-time-input-${id}-${ei}" type="text" placeholder="e.g. 08/07 07:00 (UTC+0)" value="${esc(timeVal)}"
+                style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+            </div>
+            <textarea id="msg-textarea-${id}-${ei}" rows="3"
+              style="width:100%;box-sizing:border-box;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text-pri);resize:vertical;outline:none"
+              placeholder="記錄內容…">${esc(note)}</textarea>
+          </div>`;
+      }).join('');
+      overlay.innerHTML = `
+        <div class="popup-card msg-popup" style="border-color:var(--border);width:92%;max-width:480px">
+          <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+          <div class="popup-badge info">📝 賽事記錄</div>
+          <div style="max-height:60vh;overflow-y:auto;padding-right:2px">${eventsHtml}</div>
+          <div class="popup-btns" style="margin-top:10px">
+            <button class="btn-popup-sec" onclick="closeMsgPopup()">取消</button>
+            <button class="btn-popup-done" onclick="saveAllCopyMsg('${id}',this)">📋 複製全部 (${names.length} 場)</button>
+          </div>
+        </div>`;
+    } else {
+      const eventName = names[eventIdx] || names[0] || '';
+      const note = r.eventNotes[eventName] || r.eventNote || '';
+      const initialText = note || (r.additionalInfo ? r.additionalInfo.trim() : '');
+      const betInfo = r.betInfos && r.betInfos[eventIdx];
+      const eventId = betInfo && betInfo.eventId ? betInfo.eventId : '';
+      overlay.innerHTML = `
+        <div class="popup-card msg-popup" style="border-color:var(--border)">
+          <button class="popup-close-btn" onclick="closeMsgPopup()">×</button>
+          <div class="popup-badge info">📝 賽事記錄</div>
+          <div class="popup-title">🏆 ${esc(eventName)}</div>
+          ${eventId ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">EventId</span>
+            <span style="font-size:12px;color:var(--text-sec);font-family:monospace;word-break:break-all">${esc(eventId)}</span>
+            <button class="btn-icon-sm" title="複製 EventId" data-copy="${esc(eventId)}" onclick="copyText(this.dataset.copy,this)" style="flex-shrink:0">📋</button>
+          </div>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
+            <input id="msg-time-input-${id}-${eventIdx}" type="text" placeholder="e.g. 08/07/2026 07:00 (UTC+0)" value="${esc(_getEventTime(eventName))}"
+              style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
+          </div>
+          <textarea id="msg-textarea-${id}-${eventIdx}" class="msg-textarea" rows="5"
+            style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text-pri);resize:vertical;outline:none"
+            placeholder="記錄內容…">${esc(initialText)}</textarea>
+          <div class="popup-btns" style="margin-top:10px">
+            <button class="btn-popup-sec" onclick="closeMsgPopup()">取消</button>
+            <button class="btn-popup-done" onclick="saveCopyMsg('${id}',${eventIdx},this)">📋 複製</button>
+          </div>
+        </div>`;
+    }
     document.body.appendChild(overlay);
-    attachOverlayClose(overlay);
-    const ta = overlay.querySelector('.msg-textarea');
-    if (ta) ta.focus();
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
   }
 
   function closeMsgPopup() {
