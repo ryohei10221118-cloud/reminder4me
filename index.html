@@ -1378,7 +1378,17 @@
           ${noQr ? '' : `<select class="qr-event-select" style="flex-shrink:0;width:130px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none">${qrOptions}</select>`}
         </div>`;
       }).join('');
+      const applyAllBar = noQr ? '' : `
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">全套用：</span>
+          <select id="qr-apply-all-sel" style="flex:1;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text-pri);outline:none">
+            <option value="">— 選擇範本套用至全部 —</option>
+            ${_quickReplies.map((qr, i) => `<option value="${i}">${esc(qr.label)}</option>`).join('')}
+          </select>
+          <button class="btn-popup-sec" style="padding:3px 10px;font-size:11px;white-space:nowrap" onclick="(()=>{const v=document.getElementById('qr-apply-all-sel').value;if(v==='')return;document.querySelectorAll('.qr-event-select').forEach(s=>s.value=v)})()">套用</button>
+        </div>`;
       qrArea = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;flex-shrink:0">🏆 賽事 &amp; 範本</div>
+        ${applyAllBar}
         <div style="overflow-y:auto;flex:1;min-height:0;background:var(--surface2);border-radius:8px;padding:0 8px">${eventRows}</div>`;
       combinedBtns = noQr ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:8px 0">尚未設定快速回覆範本</div>' : `
         <div style="display:flex;gap:5px;margin-top:10px;flex-shrink:0">
@@ -1980,6 +1990,7 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           <span style="font-size:13px;font-weight:700;color:var(--text-pri)">📝 記事本</span>
           <span style="font-size:11px;color:var(--text-muted);flex:1">貼上自動去除連結</span>
+          <button class="btn-popup-sec" style="padding:3px 10px;font-size:11px" onclick="copyText(document.getElementById('notepad-ta').value,this)">複製</button>
           <button class="btn-popup-sec" style="padding:3px 10px;font-size:11px" onclick="document.getElementById('notepad-ta').value='';localStorage.removeItem('${NOTEPAD_KEY}')">清空</button>
           <button class="popup-close-btn" style="position:static" onclick="document.getElementById('notepad-overlay').remove()">×</button>
         </div>
