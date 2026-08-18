@@ -3532,10 +3532,10 @@
     }).join('');
   }
 
+
   // ── 注單詳情 popup ──────────────────────────────────────────────────────────
   var _bdData = null;
   var _bdParseTimer = null;
-
   var _saOperatorMap = {
     1:'Kraken',2:'BetBull',3:'Betcris',4:'Betboro',5:'Rabona',6:'Filbet',
     7:'SEAgwlt',8:'DGnine',9:'Betsson',10:'Coolbet',11:'NordBet',12:'Placebets',
@@ -3544,7 +3544,6 @@
     23:'888sport',24:'Ladbrokes',25:'Coral',26:'PolyBet',27:'SportPesa',
     28:'Sportsbet',29:'Betfair',30:'SBTech',31:'GoldenNugget',32:'FanDuel',
     33:'DraftKings',34:'PointsBet',35:'Barstool',36:'BetMGM',37:'Caesars',
-    38:'twinspires',39:'fubo',40:'WynnBet',41:'BetRivers',42:'MaximBet',
   };
 
   function openDetailPopup() {
@@ -3602,34 +3601,30 @@
     const reserveId  = _rxStr('ReserveId');
     const betId      = _rxStr('TicketId');
 
-    const bet = (data.Bets && data.Bets[0]) || data;
-    const N   = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfLegs) || (data.NumberOfLegs) || 1;
-    const nbets = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfBets) || (data.NumberOfBets) || 1;
+    const bet  = (data.Bets && data.Bets[0]) || data;
+    const N    = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfLegs)  || data.NumberOfLegs  || 1;
+    const nbets = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfBets) || data.NumberOfBets || 1;
 
-    const custId = data.Customer && (data.Customer.Id || '');
+    const custId       = data.Customer && (data.Customer.Id || '');
     const merchantCode = data.Customer && (data.Customer.MerchCustomerCode || data.Customer.MerchantCustomerCode || data.Customer.MerchantCode || '');
-    const siteId = data.Customer && data.Customer.SiteId;
-    const opName = siteId ? (_saOperatorMap[siteId] || 'Site ' + siteId) : '';
-
+    const siteId  = data.Customer && data.Customer.SiteId;
+    const opName  = siteId ? (_saOperatorMap[siteId] || 'Site ' + siteId) : '';
     const currency = bet.Currency || data.Currency || '';
-    const cs = { PHP:'₱', CNY:'¥', THB:'฿', VND:'₫', KRW:'₩', USD:'$', EUR:'€', GBP:'£', HKD:'HK$', SGD:'S$', MYR:'RM', IDR:'Rp', JPY:'¥', AUD:'A$', CAD:'C$' }[currency] || '';
-    const fmt = v => v != null ? Number(v).toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+    const cs = {PHP:'₱',CNY:'¥',THB:'฿',VND:'₫',KRW:'₩',USD:'$',EUR:'€',GBP:'£',HKD:'HK$',SGD:'S$',MYR:'RM',IDR:'Rp',JPY:'¥',AUD:'A$',CAD:'C$'}[currency] || '';
 
     const totalStake = bet.TotalStake !== undefined ? bet.TotalStake : (bet.Stake || 0);
-    const rawStatus = bet.BetStatus !== undefined ? bet.BetStatus : (bet.Status !== undefined ? bet.Status : null);
-    const statusMap = {0:'Open',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
-    const statusTxt = rawStatus !== null ? (rawStatus + ' — ' + (statusMap[rawStatus] || 'Unknown')) : '—';
+    const rawStatus  = bet.BetStatus !== undefined ? bet.BetStatus : (bet.Status !== undefined ? bet.Status : null);
+    const statusMap  = {0:'Open',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
+    const statusTxt  = rawStatus !== null ? (rawStatus + ' — ' + (statusMap[rawStatus] || 'Unknown')) : '—';
+    const isSettled  = rawStatus !== null && rawStatus !== 0;
+    const payout     = isSettled ? (data.Gain !== undefined ? data.Gain : (bet.Gain !== undefined ? bet.Gain : null)) : null;
+    const winLoss    = (isSettled && payout !== null && totalStake > 0) ? (payout - totalStake) : null;
+    const bonusObj   = bet.BonusData && bet.BonusData.ComboBonus;
+    const bonusPct   = bonusObj ? (bonusObj.Percentage || 0) : 0;
+    const bonusAmt   = bonusObj ? (bonusObj.Amount || null) : null;
 
-    const isSettled = rawStatus !== null && rawStatus !== 0;
-    const payout = isSettled ? (data.Gain !== undefined ? data.Gain : (bet.Gain !== undefined ? bet.Gain : null)) : null;
-    const winLoss = (isSettled && payout !== null && totalStake > 0) ? (payout - totalStake) : null;
-
-    const bonusObj = bet.BonusData && bet.BonusData.ComboBonus;
-    const bonusPct = bonusObj ? (bonusObj.Percentage || 0) : 0;
-    const bonusAmt = bonusObj ? (bonusObj.Amount || null) : null;
-
-    const isSingle = N === 1 && nbets === 1;
-    const isParlay = !isSingle && nbets === 1;
+    const isSingle  = N === 1 && nbets === 1;
+    const isParlay  = !isSingle && nbets === 1;
     const betTypeEn = isSingle ? 'Single Bet'
                     : isParlay ? `${N}-Fold: ${N} fold${N>1?'s':''} x 1 bet`
                     : (bet.Name || `System: ${N} legs x ${nbets} bets`);
@@ -3649,21 +3644,20 @@
       'Trixie':       ['三串四',  '트릭시'],
     };
     const _matchPair = () => { const k = Object.keys(_btMapPair).sort((a,b)=>b.length-a.length).find(k=>betTypeEn.includes(k)); return k ? _btMapPair[k] : null; };
-    const _pair = _matchPair();
+    const _pair    = _matchPair();
     const betTypeZh = _pair ? _pair[0] : (isParlay ? `${N} 串 1` : `系統投注 ${N} 串 ${nbets}`);
     const betTypeKo = _pair ? _pair[1] : (isParlay ? `${N}폴드 파레이` : `시스템 ${N} x ${nbets}`);
 
-    // Parse selections
     const rawSels = (data.Selections || []).filter(s => s.EventName && !((s.SelectionName||'').includes('|') && (s.LineTypeName||'').includes('|')));
     const sels = rawSels.map(s => ({
-      eventId:         String(s.EventId || ''),
-      eventName:       s.EventName || '',
-      leagueName:      s.LeagueName || s.League || s.CompetitionName || '',
-      lineType:        s.MarketTypeName || s.MarketName || s.LineTypeName || '',
-      selectionName:   s.SelectionName || '',
-      odds:            s.TrueOdds !== undefined ? s.TrueOdds : (s.Odds !== undefined ? s.Odds : null),
-      status:          s.SelectionStatus !== undefined ? s.SelectionStatus : null,
-      startDate:       s.StartEventDate || null,
+      eventId:          String(s.EventId || ''),
+      eventName:        s.EventName || '',
+      leagueName:       s.LeagueName || s.League || s.CompetitionName || '',
+      lineType:         s.MarketTypeName || s.MarketName || s.LineTypeName || '',
+      selectionName:    s.SelectionName || '',
+      odds:             s.TrueOdds !== undefined ? s.TrueOdds : (s.Odds !== undefined ? s.Odds : null),
+      status:           s.SelectionStatus !== undefined ? s.SelectionStatus : null,
+      startDate:        s.StartEventDate || null,
       settlementResult: s.SettlementResult || s.Result || '',
     }));
 
@@ -3671,14 +3665,12 @@
                 currency, cs, totalStake, payout, winLoss, statusTxt, rawStatus, bonusPct, bonusAmt,
                 purchaseId, reserveId, betId, sels, siteId };
 
-    // Collapse textarea
     const wrap = document.getElementById('bd-ta-wrap');
     if (ta && wrap) {
       wrap.style.display = 'none';
       const bar = document.getElementById('bd-json-bar');
-      if (bar) { bar.style.display = 'flex'; bar.querySelector('#bd-json-bar-label').textContent = `✓ ${ticketId}`; }
+      if (bar) { bar.style.display = 'flex'; document.getElementById('bd-json-bar-label').textContent = `✓ ${ticketId}`; }
     }
-
     bdRender(resultEl);
   }
 
@@ -3686,9 +3678,9 @@
     if (!_bdData) { el.innerHTML = ''; return; }
     const d = _bdData;
     const fmt = v => v != null ? Number(v).toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
-    const payoutStr  = d.payout  !== null ? d.cs + fmt(d.payout)  : '—';
-    const winLossStr = d.winLoss !== null ? (d.winLoss >= 0 ? '+' : '') + d.cs + fmt(d.winLoss) : '—';
-    const winLossColor = d.winLoss !== null ? (d.winLoss > 0 ? 'var(--green)' : d.winLoss < 0 ? 'var(--red)' : 'var(--text-sec)') : 'var(--text-sec)';
+    const payoutStr   = d.payout  !== null ? d.cs + fmt(d.payout)  : '—';
+    const winLossStr  = d.winLoss !== null ? (d.winLoss >= 0 ? '+' : '') + d.cs + fmt(Math.abs(d.winLoss)) : '—';
+    const wlColor     = d.winLoss !== null ? (d.winLoss > 0 ? 'var(--green)' : d.winLoss < 0 ? 'var(--red)' : 'var(--text-sec)') : 'var(--text-sec)';
 
     const hdr = (label, val) =>
       `<div style="min-width:0">
@@ -3702,133 +3694,57 @@
              title="點擊複製" data-copy="${esc(String(val||''))}"
              onclick="if(this.dataset.copy){copyText(this.dataset.copy,this)}">${esc(String(val||'')) || '—'}</div>
        </div>`;
-    const hdrWinLoss = () =>
-      `<div style="min-width:0">
-        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Win / Loss</div>
-        <div style="font-size:12px;font-weight:600;color:${winLossColor}">${winLossStr + (d.currency && d.winLoss !== null ? ' ' + d.currency : '')}</div>
-       </div>`;
-    const hdrStatus = () => {
-      const stColor = {0:'var(--blue)',1:'var(--red)',2:'var(--green)',3:'var(--text-muted)',4:'var(--text-muted)',15:'var(--text-muted)',16:'var(--orange)',17:'var(--green)',32:'var(--orange)'};
-      const stBg    = {0:'rgba(59,130,246,.12)',1:'rgba(239,68,68,.12)',2:'rgba(34,197,94,.12)',3:'rgba(100,116,139,.12)',4:'rgba(100,116,139,.12)',15:'rgba(100,116,139,.12)',16:'rgba(249,115,22,.12)',17:'rgba(34,197,94,.12)',32:'rgba(249,115,22,.12)'};
-      const c  = d.rawStatus !== null && d.rawStatus !== undefined ? stColor[d.rawStatus] : null;
-      const bg = d.rawStatus !== null && d.rawStatus !== undefined ? stBg[d.rawStatus]    : null;
-      const badge = c ? `<span style="font-size:12px;font-weight:700;color:${c};background:${bg};padding:2px 10px;border-radius:20px;display:inline-block">${esc(d.statusTxt)}</span>` : esc(d.statusTxt);
-      return `<div style="min-width:0"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Status</div><div style="font-size:12px;font-weight:600">${badge}</div></div>`;
-    };
 
-    const selStatusPill = s => {
-      const cfg = {
-        0:{c:'var(--blue)',bg:'rgba(59,130,246,.12)',t:'進行中'},
-        1:{c:'var(--red)',bg:'rgba(239,68,68,.12)',t:'輸'},
-        2:{c:'var(--green)',bg:'rgba(34,197,94,.12)',t:'贏'},
-        3:{c:'var(--text-muted)',bg:'rgba(100,116,139,.12)',t:'平局'},
-        4:{c:'var(--text-muted)',bg:'rgba(100,116,139,.12)',t:'取消'},
-        16:{c:'var(--orange)',bg:'rgba(249,115,22,.12)',t:'半輸'},
-        17:{c:'var(--green)',bg:'rgba(34,197,94,.12)',t:'半贏'},
-        32:{c:'var(--orange)',bg:'rgba(249,115,22,.12)',t:'提前'},
-      };
-      const v = s !== null && s !== undefined ? cfg[s] : null;
-      return v ? `<span style="font-size:10px;font-weight:700;color:${v.c};background:${v.bg};padding:2px 7px;border-radius:20px;white-space:nowrap">${v.t}</span>` : '';
-    };
+    const stColor = {0:'var(--blue)',1:'var(--red)',2:'var(--green)',3:'var(--text-muted)',4:'var(--text-muted)',15:'var(--text-muted)',16:'var(--orange)',17:'var(--green)',32:'var(--orange)'};
+    const stBg    = {0:'rgba(59,130,246,.12)',1:'rgba(239,68,68,.12)',2:'rgba(34,197,94,.12)',3:'rgba(100,116,139,.12)',4:'rgba(100,116,139,.12)',15:'rgba(100,116,139,.12)',16:'rgba(249,115,22,.12)',17:'rgba(34,197,94,.12)',32:'rgba(249,115,22,.12)'};
+    const selPill = s => { const cfg={0:{c:'var(--blue)',bg:'rgba(59,130,246,.12)',t:'進行中'},1:{c:'var(--red)',bg:'rgba(239,68,68,.12)',t:'輸'},2:{c:'var(--green)',bg:'rgba(34,197,94,.12)',t:'贏'},3:{c:'var(--text-muted)',bg:'rgba(100,116,139,.12)',t:'平局'},4:{c:'var(--text-muted)',bg:'rgba(100,116,139,.12)',t:'取消'},16:{c:'var(--orange)',bg:'rgba(249,115,22,.12)',t:'半輸'},17:{c:'var(--green)',bg:'rgba(34,197,94,.12)',t:'半贏'},32:{c:'var(--orange)',bg:'rgba(249,115,22,.12)',t:'提前'}}; const v=s!==null&&s!==undefined?cfg[s]:null; return v?`<span style="font-size:10px;font-weight:700;color:${v.c};background:${v.bg};padding:2px 7px;border-radius:20px;white-space:nowrap">${v.t}</span>`:''; };
 
-    // per-selection text builder (EN / ZH / KO)
+    function _bdToUTC8(raw) {
+      if (!raw) return '';
+      try { const dt=new Date(raw.endsWith('Z')||raw.includes('+')?raw:raw+'Z'); const u8=new Date(dt.getTime()+8*3600000); const p=n=>String(n).padStart(2,'0'); return `${u8.getUTCFullYear()}-${p(u8.getUTCMonth()+1)}-${p(u8.getUTCDate())} ${p(u8.getUTCHours())}:${p(u8.getUTCMinutes())}:${p(u8.getUTCSeconds())} (UTC+8)`; } catch{return raw;}
+    }
+
+    const statusMapAll = {en:{0:'Open',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'},zh:{0:'进行中',1:'输',2:'赢',3:'平局',4:'取消',15:'拒绝',16:'半输',17:'半赢',32:'提前结算'},ko:{0:'진행중',1:'패',2:'승',3:'무',4:'취소',15:'거부',16:'반패',17:'반승',32:'캐시아웃'}};
+
     function bdSelText(sel, lang) {
-      const result = sel.settlementResult ? sel.settlementResult + ' -> ' : '';
-      const statusLabel = {
-        en:{0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled',16:'Half Lost',17:'Half Won',32:'Cashout'},
-        zh:{0:'進行中',1:'輸',2:'贏',3:'平局',4:'取消',16:'半輸',17:'半贏',32:'提前結算'},
-        ko:{0:'진행중',1:'패',2:'승',3:'무',4:'취소',16:'반패',17:'반승',32:'캐시아웃'},
-      }[lang];
-      const stTxt = sel.status !== null && sel.status !== undefined && statusLabel ? (statusLabel[sel.status] || '') : '';
-      const resultLine = (result || stTxt) ? (result + stTxt) : '';
-      const timeStr = sel.startDate ? _ctToUTC8(sel.startDate) : '';
-      if (lang === 'en') return [
-        `League: ${sel.leagueName}`,
-        `Event: ${sel.eventName}`,
-        `Market: ${sel.lineType}`,
-        sel.selectionName ? `Selection: ${sel.selectionName}` : '',
-        `Odds: ${sel.odds !== null && sel.odds !== undefined ? sel.odds : 'n/a'} EU`,
-        resultLine ? `Result: ${resultLine}` : '',
-        timeStr ? `Event Time: ${timeStr}` : '',
-      ].filter(Boolean).join('\n');
-      if (lang === 'zh') return [
-        `联赛：${sel.leagueName}`,
-        `赛事：${sel.eventName}`,
-        `盘口：${sel.lineType}`,
-        sel.selectionName ? `投注选项：${sel.selectionName}` : '',
-        `赔率：${sel.odds !== null && sel.odds !== undefined ? sel.odds : 'n/a'} EU`,
-        resultLine ? `赛果：${resultLine}` : '',
-        timeStr ? `赛事时间：${timeStr}` : '',
-      ].filter(Boolean).join('\n');
-      if (lang === 'ko') return [
-        `리그：${sel.leagueName}`,
-        `경기：${sel.eventName}`,
-        `마켓：${sel.lineType}`,
-        sel.selectionName ? `베팅 선택：${sel.selectionName}` : '',
-        `배당：${sel.odds !== null && sel.odds !== undefined ? sel.odds : 'n/a'} EU`,
-        resultLine ? `결과：${resultLine}` : '',
-        timeStr ? `경기시간：${timeStr}` : '',
-      ].filter(Boolean).join('\n');
+      const stLbl = sel.status !== null && sel.status !== undefined ? (statusMapAll[lang]?.[sel.status] || '') : '';
+      const resultLine = sel.settlementResult ? `${sel.settlementResult} -> ${stLbl}` : stLbl;
+      const timeStr = sel.startDate ? _bdToUTC8(sel.startDate) : '';
+      const oddsStr = sel.odds !== null && sel.odds !== undefined ? sel.odds + ' EU' : 'n/a';
+      if (lang === 'en') return [`League: ${sel.leagueName}`,`Event: ${sel.eventName}`,`Market: ${sel.lineType}`,sel.selectionName?`Selection: ${sel.selectionName}`:'',`Odds: ${oddsStr}`,resultLine?`Result: ${resultLine}`:'',timeStr?`Event Time: ${timeStr}`:''].filter(Boolean).join('\n');
+      if (lang === 'zh') return [`联赛：${sel.leagueName}`,`赛事：${sel.eventName}`,`盘口：${sel.lineType}`,sel.selectionName?`投注选项：${sel.selectionName}`:'',`赔率：${oddsStr}`,resultLine?`赛果：${resultLine}`:'',timeStr?`赛事时间：${timeStr}`:''].filter(Boolean).join('\n');
+      if (lang === 'ko') return [`리그：${sel.leagueName}`,`경기：${sel.eventName}`,`마켓：${sel.lineType}`,sel.selectionName?`베팅 선택：${sel.selectionName}`:'',`배당：${oddsStr}`,resultLine?`결과：${resultLine}`:'',timeStr?`경기시간：${timeStr}`:''].filter(Boolean).join('\n');
       return '';
     }
 
-    function _ctToUTC8(raw) {
-      if (!raw) return '';
-      try {
-        const d = new Date(raw.endsWith('Z') || raw.includes('+') ? raw : raw + 'Z');
-        const offset = 8 * 60;
-        const utc8 = new Date(d.getTime() + offset * 60000);
-        const pad = n => String(n).padStart(2,'0');
-        return `${utc8.getUTCFullYear()}-${pad(utc8.getUTCMonth()+1)}-${pad(utc8.getUTCDate())} ${pad(utc8.getUTCHours())}:${pad(utc8.getUTCMinutes())}:${pad(utc8.getUTCSeconds())} (UTC+8)`;
-      } catch { return raw; }
+    function buildReport(lang) {
+      const typeLabel = lang==='en'?d.betTypeEn:lang==='zh'?d.betTypeZh:d.betTypeKo;
+      const ticketLabel = lang==='en'?'Ticket ID':lang==='zh'?'注单号':'주문번호';
+      const typeLabel2  = lang==='en'?'Bet Type':lang==='zh'?'投注类型':'투자유형';
+      const lines = [`${ticketLabel}：${d.ticketId}`,`${typeLabel2}：${typeLabel}`,'',...d.sels.flatMap(s=>[bdSelText(s,lang),''])];
+      return lines.join('\n').trim();
     }
 
-    const statusMap = {0:'Open',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
-
-    // full report text per language
-    const headerText = lang => {
-      const labels = {
-        en: { ticket:'Ticket ID', type:'Bet Type', stake:'Stake', payout:'Payout', wl:'Win/Loss', status:'Status' },
-        zh: { ticket:'注单号', type:'投注类型', stake:'投注额', payout:'派彩', wl:'盈亏', status:'状态' },
-        ko: { ticket:'주문번호', type:'투자유형', stake:'배팅금', payout:'지급금액', wl:'손익', status:'상태' },
-      }[lang];
-      const statusLabels = {en:statusMap,zh:{0:'进行中',1:'输',2:'赢',3:'平局',4:'取消',15:'拒绝',16:'半输',17:'半赢',32:'提前结算'},ko:{0:'진행중',1:'패',2:'승',3:'무',4:'취소',15:'거부',16:'반패',17:'반승',32:'캐시아웃'}};
-      const stTxt = d.rawStatus !== null && d.rawStatus !== undefined ? (statusLabels[lang][d.rawStatus] || statusMap[d.rawStatus] || 'Unknown') : '—';
-      const lines = [`${labels.ticket}：${d.ticketId}`, `${labels.type}：${lang==='en'?d.betTypeEn:lang==='zh'?d.betTypeZh:d.betTypeKo}`];
-      return lines.join('\n');
-    };
-
-    const buildReport = lang => {
-      const lines = [headerText(lang), ''];
-      d.sels.forEach(sel => { lines.push(bdSelText(sel, lang)); lines.push(''); });
-      return lines.join('\n').trim();
-    };
-
-    // Checkbox area for import
     const selCheckboxes = d.sels.map((sel, i) => {
-      const pill = selStatusPill(sel.status);
       const marketLine = [sel.lineType, sel.selectionName].filter(Boolean).join(' / ');
-      return `
-        <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer;transition:background .15s"
-               onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
-          <input type="checkbox" class="bd-sel-cb" data-idx="${i}" style="margin-top:2px;accent-color:var(--blue);flex-shrink:0">
-          <div style="min-width:0;flex:1">
-            <div style="font-size:12px;font-weight:600;color:var(--text-pri)">${esc(sel.eventName)}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${esc(marketLine)}</div>
-          </div>
-          ${pill}
-        </label>`;
+      return `<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-light);background:var(--surface2);cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
+        <input type="checkbox" class="bd-sel-cb" data-idx="${i}" style="margin-top:2px;accent-color:var(--blue);flex-shrink:0">
+        <div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:600;color:var(--text-pri)">${esc(sel.eventName)}</div><div style="font-size:11px;color:var(--text-muted);margin-top:1px">${esc(marketLine)}</div></div>
+        ${selPill(sel.status)}
+      </label>`;
     }).join('');
 
-    const copyBtn = lang => `<button class="btn-icon-sm" style="flex-shrink:0" onclick="copyText(document.getElementById('bd-text-${lang}').textContent,this)">📋 複製</button>`;
-    const textBox = (lang, text) => `
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:700;color:var(--text-muted)">${lang.toUpperCase()}</span>
-          ${copyBtn(lang)}
-        </div>
-        <pre id="bd-text-${lang}" style="font-size:11px;font-family:inherit;white-space:pre-wrap;word-break:break-word;background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;margin:0;color:var(--text-pri)">${esc(buildReport(lang))}</pre>
-      </div>`;
+    const textBox = lang => `<div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:700;color:var(--text-muted)">${lang.toUpperCase()}</span>
+        <button class="btn-icon-sm" style="flex-shrink:0" onclick="copyText(document.getElementById('bd-text-${lang}').textContent,this)">📋 複製</button>
+      </div>
+      <pre id="bd-text-${lang}" style="font-size:11px;font-family:inherit;white-space:pre-wrap;word-break:break-word;background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:10px;margin:0;color:var(--text-pri)">${esc(buildReport(lang))}</pre>
+    </div>`;
+
+    const c  = d.rawStatus !== null && d.rawStatus !== undefined ? stColor[d.rawStatus] : null;
+    const bg = d.rawStatus !== null && d.rawStatus !== undefined ? stBg[d.rawStatus] : null;
+    const statusBadge = c ? `<span style="font-size:12px;font-weight:700;color:${c};background:${bg};padding:2px 10px;border-radius:20px;display:inline-block">${esc(d.statusTxt)}</span>` : esc(d.statusTxt);
 
     el.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;padding:12px;border:1px solid var(--border-light);border-radius:8px;background:var(--surface2);margin-bottom:12px;font-size:12px">
@@ -3838,8 +3754,8 @@
         ${hdr('Bet Type', esc(d.betTypeEn))}
         ${hdr('Stake', d.cs + fmt(d.totalStake) + (d.currency ? ' ' + d.currency : ''))}
         ${d.payout !== null ? hdr('Payout', payoutStr + (d.currency ? ' ' + d.currency : '')) : ''}
-        ${hdrWinLoss()}
-        ${hdrStatus()}
+        <div style="min-width:0"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Win / Loss</div><div style="font-size:12px;font-weight:600;color:${wlColor}">${winLossStr}${d.currency && d.winLoss !== null ? ' ' + d.currency : ''}</div></div>
+        <div style="min-width:0"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Status</div><div style="font-size:12px;font-weight:600">${statusBadge}</div></div>
         ${hdr('Enhanced %', d.bonusPct ? (Math.round(d.bonusPct * 10000) / 100) + '%' : '—')}
         ${hdr('Enhanced Winning', d.bonusAmt !== null ? d.cs + fmt(d.bonusAmt) : '—')}
       </div>
@@ -3856,9 +3772,7 @@
         <div style="display:flex;flex-direction:column;gap:6px">${selCheckboxes}</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-        ${textBox('en', buildReport('en'))}
-        ${textBox('zh', buildReport('zh'))}
-        ${textBox('ko', buildReport('ko'))}
+        ${textBox('en')}${textBox('zh')}${textBox('ko')}
       </div>`;
   }
 
@@ -3868,19 +3782,13 @@
     if (!cbs.length) { alert('請至少勾選一個賽事'); return; }
     const indices = Array.from(cbs).map(cb => parseInt(cb.dataset.idx));
     const { ticketId, sels } = _bdData;
-    const eventNames   = indices.map(i => sels[i].eventName);
+    const eventNames    = indices.map(i => sels[i].eventName);
     const eventStatuses = indices.map(i => sels[i].status);
-    const betInfos = indices.map(i => {
+    const betInfos      = indices.map(i => {
       const sel = sels[i];
-      return {
-        eventId: sel.eventId,
-        leagueName: sel.leagueName,
-        lineType: sel.lineType,
-        selectionName: sel.selectionName,
-        status: sel.status,
-        settlementResult: sel.settlementResult,
-        startDate: sel.startDate,
-      };
+      return { eventId: sel.eventId, leagueName: sel.leagueName, lineType: sel.lineType,
+               selectionName: sel.selectionName, status: sel.status,
+               settlementResult: sel.settlementResult, startDate: sel.startDate };
     });
     closeMsgPopup();
     switchTab('reminder');
