@@ -3972,6 +3972,8 @@
     }
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeMsgPopup(); });
+    const focusTa = overlay.querySelector('textarea');
+    if (focusTa) setTimeout(() => { focusTa.focus(); focusTa.setSelectionRange(focusTa.value.length, focusTa.value.length); }, 50);
   }
 
   function closeMsgPopup() {
