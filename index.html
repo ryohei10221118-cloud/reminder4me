@@ -1481,7 +1481,9 @@
   function _qrCombinedCopy(id, lang, btn) {
     const timeVal = _getQrTimeInput();
     const rows = document.querySelectorAll('.qr-event-sel-row');
-    const parts = [];   // {text, url}
+
+    // Collect per-event entries
+    const entries = [];
     rows.forEach(row => {
       const cb = row.querySelector('.qr-event-cb');
       if (!cb || !cb.checked) return;
@@ -1493,12 +1495,27 @@
       const eventName = cb.dataset.name || '';
       const evTime = timeVal || _getEventTime(eventName);
       if (evTime && eventName) _saveEventTime(eventName, evTime);
-      let text = qr[lang] || '';
-      text = text.replace(/\{time\}/g, evTime);
-      if (qr.attachName && eventName) text = eventName + '\n' + text;
-      parts.push({ text: text.trimEnd(), url: qr.hasUrl ? _hintPopupUrl : '' });
+      const text = (qr[lang] || '').replace(/\{time\}/g, evTime).trimEnd();
+      entries.push({ qrIdx, text, eventName, url: qr.hasUrl ? _hintPopupUrl : '', attachName: qr.attachName });
     });
-    if (!parts.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
+    if (!entries.length) { alert('請至少勾選一個賽事並選擇範本'); return; }
+
+    // Group by (qrIdx + text) so same template → single block, event names merged
+    const groupMap = new Map();
+    const groupOrder = [];
+    entries.forEach(e => {
+      const key = `${e.qrIdx}::${e.text}`;
+      if (!groupMap.has(key)) { groupMap.set(key, { ...e, eventNames: [] }); groupOrder.push(key); }
+      groupMap.get(key).eventNames.push(e.eventName);
+    });
+
+    const parts = groupOrder.map(key => {
+      const g = groupMap.get(key);
+      let t = g.text;
+      if (g.attachName && g.eventNames.length) t = g.eventNames.join('\n') + '\n' + t;
+      return { text: t, url: g.url };
+    });
+
     const agentName = getAgentName();
     if (agentName) {
       const suffix = ` - ${agentName}`;
