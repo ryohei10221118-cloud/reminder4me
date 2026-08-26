@@ -3630,7 +3630,7 @@
     const betId      = _rxStr('TicketId');
 
     const bet  = (data.Bets && data.Bets[0]) || data;
-    const N    = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfLegs)  || data.NumberOfLegs  || 1;
+    const N    = (data.Bets && data.Bets[0] && (data.Bets[0].NumberOfLegs || data.Bets[0].NumberOfLines || data.Bets[0].ComboSize)) || data.NumberOfLegs || data.NumberOfLines || (data.Selections && data.Selections.length) || 1;
     const nbets = (data.Bets && data.Bets[0] && data.Bets[0].NumberOfBets) || data.NumberOfBets || 1;
 
     const custId       = data.Customer && (data.Customer.Id || '');
