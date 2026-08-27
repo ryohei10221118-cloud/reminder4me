@@ -3795,7 +3795,10 @@
       <div style="margin-bottom:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <span style="font-size:13px;font-weight:700;color:var(--red)">🚩 勾選問題賽事</span>
-          <button class="btn-popup-done" style="padding:0 14px;height:30px;font-size:12px" onclick="bdImport()">⬆ 導入提醒工具</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn-popup-sec" style="padding:0 10px;height:30px;font-size:12px" onclick="(()=>{const cbs=[...document.querySelectorAll('.bd-sel-cb')];const allChecked=cbs.every(c=>c.checked);cbs.forEach(c=>c.checked=!allChecked);this.textContent=allChecked?'全選':'取消全選'})()">全選</button>
+            <button class="btn-popup-done" style="padding:0 14px;height:30px;font-size:12px" onclick="bdImport()">⬆ 導入提醒工具</button>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">${selCheckboxes}</div>
       </div>
