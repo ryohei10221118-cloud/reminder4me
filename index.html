@@ -6111,7 +6111,7 @@
 
     const prompt = `You are a sports betting customer support translator. Domain context: online sportsbook, bet settlement, event cancellations. Key terminology: 取消/cancel = "Canceled" (not abandoned), 套现 = "Cashout", 延迟 = "Delayed", 退款 = "Refund", 结算 = "Settlement". Always spell these correctly.
 
-Translate the following text into English, Simplified Chinese (简体中文), and Korean. If the text is already in one of these languages, still provide all three versions.${termCtx}
+Translate the following text into English, Simplified Chinese (简体中文, mainland China standard, must use simplified characters only — e.g. 数 not 數, 颗 not 顆, 结算 not 結算), and Korean. If the text is already in one of these languages, still provide all three versions. The zh field MUST be in Simplified Chinese characters, never Traditional Chinese.${termCtx}
 
 Text:
 ${input}
