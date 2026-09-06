@@ -2069,9 +2069,7 @@
               const stInfo = {0:'Opened',1:'Lost',2:'Won',3:'Draw',4:'Canceled',15:'Declined',16:'Half Lost',17:'Half Won',32:'Cashout'};
               const stColor = {0:'var(--blue)',1:'var(--red)',2:'var(--green)',3:'var(--text-muted)',4:'var(--text-muted)',15:'var(--text-muted)',16:'var(--orange)',17:'var(--green)',32:'var(--orange)'};
               const badge = st !== null && stInfo[st] ? `<span style="font-size:11px;font-weight:600;color:${stColor[st]};white-space:nowrap;flex-shrink:0">${stInfo[st]}</span>` : '';
-              const hintKey = e.trim();
-              const hasHint = hintKey && !!_getHint(hintKey);
-              const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
+              const hintIcon = _hintIconHtml(e);
               const bi = (g.betInfos || [])[ei] ?? null;
               let betHintHtml = '';
               if (bi) {
@@ -2257,6 +2255,11 @@
       }
     }
     return best ? { note: best.note, timeStr: best.ts ? _tsToUtc8(best.ts) : '' } : null;
+  }
+  function _hintIconHtml(name) {
+    const key = (name || '').trim();
+    if (!key || !_getHint(key)) return '';
+    return `<button type="button" class="note-hint-icon-btn" data-event="${esc(key)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>`;
   }
   function showNoteHintPopup(eventName) {
     const hint = _getHint(eventName);
@@ -3981,8 +3984,7 @@
       const borderStyle = !isWon && st ? `border-left:3px solid ${st.color};` : '';
       const statusBadge = st ? `<span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>` : '';
       const hintKey = ev.eventName.trim();
-      const hasHint = hintKey && !!_getHint(hintKey);
-      const hintIcon = hasHint ? `<button type="button" class="note-hint-icon-btn" data-event="${esc(hintKey)}" onclick="showNoteHintPopup(this.dataset.event)" title="有歷史記錄">📌</button>` : '';
+      const hintIcon = _hintIconHtml(hintKey);
       const upcoming = ev.startDate && _jsonIsUpcoming(ev.startDate);
       const stale    = ev.startDate && ev.status === 0 && _jsonIsStale(ev.startDate);
       const timeColor = upcoming ? 'var(--red)' : stale ? 'var(--orange)' : 'var(--text-muted)';
@@ -4773,7 +4775,7 @@
           const curKey = _saPerEventReasons[i] !== undefined ? _saPerEventReasons[i] : _saCurrentReason();
           const showInput = curKey === '_custom_fill';
           return `<div style="background:var(--surface2);border:1px solid var(--border-light);border-radius:6px;padding:8px 10px">
-            <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:5px">Event ${i+1}: ${_saEsc(item.eventName)}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:5px">Event ${i+1}: ${_saEsc(item.eventName)}${_hintIconHtml(item.eventName)}</div>
             <select onchange="_saPerEventReasons[${i}]=this.value;_saRenderResults()"
               style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text-pri);outline:none">
               ${_saReasonOptionsHtml(curKey, _saAnalysisType)}
@@ -4824,7 +4826,13 @@
             style="width:100%;box-sizing:border-box;padding:6px 10px;font-size:12px;border:1px solid var(--blue-light);border-radius:6px;background:var(--surface);color:var(--text-pri);outline:none">
         </div>` : '';
 
-    el.innerHTML = perEventHtml + globalCustomFillHtml + copyBtns + previewHtml;
+    const detectedEventsHtml = (!_saShowPerEventReasons && _saResults.analyzedData && _saResults.analyzedData.length)
+      ? `<div style="margin-bottom:10px;display:flex;flex-direction:column;gap:4px">${_saResults.analyzedData.map(item =>
+          `<div style="font-size:12px;color:var(--text-sec);display:flex;align-items:center;gap:5px">🏆 ${_saEsc(item.eventName)}${_hintIconHtml(item.eventName)}</div>`
+        ).join('')}</div>`
+      : '';
+
+    el.innerHTML = perEventHtml + detectedEventsHtml + globalCustomFillHtml + copyBtns + previewHtml;
   }
 
   function _saRenderActionBtns() {
@@ -5443,7 +5451,7 @@
       var selShort = (r.selection||'').length > 16 ? r.selection.slice(0,16)+'…' : (r.selection||'—');
       return '<tr style="font-size:11px;border-bottom:1px solid var(--border)">' +
         '<td style="padding:4px 8px"><input type="checkbox"'+(r.checked?' checked':'')+' onchange="_ctToggleRow('+i+')"></td>' +
-        '<td style="padding:3px 6px" title="'+_ctEsc(r.event)+'">'+_ctEsc(evtShort)+'</td>' +
+        '<td style="padding:3px 6px" title="'+_ctEsc(r.event)+'">'+_ctEsc(evtShort)+_hintIconHtml(r.event)+'</td>' +
         '<td style="padding:3px 6px" title="'+_ctEsc(r.market)+'">'+_ctEsc(mktShort)+'</td>' +
         '<td style="padding:3px 6px" title="'+_ctEsc(r.selection)+'">'+_ctEsc(selShort)+'</td>' +
         '<td style="padding:3px 6px;white-space:nowrap">'+statusLabel+'</td>' +
