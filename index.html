@@ -5704,16 +5704,27 @@
   function trSaveTerms(arr)   { localStorage.setItem(TR_KEY+'terms',   JSON.stringify(arr)); trUpdateCounts(); }
   function trGetCats()    { try { return JSON.parse(localStorage.getItem(TR_KEY+'cats')    || '[]'); } catch(e) { return []; } }
 
+  const TR_HISTORY_MAX = 200;
+  function trGetHistory() { try { return JSON.parse(localStorage.getItem(TR_KEY+'history') || '[]'); } catch(e) { return []; } }
+  function trSaveHistory(arr) { localStorage.setItem(TR_KEY+'history', JSON.stringify(arr.slice(0, TR_HISTORY_MAX))); trUpdateCounts(); }
+  function trAddHistoryEntry(input, result) {
+    const hist = trGetHistory();
+    hist.unshift({ id: Date.now(), input, result, createdAt: new Date().toLocaleString('zh-TW') });
+    trSaveHistory(hist);
+  }
+
   function trUpdateCounts() {
     const pc = document.getElementById('tr-phrase-count');
     const tc = document.getElementById('tr-term-count');
+    const hc = document.getElementById('tr-history-count');
     if (pc) pc.textContent = trGetPhrases().length;
     if (tc) tc.textContent = trGetTerms().length;
+    if (hc) hc.textContent = trGetHistory().length;
   }
 
   function trSwitchTab(tab) {
     _trSubTab = tab;
-    ['translator','phrases','terms','settings'].forEach(t => {
+    ['translator','phrases','terms','history','settings'].forEach(t => {
       const btn = document.getElementById('tr-tabbtn-'+t);
       const pane = document.getElementById('tr-tab-'+t);
       const active = t === tab;
@@ -5726,6 +5737,7 @@
     });
     if (tab === 'phrases')  { trPopulateCatFilter(); trRenderPhrases(); }
     if (tab === 'terms')    trRenderTerms();
+    if (tab === 'history')  trRenderHistory();
     if (tab === 'settings') trRenderSettings();
   }
 
@@ -5783,6 +5795,7 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       const result = JSON.parse(match[0]);
       _trLastResult = result;
       _trLastInput = input;
+      trAddHistoryEntry(input, result);
       if (data.usage) {
         const inp = parseInt(localStorage.getItem(TR_KEY+'total_input_tokens') || '0') + (data.usage.input_tokens || 0);
         const out = parseInt(localStorage.getItem(TR_KEY+'total_output_tokens') || '0') + (data.usage.output_tokens || 0);
@@ -5941,6 +5954,67 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
     if (!confirm('確定刪除這筆造句？')) return;
     trSavePhrases(trGetPhrases().filter(p => p.id !== id));
     trRenderPhrases();
+  }
+
+  var _trHistoryFilter = '';
+
+  function trRenderHistory() {
+    const el = document.getElementById('tr-history-list');
+    if (!el) return;
+    let list = trGetHistory();
+    if (_trHistoryFilter) {
+      const q = _trHistoryFilter.toLowerCase();
+      list = list.filter(h => [h.input, h.result?.en, h.result?.zh, h.result?.ko].some(s => (s||'').toLowerCase().includes(q)));
+    }
+    if (!list.length) {
+      el.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:30px">暫無翻譯紀錄</div>';
+      return;
+    }
+    el.innerHTML = list.map(h => {
+      const r = h.result || {};
+      const langs = [['EN','var(--blue)',r.en],['中(簡)','var(--green)',r.zh],['KR','#a855f7',r.ko]];
+      const inputSafe = (h.input||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div style="border:1px solid var(--border-light);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--surface2)">
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">${h.createdAt||''}　·　原文語言：${(r.detected||'—').replace(/</g,'&lt;')}</div>
+            <div style="font-size:12px;color:var(--text-sec);line-height:1.5;white-space:pre-wrap;word-break:break-word">${inputSafe}</div>
+          </div>
+          <button onclick="trReuseHistory(${h.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px" title="重新載入">↩︎</button>
+          <button onclick="trDeleteHistoryEntry(${h.id})" style="flex-shrink:0;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px" title="刪除">🗑</button>
+        </div>
+        ${langs.map(([label,color,text]) => !text ? '' :
+          `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+            <span style="font-size:10px;font-weight:700;color:${color};width:36px;flex-shrink:0;padding-top:2px">${label}</span>
+            <span style="font-size:12px;color:var(--text-pri);flex:1;line-height:1.55;word-break:break-word">${(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+            <button data-copy="${(text||'').replace(/"/g,'&quot;')}" onclick="copyText(this.dataset.copy,this)"
+              style="flex-shrink:0;padding:2px 8px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text-sec);cursor:pointer">📋</button>
+          </div>`).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  function trReuseHistory(id) {
+    const h = trGetHistory().find(x => x.id === id);
+    if (!h) return;
+    trSwitchTab('translator');
+    const inputEl = document.getElementById('tr-input');
+    if (inputEl) inputEl.value = h.input;
+    _trLastResult = h.result;
+    _trLastInput = h.input;
+    trRenderResults(h.result);
+  }
+
+  function trDeleteHistoryEntry(id) {
+    if (!confirm('確定刪除這筆翻譯紀錄？')) return;
+    trSaveHistory(trGetHistory().filter(h => h.id !== id));
+    trRenderHistory();
+  }
+
+  function trClearHistory() {
+    if (!confirm('確定清空全部翻譯紀錄？此動作無法復原。')) return;
+    trSaveHistory([]);
+    trRenderHistory();
   }
 
   function trRenderTerms() {
@@ -6899,6 +6973,9 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
       <button id="tr-tabbtn-terms" onclick="trSwitchTab('terms')"
         style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
         📖 術語庫 (<span id="tr-term-count">0</span>)</button>
+      <button id="tr-tabbtn-history" onclick="trSwitchTab('history')"
+        style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
+        🕘 歷史 (<span id="tr-history-count">0</span>)</button>
       <button id="tr-tabbtn-settings" onclick="trSwitchTab('settings')"
         style="padding:9px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s">
         ⚙️ 設定</button>
@@ -6970,6 +7047,18 @@ Reply with JSON only, no extra text: {"detected":"language name in English","en"
           <tbody id="tr-terms-body"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- 歷史 -->
+    <div id="tr-tab-history" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+        <input id="tr-history-search" placeholder="搜尋原文或翻譯結果..."
+          oninput="_trHistoryFilter=this.value;trRenderHistory()"
+          style="flex:1;min-width:150px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface2);color:var(--text-pri);outline:none">
+        <button onclick="trClearHistory()"
+          style="padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sec);cursor:pointer;font-size:12px;white-space:nowrap">清空歷史</button>
+      </div>
+      <div id="tr-history-list"></div>
     </div>
 
     <!-- 設定 -->
