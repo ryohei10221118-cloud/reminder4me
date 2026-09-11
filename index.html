@@ -555,6 +555,15 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .lang-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 1px 7px; margin-left: 6px; border-radius: 10px;
+      font-size: 10px; font-weight: 700; line-height: 1.5;
+      color: #fff; vertical-align: middle; white-space: nowrap;
+    }
+    .lang-badge.zh { background: var(--green); }
+    .lang-badge.en { background: var(--blue); }
+    .lang-badge.kr { background: #a855f7; }
     .record-meta { font-size: 12px; color: var(--text-sec); line-height: 1.6; }
     .record-meta b { color: var(--text-pri); font-weight: 600; }
     .record-meta-note {
@@ -3414,6 +3423,13 @@
     }
   }
 
+  const _LANG_LABELS = { zh: '中文', en: 'English', kr: '한국어' };
+  function _langBadgeHtml(lang) {
+    const label = _LANG_LABELS[lang];
+    if (!label) return '';
+    return `<span class="lang-badge ${lang}" title="回覆語言：${label}">💬 ${label}</span>`;
+  }
+
   function renderCardHtml(r, inBatch = false, dupSet = null) {
     const ms = getRemaining(r), tc = timerClass(ms), cc = cardClass(ms), t = fmtTime(ms);
     const stageLabel = r.stage === 1 ? '第1次' : r.stage === 2 ? '第2次' : '待定';
@@ -3455,7 +3471,7 @@
           <div class="record-info">
             ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
             <div class="record-req" title="${esc(r.requirement)}">${esc(r.requirement)}</div>
-            <div class="record-meta">群組：<b>${esc(r.group)}</b>${r.additionalInfo ? `<br><span class="record-meta-note" title="${esc(r.additionalInfo)}">備註：${esc(r.additionalInfo)}</span>` : ''}</div>
+            <div class="record-meta">群組：<b>${esc(r.group)}</b>${_langBadgeHtml(r.lang)}${r.additionalInfo ? `<br><span class="record-meta-note" title="${esc(r.additionalInfo)}">備註：${esc(r.additionalInfo)}</span>` : ''}</div>
             ${_buildBetInfoHtml(r)}
           </div>
           <div class="record-actions">
@@ -3554,7 +3570,7 @@
             <div class="record-info">
               ${orderTagsHtml ? `<div class="order-tags">${orderTagsHtml}</div>` : ''}
               <div class="record-req">${esc(r.requirement)}</div>
-              <div class="record-meta">群組：<b>${esc(r.group)}</b></div>
+              <div class="record-meta">群組：<b>${esc(r.group)}</b>${_langBadgeHtml(r.lang)}</div>
             </div>
             <div class="record-actions">
               <button class="btn-del" style="color:var(--blue);border-color:var(--blue)" title="復活 — 重新開始倒數" onclick="reviveRecord('${r.id}')">↩ 復活</button>
