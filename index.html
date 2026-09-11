@@ -1314,11 +1314,19 @@
 
   // ── Quick Reply use popup ──
   function showMarkDonePopup(id) {
-    const r = records.find(x => x.id === id);
-    if (!r || r.completedAt) return;
-    const allEventNames = getEventNames(r);
-    const settledSet = new Set(r.settledEventIndices || []);
-    const pendingNames = allEventNames.filter((_, i) => !settledSet.has(i));
+    const idList = (Array.isArray(id) ? id : String(id).split(',')).filter(Boolean);
+    const recs = idList.map(i => records.find(x => x.id === i)).filter(x => x && !x.completedAt);
+    if (!recs.length) return;
+    const r  = recs[0];
+    id = recs.map(x => x.id).join(',');
+    const allEventNames = [];
+    const pendingNames  = [];
+    recs.forEach(rec => {
+      const names = getEventNames(rec);
+      const settled = new Set(rec.settledEventIndices || []);
+      names.forEach((n, i) => { allEventNames.push(n); if (!settled.has(i)) pendingNames.push(n); });
+    });
+    const allOrderNos = [...new Set(recs.flatMap(rec => rec.orderNos || []))];
     const reqText   = r.requirement || '';
     const grpText   = r.group || '';
     const hasUrlTemplate = _quickReplies.some(q => q.hasUrl);
@@ -1403,9 +1411,9 @@
     overlay.className = 'popup-overlay';
     overlay.innerHTML = `
       <div class="popup-card" style="min-width:290px;max-width:440px;width:93%;max-height:82vh;display:flex;flex-direction:column;">
-        <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆</div>
+        <div class="popup-badge info" style="flex-shrink:0">✓ 快速回覆${recs.length > 1 ? ` — ${recs.length} 張注單` : ''}</div>
         ${eventTitle}
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;flex-shrink:0;line-height:1.6">${r.orderNos && r.orderNos.length ? `🎫 ${r.orderNos.map(o=>esc(o)).join('　')}` : ''}${r.orderNos && r.orderNos.length && (reqText || grpText) ? '<br>' : ''}${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;flex-shrink:0;line-height:1.6">${allOrderNos.length ? `🎫 ${allOrderNos.map(o=>esc(o)).join('　')}` : ''}${allOrderNos.length && (reqText || grpText) ? '<br>' : ''}${reqText ? `📋 ${esc(reqText)}` : ''}${reqText && grpText ? '　' : ''}${grpText ? `👥 ${esc(grpText)}` : ''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0">
           <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">⏰ 時間</span>
           <input id="qr-time-input" type="text" placeholder="e.g. 08/07/2026 07:00" value="${esc(storedTime)}"
@@ -1416,7 +1424,7 @@
         ${urlSection}
         <div class="popup-btns" style="margin-top:12px;flex-shrink:0">
           <button class="btn-popup-sec" onclick="showQrManager()">⚙ 管理範本</button>
-          <button class="btn-popup-done" onclick="document.getElementById('popup-overlay')?.remove();markDone('${id}')">✓ 直接搞定</button>
+          <button class="btn-popup-done" onclick="document.getElementById('popup-overlay')?.remove();markDoneMulti('${id}')">✓ 直接搞定</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -1455,7 +1463,8 @@
   function _qrCopyDone(id, qrIdx, lang, btn) {
     const qr = _quickReplies[qrIdx];
     if (!qr) return;
-    const r = records.find(x => x.id === id);
+    const ids = String(id).split(',').filter(Boolean);
+    const r = records.find(x => x.id === ids[0]);
     const selectedNames = r ? _getSelectedQrEventNames(r) : [];
     const eventName = selectedNames.join('\n');
     const url = _hintPopupUrl;
@@ -1475,7 +1484,7 @@
     if (qr.hasUrl && url) text = text.trimEnd() + '\n' + url;
 
     copyText(text, btn);
-    setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
+    setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDoneMulti(ids); }, 400);
   }
 
   function _qrCombinedCopy(id, lang, btn) {
@@ -1524,7 +1533,7 @@
     }
     const finalParts = parts.map(p => p.url ? p.text + '\n' + p.url : p.text);
     copyText(finalParts.join('\n\n'), btn);
-    setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDone(id); }, 400);
+    setTimeout(() => { document.getElementById('popup-overlay')?.remove(); markDoneMulti(id); }, 400);
   }
 
   function _qrCopyHint(qrIdx, lang, btn) {
@@ -2962,6 +2971,10 @@
     save(); fullRender();
   }
 
+  function markDoneMulti(ids) {
+    (Array.isArray(ids) ? ids : String(ids).split(',')).filter(Boolean).forEach(i => markDone(i));
+  }
+
   function reviveRecord(id) {
     const r = records.find(x => x.id === id);
     if (!r || !r.completedAt) return;
@@ -3157,16 +3170,8 @@
       const r = records.find(x => x.id === id);
       return r && r.batchId === batchId && !r.completedAt;
     });
-    toMark.forEach(id => {
-      const r = records.find(x => x.id === id);
-      if (!r) return;
-      r.completedAt = Date.now();
-      clearTimeout(timerHandles[id]); delete timerHandles[id];
-      popupQueue = popupQueue.filter(x => x !== id);
-      if (activePopupId === id) dismissPopup();
-      selectedIds.delete(id);
-    });
-    save(); fullRender();
+    if (!toMark.length) return;
+    showMarkDonePopup(toMark);
   }
 
   function showBatchMsgPopup(batchId) {
